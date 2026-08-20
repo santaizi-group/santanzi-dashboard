@@ -778,6 +778,17 @@ test('connection observation shows node paths as observer chips on node cards', 
   await expect(page.locator('.node-end-chip .rtt-sampled')).toHaveCount(2)
   await expect(page.locator('.node-end-chip').filter({ hasText: '主面板' })).toHaveCount(2)
   await expect(page.locator('.node-end-chip').filter({ hasText: 'Shanghai edge' })).toHaveCount(2)
+  const stacked = await edgeA.locator('.node-end-chip').evaluateAll((chips) => {
+    if (chips.length < 2) return { stacked: false, reason: 'need 2 chips' }
+    const a = chips[0].getBoundingClientRect()
+    const b = chips[1].getBoundingClientRect()
+    return {
+      stacked: b.top >= a.bottom - 1 && Math.abs(a.left - b.left) < 2,
+      a: { top: a.top, bottom: a.bottom, left: a.left, width: a.width },
+      b: { top: b.top, bottom: b.bottom, left: b.left, width: b.width },
+    }
+  })
+  expect(stacked.stacked, JSON.stringify(stacked)).toBe(true)
 })
 
 test('connection node cards stay within the page and scroll internally', async ({ page }) => {

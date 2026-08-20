@@ -28,7 +28,7 @@ func percentage(used, total uint64) float64 {
 	return float64(used) * 100 / float64(total)
 }
 
-func (u *Rule) Snapshot(server *Server, _ *gorm.DB) interface{} {
+func (u *Rule) Snapshot(server *Server, db *gorm.DB) interface{} {
 	if server == nil || server.State == nil || server.Host == nil {
 		return nil
 	}
@@ -57,6 +57,12 @@ func (u *Rule) Snapshot(server *Server, _ *gorm.DB) interface{} {
 	case "net_all_speed":
 		value = float64(server.State.NetInSpeed + server.State.NetOutSpeed)
 	case "offline":
+		if offline, ok, err := ServerConsensusOffline(db, server.ID); err == nil && ok {
+			if offline {
+				return struct{}{}
+			}
+			return nil
+		}
 		if server.LastActive.IsZero() {
 			value = 0
 		} else {

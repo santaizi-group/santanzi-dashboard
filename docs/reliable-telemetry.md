@@ -41,7 +41,7 @@ Santaizi 采用单 Primary 控制面与多从端（Collector）探测面。探�
 - 无人看到且健康 Observer 数达到 `min_observers`：Host `OFFLINE`、Connectivity `UNAVAILABLE`。
 - Observer 证据不足：Host 与 Connectivity 均为 `UNKNOWN`。
 - 全部健康 Observer 看到为 `FULL`；部分看到为 `PARTIAL`。V2 `available` 对 FULL/PARTIAL 为 `true`，UNAVAILABLE 为 `false`，UNKNOWN 为 `null`。
-- `[离线]` / `[恢复]` 与列表 `online`：V2 节点只认上述 Host 状态。主端或任一从端仍能看到节点时**不**判定离线；只有已分配且健康的观测点全部看不到、并持续达到顶层 `offlinethresholdseconds`（且不小于 `availability_bucket_seconds`）才开离线记录。V1 服务器仍按主端最后上报计时。`telemetry.offline_threshold_seconds` 只用于丢弃过旧的实时快照，不参与离线判定。
+- `[离线]` / `[恢复]` 与列表 `online`：V2 节点只认上述 Host 状态。主端或任一从端仍能看到节点时**不**判定离线；只有已分配且健康的观测点全部看不到、并持续达到顶层 `offlinethresholdseconds`（且不小于 `availability_bucket_seconds`）才开离线记录。告警规则 `offline` 指标（V2）同样按此共识判定，不受「记录离线历史」开关影响。V1 服务器仍按主端最后上报计时。`telemetry.offline_threshold_seconds` 只用于丢弃过旧的实时快照，不参与离线判定。
 - Admin 可用性历史抽屉的「可用率」是完整连通率：`full / (full + partial + unavailable)`。部分连通拉低百分比并计入「降级」，不算中断；未知与缺口不进分母。公开站 30 天可用率仍按离线历史存活率，两套口径不要混读。
 
 晚到 Replay 会重算历史 Bucket，并以不可变 Incident Revision 修正分类；Correction 通知默认关闭。V1 的布尔 `online` 因类型限制会把 UNKNOWN 映射为 `false`。

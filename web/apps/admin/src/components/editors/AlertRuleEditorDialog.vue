@@ -35,6 +35,11 @@ function unit(type: AlertMetric) {
   if (type.includes('net_')) return 'B/s'
   return ''
 }
+function durationHint(sampleCount: number) {
+  const seconds = Math.max(0, Number(sampleCount) || 0) * 3
+  if (seconds >= 60) return t('durationHintMinutes', { minutes: (seconds / 60).toFixed(1) })
+  return t('durationHintSeconds', { seconds })
+}
 function clampNumber(value: unknown, min: number, max?: number, fallback = min) {
   const next = Number(value)
   if (!Number.isFinite(next)) return fallback
@@ -96,7 +101,10 @@ watch(() => props.modelValue, value => { if (value) { reset(props.value); void l
                   <el-option-group v-for="group in metricGroups" :key="group.label" :label="group.label"><el-option v-for="metric in group.options" :key="metric" :value="metric"><div class="metric-option"><i :class="metricIcons[metric]"></i><span>{{ t(`metric_${metric}`) }}</span></div></el-option></el-option-group>
                 </el-select>
               </el-form-item>
-              <el-form-item :label="t('durationSeconds')"><el-input v-model.number="condition.duration_seconds" inputmode="numeric" class="field-full" @blur="condition.duration_seconds = clampNumber(condition.duration_seconds, 3, 86400, 30)" /></el-form-item>
+              <el-form-item :label="t('durationSeconds')">
+                <el-input v-model.number="condition.duration_seconds" inputmode="numeric" class="field-full" @blur="condition.duration_seconds = clampNumber(condition.duration_seconds, 3, 86400, 30)" />
+                <span class="condition-duration-hint">{{ durationHint(condition.duration_seconds) }}</span>
+              </el-form-item>
               <el-form-item v-if="condition.type !== 'offline'" :label="`${t('minimumThreshold')} ${unit(condition.type)}`"><el-input v-model.number="condition.min" inputmode="numeric" class="field-full" @blur="condition.min = clampNumber(condition.min, 0, undefined, 0)" /></el-form-item>
               <el-form-item v-if="condition.type !== 'offline'" :label="`${t('maximumThreshold')} ${unit(condition.type)}`"><el-input v-model.number="condition.max" inputmode="numeric" class="field-full" @blur="condition.max = clampNumber(condition.max, 0, undefined, 0)" /></el-form-item>
             </div>

@@ -460,13 +460,30 @@ func v2AdminSummary(c *gin.Context) {
 	singleton.DB.Model(&model.TelemetryDataLoss{}).Count(&losses)
 	singleton.DB.Model(&model.TelemetryAlert{}).Count(&alerts)
 	singleton.SortedServerLock.RLock()
-	online := int64(0)
+	probes := make([]struct {
+		id         uint64
+		lastActive time.Time
+	}, 0, len(singleton.SortedServerList))
 	for _, server := range singleton.SortedServerList {
-		if time.Since(server.LastActive) < time.Duration(singleton.Conf.Telemetry.OfflineThresholdSeconds)*time.Second {
+		probes = append(probes, struct {
+			id         uint64
+			lastActive time.Time
+		}{id: server.ID, lastActive: server.LastActive})
+	}
+	singleton.SortedServerLock.RUnlock()
+	online := int64(0)
+	threshold := time.Duration(singleton.Conf.Telemetry.OfflineThresholdSeconds) * time.Second
+	for _, probe := range probes {
+		if offline, ok, err := model.ServerConsensusOffline(singleton.DB, probe.id); err == nil && ok {
+			if !offline {
+				online++
+			}
+			continue
+		}
+		if time.Since(probe.lastActive) < threshold {
 			online++
 		}
 	}
-	singleton.SortedServerLock.RUnlock()
 	connection, err := telemetry.LoadConnectionSummary(singleton.DB, time.Now())
 	if err != nil {
 		writeV2Problem(c, http.StatusInternalServerError, "database_error", err.Error())
