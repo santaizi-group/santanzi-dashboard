@@ -69,3 +69,22 @@ func TestBrokenExternalGeoIPFallsBack(t *testing.T) {
 		t.Fatalf("broken external db should not panic, got %q", got)
 	}
 }
+
+func TestLookupHopPrivateAndFormat(t *testing.T) {
+	private := LookupHop("10.0.0.1")
+	if !private.Private {
+		t.Fatalf("%+v", private)
+	}
+	if FormatHopGeo(private) != "" {
+		t.Fatal("private geo is rendered by i18n")
+	}
+	if LookupHop("not-an-ip").CountryCode != "" || LookupHop("").Private {
+		t.Fatal("invalid address should miss")
+	}
+	if got := FormatHopGeo(HopInfo{CountryName: "United States", ASName: "Google LLC"}); got != "United States · Google LLC" {
+		t.Fatal(got)
+	}
+	if got := FormatHopGeo(HopInfo{CountryCode: "us"}); got != "US" {
+		t.Fatal(got)
+	}
+}

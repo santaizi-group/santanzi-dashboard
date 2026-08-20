@@ -420,12 +420,16 @@ type ProbeLatest struct {
 }
 
 type ProbeTrace struct {
-	CollectorUUID string `gorm:"primaryKey;size:64"`
-	ServerID      uint64 `gorm:"primaryKey"`
-	SampledAt     int64
-	Destination   string
-	HopsJSON      []byte `gorm:"type:BLOB"`
-	UpdatedAt     time.Time
+	CollectorUUID  string `gorm:"primaryKey;size:64"`
+	ServerID       uint64 `gorm:"primaryKey"`
+	SampledAt      int64
+	Destination    string
+	HopsJSON       []byte `gorm:"type:BLOB"`
+	TCPSampledAt   int64
+	TCPDestination string
+	TCPHopsJSON    []byte `gorm:"type:BLOB"`
+	TCPPort        uint
+	UpdatedAt      time.Time
 }
 
 type ProbeAlertState struct {

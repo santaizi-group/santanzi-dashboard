@@ -35,7 +35,7 @@ export function probeLossPercent(value: number | null | undefined) {
 export function probeHasICMP(path: ProbePath) {
   const icmp = path.icmp
   if (!icmp) return false
-  return icmp.ok || (icmp.packets_sent ?? 0) > 0 || icmp.rtt_ms != null
+  return icmp.ok || (icmp.packets_sent ?? 0) > 0
 }
 
 export function probeBestTCP(path: ProbePath): ProbeTCP | undefined {
@@ -71,4 +71,19 @@ export function probeMTRMetric(path: ProbePath, locale: string): ProbeMetric {
   if (hops <= 0) return { text: '—', tone: '' }
   const loss = path.mtr?.loss ?? 0
   return { text: formatProbeLoss(loss, locale), tone: loss > 0 ? 'is-fail' : 'is-ok' }
+}
+
+export function hopGeoText(hop: { private?: boolean; geo?: string }, privateLabel: string) {
+  if (hop.private) return privateLabel
+  return hop.geo || ''
+}
+
+export type ProbeRouteProtocol = 'icmp' | 'tcp'
+
+export function defaultProbeRouteProtocol(trace?: { icmp?: { hops?: { loss?: number }[] }; tcp?: { hops?: unknown[] } } | null): ProbeRouteProtocol {
+  const icmpHops = trace?.icmp?.hops || []
+  const tcpHops = trace?.tcp?.hops || []
+  if (!icmpHops.length && tcpHops.length) return 'tcp'
+  if (icmpHops.length && tcpHops.length && probeLossPercent(icmpHops[icmpHops.length - 1]?.loss) >= 100) return 'tcp'
+  return 'icmp'
 }

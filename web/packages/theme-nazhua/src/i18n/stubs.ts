@@ -40,7 +40,6 @@ export const nazhuaMessageStubs = {
       onlineOnly: '仅在线',
       offlineOnly: '仅离线',
       modeCard: '卡片',
-      modeRow: '列表',
       modeServerStatus: 'ServerStatus',
       status: '状态',
       name: '名称',

@@ -8,7 +8,6 @@ import NazhuaSearch from '../components/layout/NazhuaSearch.vue'
 import FilterBar from '../components/home/FilterBar.vue'
 import WorldMap from '../components/home/WorldMap.vue'
 import ServerCard from '../components/home/ServerCard.vue'
-import ServerRow from '../components/home/ServerRow.vue'
 import ServerStatusList from '../components/home/ServerStatusList.vue'
 import { useServerListFilters } from '../composables/useServerListFilters'
 import { mapCycleTransfers, toNazhuaServerViews } from '../domain/nazhuaServerView'
@@ -103,9 +102,6 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateViewport))
       <div v-if="serverViews.length" class="nazhua-home__list" :class="`mode-${effectiveListMode}`">
         <template v-if="effectiveListMode === 'card'">
           <ServerCard v-for="server in serverViews" :key="server.id" :server="server" />
-        </template>
-        <template v-else-if="effectiveListMode === 'row'">
-          <ServerRow v-for="server in serverViews" :key="server.id" :server="server" />
         </template>
         <ServerStatusList v-else :servers="serverViews" />
       </div>

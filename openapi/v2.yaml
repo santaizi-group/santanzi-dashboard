@@ -4241,6 +4241,13 @@ components:
         sampled_at:
           type: string
           format: date-time
+        protocol:
+          type: string
+          enum:
+          - icmp
+          - tcp
+        port:
+          type: integer
     ProbeSampleBucket:
       type: object
       required:
@@ -4306,6 +4313,28 @@ components:
           format: double
         sent:
           type: integer
+        geo:
+          type: string
+        country_code:
+          type: string
+        private:
+          type: boolean
+    ProbeTraceLeg:
+      type: object
+      required:
+      - hops
+      properties:
+        sampled_at:
+          type: string
+          format: date-time
+        destination:
+          type: string
+        port:
+          type: integer
+        hops:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProbeMTRHop'
     ProbeTrace:
       type: object
       required:
@@ -4324,10 +4353,21 @@ components:
           format: date-time
         destination:
           type: string
+        protocol:
+          type: string
+          enum:
+          - icmp
+          - tcp
+        port:
+          type: integer
         hops:
           type: array
           items:
             $ref: '#/components/schemas/ProbeMTRHop'
+        icmp:
+          $ref: '#/components/schemas/ProbeTraceLeg'
+        tcp:
+          $ref: '#/components/schemas/ProbeTraceLeg'
     ObserverEvidenceItem:
       type: object
       required:

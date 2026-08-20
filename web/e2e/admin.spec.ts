@@ -913,6 +913,50 @@ test('probe observation shows ICMP paths separately from node links', async ({ p
   await expect(page.locator('.el-drawer').filter({ visible: true })).toHaveCount(0)
 })
 
+test('probe observation hides closed ICMP and shows TCP MTR hop geo', async ({ page }) => {
+  await page.route('**/api/v2/admin/telemetry/collectors**', route => fulfillJSON(route, list([{
+    id: 'collector-2', name: 'SLC probe', address: '', tls: false, insecure_tls: false,
+    generation: 1, config_version: 1, status: 'online', revoked: false, kind: 'probe',
+    last_seen: '2026-08-13T06:00:00Z', heartbeat_rtt_ms: 9, heartbeat_rtt_sampled_at: '2026-08-13T06:00:00Z',
+    software_version: '1.4.0', scopes: [{ type: 'all', value: '' }],
+  }])))
+  await page.route('**/api/v2/admin/probes/paths**', route => fulfillJSON(route, list([{
+    server_id: 8, server_name: 'SJC-SALTYFISH.P1', collector_id: 'collector-2', collector_name: 'SLC probe',
+    target: { source: 'host', ipv4: '192.0.2.88' }, reachable: true, display_rtt_ms: 182.2, sampled_at: '2026-08-13T06:00:00Z',
+    tcp: [{ port: 58880, ok: true, rtt_ms: 182.2 }], mtr: { loss: 0, hop_count: 2, protocol: 'tcp', port: 58880 }, has_trace: true,
+  }])))
+  await page.route('**/api/v2/admin/probes/samples**', route => fulfillJSON(route, list()))
+  await page.route('**/api/v2/admin/probes/trace**', route => fulfillJSON(route, item({
+    collector_id: 'collector-2', server_id: 8, sampled_at: '2026-08-13T06:00:00Z', destination: '192.0.2.88',
+    protocol: 'tcp', port: 58880,
+    hops: [
+      { ttl: 1, address: '10.0.0.1', avg_ms: 1, loss: 0, sent: 3, private: true },
+      { ttl: 8, address: '192.0.2.88', avg_ms: 182.2, loss: 0, sent: 3, geo: 'United States', country_code: 'us' },
+    ],
+    tcp: {
+      sampled_at: '2026-08-13T06:00:00Z', destination: '192.0.2.88', port: 58880,
+      hops: [
+        { ttl: 1, address: '10.0.0.1', avg_ms: 1, loss: 0, sent: 3, private: true },
+        { ttl: 8, address: '192.0.2.88', avg_ms: 182.2, loss: 0, sent: 3, geo: 'United States', country_code: 'us' },
+      ],
+    },
+  })))
+  await page.goto('/admin/probes')
+  const card = page.locator('.probe-card').filter({ visible: true })
+  await expect(card.getByText('SJC-SALTYFISH.P1')).toBeVisible()
+  await expect(card.getByText('ICMP')).toBeVisible()
+  await expect(card).not.toContainText('超时')
+  await expect(card.getByText(/182\.2 ms/)).toBeVisible()
+  await expect(card.getByText('0%')).toBeVisible()
+  await card.click()
+  const dialog = page.locator('.el-dialog').filter({ visible: true })
+  await expect(dialog.getByText('超时')).toHaveCount(0)
+  await dialog.getByRole('tab', { name: '路径' }).click()
+  await expect(dialog.locator('.probe-hop__geo').filter({ hasText: '内网' })).toBeVisible()
+  await expect(dialog.getByText('United States')).toBeVisible()
+  await expect(dialog.locator('.probe-route-switch')).toBeVisible()
+})
+
 test('connection observation refreshes node chip latency on poll', async ({ page }) => {
   await page.clock.install()
   const path = {

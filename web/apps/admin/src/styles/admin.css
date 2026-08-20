@@ -979,9 +979,25 @@ html.dark .topology-globe__canvas { filter: none; }
 }
 .probe-hop__ttl { font-weight: 650; }
 .probe-hop__addr {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+.probe-hop__ip,
+.probe-hop__geo {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.probe-hop__geo {
+  color: var(--sz-text-muted);
+  font-size: var(--font-size-caption);
+  font-weight: 400;
+}
+.probe-route-switch {
+  margin-bottom: 10px;
 }
 .probe-hop__rtt { text-align: right; }
 .probe-hop__track {

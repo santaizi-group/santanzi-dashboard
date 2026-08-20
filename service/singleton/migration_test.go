@@ -53,6 +53,9 @@ func TestOpenDBFromPathCreatesVersionedSchema(t *testing.T) {
 	if !db.Migrator().HasColumn(&model.Collector{}, "enable_ipv4") || !db.Migrator().HasColumn(&model.Collector{}, "enable_ipv6") {
 		t.Fatal("collector ip family columns were not created")
 	}
+	if !db.Migrator().HasColumn(&model.ProbeTrace{}, "tcp_hops_json") || !db.Migrator().HasColumn(&model.ProbeTrace{}, "tcp_port") {
+		t.Fatal("probe_traces tcp columns were not created")
+	}
 	var autoVacuum int
 	if err := db.Raw("PRAGMA auto_vacuum").Scan(&autoVacuum).Error; err != nil {
 		t.Fatal(err)
@@ -125,7 +128,7 @@ func TestMigrateV12AddsCollectorRuntimeSoftwareVersion(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
 		t.Fatal(err)
 	}
-	if current != 14 {
+	if current != 15 {
 		t.Fatalf("version = %d", current)
 	}
 	if err := db.Create(&model.CollectorRuntime{CollectorUUID: "c1", Status: "online", SoftwareVersion: "1.2.3"}).Error; err != nil {
@@ -179,7 +182,7 @@ func TestMigrateV13AddsServerProbeOverrides(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
 		t.Fatal(err)
 	}
-	if current != 14 {
+	if current != 15 {
 		t.Fatalf("version = %d", current)
 	}
 }
@@ -223,7 +226,53 @@ func TestMigrateV14AddsAvailabilityWindow(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
 		t.Fatal(err)
 	}
-	if current != 14 {
+	if current != 15 {
+		t.Fatalf("version = %d", current)
+	}
+}
+
+func TestMigrateV15AddsProbeTraceTCP(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v14.db")
+	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := CloseDB(db); err != nil {
+			t.Errorf("close db: %v", err)
+		}
+	})
+	if err := db.AutoMigrate(&model.SchemaMigration{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE TABLE probe_traces (
+		collector_uuid TEXT,
+		server_id INTEGER,
+		sampled_at INTEGER,
+		destination TEXT,
+		hops_json BLOB,
+		updated_at DATETIME,
+		PRIMARY KEY (collector_uuid, server_id)
+	)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.SchemaMigration{Version: 14, AppliedAt: time.Now().UTC()}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if db.Migrator().HasColumn(&model.ProbeTrace{}, "tcp_hops_json") {
+		t.Fatal("fixture should omit tcp_hops_json")
+	}
+	if err := migrateDatabase(db); err != nil {
+		t.Fatal(err)
+	}
+	if !db.Migrator().HasColumn(&model.ProbeTrace{}, "tcp_hops_json") || !db.Migrator().HasColumn(&model.ProbeTrace{}, "tcp_port") {
+		t.Fatal("v15 should add tcp trace columns")
+	}
+	var current uint64
+	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
+		t.Fatal(err)
+	}
+	if current != 15 {
 		t.Fatalf("version = %d", current)
 	}
 }

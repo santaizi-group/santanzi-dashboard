@@ -408,12 +408,12 @@ test('redirects protected sites to the themed password screen', async ({ page })
 
 test('mobile temporarily falls back to cards without discarding the saved desktop mode', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'status-mobile')
-  await page.addInitScript(() => localStorage.setItem('santaizi-nazhua-list-mode', 'row'))
+  await page.addInitScript(() => localStorage.setItem('santaizi-nazhua-list-mode', 'server-status'))
   await useNazhua(page)
   await page.goto('/')
   await expect(page.locator('.nazhua-home__list.mode-card')).toBeVisible()
   await expect(page.locator('.nazhua-card')).toHaveCount(3)
-  expect(await page.evaluate(() => localStorage.getItem('santaizi-nazhua-list-mode'))).toBe('row')
+  expect(await page.evaluate(() => localStorage.getItem('santaizi-nazhua-list-mode'))).toBe('server-status')
   const header = await page.evaluate(() => {
     const inner = document.querySelector<HTMLElement>('.nazhua-header__inner')!
     const brand = document.querySelector<HTMLElement>('.nazhua-header__brand')!
@@ -445,7 +445,7 @@ test('Nazhua color toggle sits in the header instead of the function menu', asyn
   await expect(toggle).toHaveAttribute('aria-label', '深色')
 })
 
-test('desktop exposes the card, row and ServerStatus list modes', async ({ page }, testInfo) => {
+test('desktop exposes the card and ServerStatus list modes', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'status-desktop')
   await useNazhua(page)
   await page.setViewportSize({ width: 1440, height: 900 })
@@ -453,41 +453,36 @@ test('desktop exposes the card, row and ServerStatus list modes', async ({ page 
 
   const modes = page.locator('.nazhua-filter__modes')
   await expect(page.locator('.nazhua-home__list.mode-card')).toBeVisible()
-  await modes.getByRole('button', { name: '列表' }).click()
-  await expect(page.locator('.nazhua-home__list.mode-row')).toBeVisible()
-  await expect(page.locator('.nazhua-row')).toHaveCount(3)
-  await expect(page.locator('.nazhua-row').first()).toContainText('16 / 5')
-  await expect(page.locator('.nazhua-home__list .ri-checkbox-circle-fill, .nazhua-home__list .ri-indeterminate-circle-fill')).toHaveCount(0)
-  const rowAlign = await page.locator('.nazhua-row').first().evaluate(row => {
-    const name = row.querySelector('strong')!.getBoundingClientRect()
-    const flag = row.querySelector('.nazhua-flag, .nazhua-flag-fallback')!.getBoundingClientRect()
-    const os = row.querySelector('.nazhua-os-logo')!.getBoundingClientRect()
-    const spec = row.querySelector('small')!.getBoundingClientRect()
-    return {
-      nameFlagDelta: Math.abs((name.top + name.height / 2) - (flag.top + flag.height / 2)),
-      nameOsDelta: Math.abs((name.top + name.height / 2) - (os.top + os.height / 2)),
-      specBelowName: spec.top >= name.bottom - 1,
-    }
+  await expect(modes.getByRole('button')).toHaveCount(2)
+  await expect(modes.getByRole('button', { name: '列表' })).toHaveCount(0)
+  const cardMark = await page.locator('.nazhua-card').first().evaluate(card => {
+    const flag = card.querySelector('.nazhua-flag, .nazhua-flag-fallback')!.getBoundingClientRect()
+    const os = card.querySelector('.nazhua-os-logo')!.getBoundingClientRect()
+    return { flagWidth: flag.width, flagHeight: flag.height, osWidth: os.width, osHeight: os.height }
   })
-  expect(rowAlign.nameFlagDelta).toBeLessThan(4)
-  expect(rowAlign.nameOsDelta).toBeLessThan(4)
-  expect(rowAlign.specBelowName).toBe(true)
-  const rowGray = await page.locator('.nazhua-row').evaluateAll(rows => rows.map(row => {
-    const style = getComputedStyle(row)
-    return { offline: row.classList.contains('offline'), filter: style.filter, opacity: Number(style.opacity) }
-  }))
-  expect(rowGray.filter(row => row.offline)).toHaveLength(1)
-  for (const row of rowGray) {
-    if (row.offline) {
-      expect(row.filter).toContain('grayscale')
-      expect(row.opacity).toBeLessThan(1)
-    } else {
-      expect(row.filter === 'none' || !row.filter.includes('grayscale')).toBe(true)
-      expect(row.opacity).toBe(1)
-    }
-  }
+  expect(cardMark.flagWidth).toBeGreaterThanOrEqual(30)
+  expect(cardMark.flagWidth).toBeLessThanOrEqual(34)
+  expect(cardMark.flagHeight).toBeGreaterThanOrEqual(19)
+  expect(cardMark.flagHeight).toBeLessThanOrEqual(23)
+  expect(cardMark.osWidth).toBeGreaterThanOrEqual(16)
+  expect(cardMark.osWidth).toBeLessThanOrEqual(21)
+  expect(cardMark.osHeight).toBeGreaterThanOrEqual(16)
+  expect(cardMark.osHeight).toBeLessThan(cardMark.flagHeight)
   await modes.getByRole('button', { name: 'ServerStatus' }).click()
   await expect(page.locator('.nazhua-home__list.mode-server-status')).toBeVisible()
+  const tableMark = await page.locator('.nazhua-status-table__row').first().evaluate(row => {
+    const flag = row.querySelector('.nazhua-flag, .nazhua-flag-fallback')!.getBoundingClientRect()
+    const os = row.querySelector('.nazhua-os-logo')!.getBoundingClientRect()
+    return { flagWidth: flag.width, flagHeight: flag.height, osWidth: os.width, osHeight: os.height }
+  })
+  expect(tableMark.flagWidth).toBeGreaterThanOrEqual(30)
+  expect(tableMark.flagWidth).toBeLessThanOrEqual(34)
+  expect(tableMark.flagHeight).toBeGreaterThanOrEqual(19)
+  expect(tableMark.flagHeight).toBeLessThanOrEqual(23)
+  expect(tableMark.osWidth).toBeGreaterThanOrEqual(16)
+  expect(tableMark.osWidth).toBeLessThanOrEqual(21)
+  expect(tableMark.osHeight).toBeGreaterThanOrEqual(16)
+  expect(tableMark.osHeight).toBeLessThan(tableMark.flagHeight)
   await expect(page.locator('.nazhua-status-table__head [role="columnheader"]')).toHaveCount(13)
   await expect(page.locator('.nazhua-status-table__row').first().getByRole('link')).toBeVisible()
   await expect(page.locator('.nazhua-status-table .ri-checkbox-circle-fill, .nazhua-status-table .ri-indeterminate-circle-fill')).toHaveCount(0)

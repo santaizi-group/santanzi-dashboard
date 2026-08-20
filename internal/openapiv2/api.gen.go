@@ -640,6 +640,24 @@ func (e ObserverEvidenceItemObserverKind) Valid() bool {
 	}
 }
 
+// Defines values for ProbeMTRProtocol.
+const (
+	ProbeMTRProtocolIcmp ProbeMTRProtocol = "icmp"
+	ProbeMTRProtocolTcp  ProbeMTRProtocol = "tcp"
+)
+
+// Valid indicates whether the value is a known member of the ProbeMTRProtocol enum.
+func (e ProbeMTRProtocol) Valid() bool {
+	switch e {
+	case ProbeMTRProtocolIcmp:
+		return true
+	case ProbeMTRProtocolTcp:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ProbeSampleBucketKind.
 const (
 	ProbeSampleBucketKindIcmp ProbeSampleBucketKind = "icmp"
@@ -673,6 +691,24 @@ func (e ProbeTargetSource) Valid() bool {
 	case None:
 		return true
 	case Override:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProbeTraceProtocol.
+const (
+	ProbeTraceProtocolIcmp ProbeTraceProtocol = "icmp"
+	ProbeTraceProtocolTcp  ProbeTraceProtocol = "tcp"
+)
+
+// Valid indicates whether the value is a known member of the ProbeTraceProtocol enum.
+func (e ProbeTraceProtocol) Valid() bool {
+	switch e {
+	case ProbeTraceProtocolIcmp:
+		return true
+	case ProbeTraceProtocolTcp:
 		return true
 	default:
 		return false
@@ -2202,18 +2238,26 @@ type ProbeICMP struct {
 
 // ProbeMTR defines model for ProbeMTR.
 type ProbeMTR struct {
-	HopCount  *int       `json:"hop_count,omitempty"`
-	Loss      *float64   `json:"loss,omitempty"`
-	SampledAt *time.Time `json:"sampled_at,omitempty"`
+	HopCount  *int              `json:"hop_count,omitempty"`
+	Loss      *float64          `json:"loss,omitempty"`
+	Port      *int              `json:"port,omitempty"`
+	Protocol  *ProbeMTRProtocol `json:"protocol,omitempty"`
+	SampledAt *time.Time        `json:"sampled_at,omitempty"`
 }
+
+// ProbeMTRProtocol defines model for ProbeMTR.Protocol.
+type ProbeMTRProtocol string
 
 // ProbeMTRHop defines model for ProbeMTRHop.
 type ProbeMTRHop struct {
-	Address *string  `json:"address,omitempty"`
-	AvgMs   *float64 `json:"avg_ms,omitempty"`
-	Loss    *float64 `json:"loss,omitempty"`
-	Sent    *int     `json:"sent,omitempty"`
-	Ttl     int      `json:"ttl"`
+	Address     *string  `json:"address,omitempty"`
+	AvgMs       *float64 `json:"avg_ms,omitempty"`
+	CountryCode *string  `json:"country_code,omitempty"`
+	Geo         *string  `json:"geo,omitempty"`
+	Loss        *float64 `json:"loss,omitempty"`
+	Private     *bool    `json:"private,omitempty"`
+	Sent        *int     `json:"sent,omitempty"`
+	Ttl         int      `json:"ttl"`
 }
 
 // ProbePath defines model for ProbePath.
@@ -2287,11 +2331,26 @@ type ProbeTargetSource string
 
 // ProbeTrace defines model for ProbeTrace.
 type ProbeTrace struct {
-	CollectorId string        `json:"collector_id"`
+	CollectorId string              `json:"collector_id"`
+	Destination *string             `json:"destination,omitempty"`
+	Hops        []ProbeMTRHop       `json:"hops"`
+	Icmp        *ProbeTraceLeg      `json:"icmp,omitempty"`
+	Port        *int                `json:"port,omitempty"`
+	Protocol    *ProbeTraceProtocol `json:"protocol,omitempty"`
+	SampledAt   time.Time           `json:"sampled_at"`
+	ServerId    int64               `json:"server_id"`
+	Tcp         *ProbeTraceLeg      `json:"tcp,omitempty"`
+}
+
+// ProbeTraceProtocol defines model for ProbeTrace.Protocol.
+type ProbeTraceProtocol string
+
+// ProbeTraceLeg defines model for ProbeTraceLeg.
+type ProbeTraceLeg struct {
 	Destination *string       `json:"destination,omitempty"`
 	Hops        []ProbeMTRHop `json:"hops"`
-	SampledAt   time.Time     `json:"sampled_at"`
-	ServerId    int64         `json:"server_id"`
+	Port        *int          `json:"port,omitempty"`
+	SampledAt   *time.Time    `json:"sampled_at,omitempty"`
 }
 
 // Problem defines model for Problem.

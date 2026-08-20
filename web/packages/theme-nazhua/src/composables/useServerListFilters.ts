@@ -4,7 +4,7 @@ import { isHostOnline } from '@santaizi/api'
 import { parseCpuCores } from '../domain/nazhuaServerView'
 import { resolveServerLocation, count2size } from '../utils/worldMap'
 
-export type ListMode = 'card' | 'row' | 'server-status'
+export type ListMode = 'card' | 'server-status'
 export type SortProp =
   | 'display_index'
   | 'name'
@@ -204,8 +204,15 @@ function readStoredSortOrder(): SortOrder {
   return localStorage.getItem('santaizi-nazhua-sort-order') === 'asc' ? 'asc' : 'desc'
 }
 
+function readStoredListMode(): ListMode {
+  const stored = localStorage.getItem('santaizi-nazhua-list-mode')
+  if (stored === 'card' || stored === 'server-status') return stored
+  if (stored) localStorage.setItem('santaizi-nazhua-list-mode', 'card')
+  return 'card'
+}
+
 export function useServerListFilters(servers: MaybeRefOrGetter<ServerRecord[]>) {
-  const listMode = ref<ListMode>((localStorage.getItem('santaizi-nazhua-list-mode') as ListMode) || 'card')
+  const listMode = ref<ListMode>(readStoredListMode())
   const tagFilter = ref('')
   const onlineFilter = ref<'all' | 'online' | 'offline'>('all')
   const searchWord = ref('')

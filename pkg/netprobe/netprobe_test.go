@@ -1,6 +1,10 @@
 package netprobe
 
-import "testing"
+import (
+	"context"
+	"testing"
+	"time"
+)
 
 func TestParsePorts(t *testing.T) {
 	ports := ParsePorts("22, 443,22,0,abc")
@@ -47,5 +51,30 @@ func TestDisplayErrorWhenAnyTCPSucceeds(t *testing.T) {
 	}
 	if err := DisplayError(ICMPResult{OK: false, Error: "timeout"}, []TCPResult{{Port: 22, Error: "refused"}}); err != "timeout" {
 		t.Fatal(err)
+	}
+}
+
+func TestTCPMTRPortPrefersSuccessfulThenConfigured(t *testing.T) {
+	if got := TCPMTRPort([]TCPResult{{Port: 22, OK: false}, {Port: 443, OK: true}}, []uint{80}); got != 443 {
+		t.Fatalf("ok port: %d", got)
+	}
+	if got := TCPMTRPort([]TCPResult{{Port: 22, OK: false}}, []uint{80}); got != 22 {
+		t.Fatalf("failed port still reusable: %d", got)
+	}
+	if got := TCPMTRPort(nil, []uint{58880, 443}); got != 58880 {
+		t.Fatalf("configured: %d", got)
+	}
+	if got := TCPMTRPort(nil, nil); got != 0 {
+		t.Fatal("empty should miss")
+	}
+}
+
+func TestMTRTCPOnRejectsInvalidTarget(t *testing.T) {
+	ctx := context.Background()
+	if hops := MTRTCPOn(ctx, "", "", 443, 3, 1, time.Millisecond).Hops; len(hops) != 0 {
+		t.Fatalf("%+v", hops)
+	}
+	if hops := MTRTCPOn(ctx, "example.invalid", "", 0, 3, 1, time.Millisecond).Hops; len(hops) != 0 {
+		t.Fatalf("%+v", hops)
 	}
 }

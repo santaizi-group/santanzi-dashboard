@@ -186,7 +186,7 @@ func TestLoadProbePathsHidesLatestWhenCollectorOffline(t *testing.T) {
 func TestLoadProbePathsIncludesLastHopLoss(t *testing.T) {
 	db := probeTestDB(t)
 	now := time.Unix(1_700_000_090, 0)
-	probe := model.Collector{CollectorUUID: "probe-mtr", Name: "CD", Kind: model.CollectorKindProbe, TokenHash: bytes.Repeat([]byte{8}, 32), RegistrationToken: "token-mtr"}
+	probe := model.Collector{CollectorUUID: "probe-mtr", Name: "CD", Kind: model.CollectorKindProbe, TokenHash: bytes.Repeat([]byte{8}, 32), RegistrationToken: "token-mtr", EnableICMP: true, EnableTCP: true, EnableMTR: true}
 	if err := db.Create(&probe).Error; err != nil {
 		t.Fatal(err)
 	}
@@ -341,5 +341,147 @@ func TestBuildProbeTargetsFiltersIPFamily(t *testing.T) {
 	v4, v6 := ProbeConfigIPFamilies(&pb.ProbeConfig{})
 	if !v4 || !v6 {
 		t.Fatal("empty ip_families means both")
+	}
+}
+
+func TestLoadProbePathsOmitsUnsampledICMPAndDisabledMTR(t *testing.T) {
+	db := probeTestDB(t)
+	now := time.Unix(1_700_000_200, 0)
+	collector := model.Collector{
+		CollectorUUID: "probe-omit", Name: "HK", Kind: model.CollectorKindProbe,
+		TokenHash: bytes.Repeat([]byte{9}, 32), RegistrationToken: "token-omit",
+		EnableICMP: true, EnableTCP: true, EnableMTR: true,
+	}
+	if err := db.Create(&collector).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.CollectorScope{CollectorUUID: "probe-omit", ScopeType: "all"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.CollectorRuntime{CollectorUUID: "probe-omit", Status: "online", LastSeen: now.Add(-10 * time.Second).UnixNano()}).Error; err != nil {
+		t.Fatal(err)
+	}
+	tcpOnly := probeServer(41, "tcp-only", "secret-41")
+	tcpOnly.ProbeTarget = "1.1.1.1"
+	tcpOnly.ProbeEnableICMP = model.BoolPtr(false)
+	mtrOff := probeServer(42, "mtr-off", "secret-42")
+	mtrOff.ProbeTarget = "1.0.0.1"
+	mtrOff.ProbeEnableMTR = model.BoolPtr(false)
+	for _, server := range []model.Server{tcpOnly, mtrOff} {
+		if err := db.Create(&server).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	tcpJSON, _ := json.Marshal([]ProbeTCPView{{Port: 443, OK: true, RttMs: 12}})
+	if err := db.Create(&model.ProbeLatest{
+		CollectorUUID: "probe-omit", ServerID: 41, Reachable: true, DisplayRttMs: 12, SampledAt: now.UnixNano(), TCPJSON: tcpJSON,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.ProbeLatest{
+		CollectorUUID: "probe-omit", ServerID: 42, Reachable: true, DisplayRttMs: 8, SampledAt: now.UnixNano(), ICMPOk: true, ICMPRttMs: 8, ICMPSent: 5, HasTrace: true,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	hopsJSON, _ := json.Marshal([]netprobe.Hop{{TTL: 1, Address: "10.0.0.1", Loss: 1, Sent: 3}})
+	if err := db.Create(&model.ProbeTrace{CollectorUUID: "probe-omit", ServerID: 42, SampledAt: now.UnixNano(), HopsJSON: hopsJSON}).Error; err != nil {
+		t.Fatal(err)
+	}
+	paths, err := loadProbePaths(db, ProbePathFilter{CollectorID: "probe-omit"}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	byID := map[uint64]ProbePath{}
+	for _, path := range paths {
+		byID[path.ServerID] = path
+	}
+	if got := byID[41]; !got.Reachable || got.HasICMP || got.ICMPSent != 0 || len(got.TCP) != 1 {
+		t.Fatalf("tcp-only should omit icmp: %+v", got)
+	}
+	if got := byID[42]; got.HasTrace || got.MTR.HopCount != 0 || !got.HasICMP {
+		t.Fatalf("mtr off should drop stale trace: %+v", got)
+	}
+}
+
+func TestLoadProbePathsPrefersTCPMTRWhenICMPLossFull(t *testing.T) {
+	db := probeTestDB(t)
+	now := time.Unix(1_700_000_210, 0)
+	collector := model.Collector{
+		CollectorUUID: "probe-tcp-mtr", Name: "LAX", Kind: model.CollectorKindProbe,
+		TokenHash: bytes.Repeat([]byte{10}, 32), RegistrationToken: "token-tcp-mtr",
+		EnableICMP: true, EnableTCP: true, EnableMTR: true,
+	}
+	if err := db.Create(&collector).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.CollectorScope{CollectorUUID: "probe-tcp-mtr", ScopeType: "all"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.CollectorRuntime{CollectorUUID: "probe-tcp-mtr", Status: "online", LastSeen: now.Add(-10 * time.Second).UnixNano()}).Error; err != nil {
+		t.Fatal(err)
+	}
+	host := probeServer(51, "blocked-icmp", "secret-51")
+	host.ProbeTarget = "9.9.9.9"
+	if err := db.Create(&host).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.ProbeLatest{
+		CollectorUUID: "probe-tcp-mtr", ServerID: 51, Reachable: true, SampledAt: now.UnixNano(), HasTrace: true,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	icmpHops, _ := json.Marshal([]netprobe.Hop{{TTL: 1, Address: "10.0.0.1", Loss: 1, Sent: 3}})
+	tcpHops, _ := json.Marshal([]netprobe.Hop{{TTL: 1, Address: "10.0.0.1", Loss: 0, Avg: 4 * time.Millisecond, Sent: 3}, {TTL: 8, Address: "9.9.9.9", Loss: 0, Avg: 40 * time.Millisecond, Sent: 3}})
+	if err := db.Create(&model.ProbeTrace{
+		CollectorUUID: "probe-tcp-mtr", ServerID: 51, SampledAt: now.UnixNano(), Destination: "9.9.9.9", HopsJSON: icmpHops,
+		TCPSampledAt: now.UnixNano(), TCPDestination: "9.9.9.9", TCPHopsJSON: tcpHops, TCPPort: 443,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	paths, err := loadProbePaths(db, ProbePathFilter{CollectorID: "probe-tcp-mtr", ServerID: 51}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(paths) != 1 || paths[0].MTR.Protocol != "tcp" || paths[0].MTR.Port != 443 || paths[0].MTR.HopCount != 2 || paths[0].MTR.Loss != 0 {
+		t.Fatalf("should prefer tcp mtr: %+v", paths[0].MTR)
+	}
+	trace, err := GetProbeTrace(db, "probe-tcp-mtr", 51)
+	if err != nil || trace == nil || trace.Protocol != "tcp" || trace.TCP == nil || trace.ICMP == nil || len(trace.TCP.Hops) != 2 {
+		t.Fatalf("trace both legs: %+v %v", trace, err)
+	}
+	if !trace.TCP.Hops[0].Private {
+		t.Fatal("private hop should be marked")
+	}
+}
+
+func TestIngestTCPTraceDoesNotWipeICMPHops(t *testing.T) {
+	db := probeTestDB(t)
+	collector := model.Collector{CollectorUUID: "probe-keep", Name: "SG", Kind: model.CollectorKindProbe, TokenHash: bytes.Repeat([]byte{11}, 32), RegistrationToken: "token-keep"}
+	if err := db.Create(&collector).Error; err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	if err := IngestProbeSamples(db, &collector, &pb.ProbeSampleBatch{Samples: []*pb.ProbeSample{{
+		ServerId: 61, SampledAtUnixNano: now.UnixNano(),
+		Mtr: &pb.ProbeMTRTrace{SampledAtUnixNano: now.UnixNano(), Destination: "1.1.1.1", Protocol: "icmp", Hops: []*pb.ProbeMTRHop{{Ttl: 1, Address: "10.0.0.1", Sent: 3}}},
+	}}}, now); err != nil {
+		t.Fatal(err)
+	}
+	later := now.Add(time.Minute)
+	if err := IngestProbeSamples(db, &collector, &pb.ProbeSampleBatch{Samples: []*pb.ProbeSample{{
+		ServerId: 61, SampledAtUnixNano: later.UnixNano(),
+		MtrTcp: &pb.ProbeMTRTrace{SampledAtUnixNano: later.UnixNano(), Destination: "1.1.1.1", Protocol: "tcp", Port: 443, Hops: []*pb.ProbeMTRHop{{Ttl: 1, Address: "1.1.1.1", Sent: 3}}},
+	}}}, later); err != nil {
+		t.Fatal(err)
+	}
+	var row model.ProbeTrace
+	if err := db.First(&row, "collector_uuid = ? AND server_id = ?", "probe-keep", 61).Error; err != nil {
+		t.Fatal(err)
+	}
+	var icmpHops, tcpHops []netprobe.Hop
+	_ = json.Unmarshal(row.HopsJSON, &icmpHops)
+	_ = json.Unmarshal(row.TCPHopsJSON, &tcpHops)
+	if len(icmpHops) != 1 || icmpHops[0].Address != "10.0.0.1" || len(tcpHops) != 1 || row.TCPPort != 443 {
+		t.Fatalf("icmp hops should remain: %+v tcp=%+v port=%d", icmpHops, tcpHops, row.TCPPort)
 	}
 }

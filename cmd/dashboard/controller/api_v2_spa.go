@@ -2432,15 +2432,20 @@ func v2ProbePaths(c *gin.Context) {
 			"collector_id": path.CollectorID, "collector_name": path.CollectorName,
 			"target":    gin.H{"source": path.TargetSource, "hostname": path.Hostname, "ipv4": path.IPv4, "ipv6": path.IPv6},
 			"reachable": path.Reachable, "has_trace": path.HasTrace, "last_error": path.LastError,
-			"icmp": gin.H{"ok": path.ICMPOk, "rtt_ms": path.ICMPRttMs, "loss": path.ICMPLoss, "packets_sent": path.ICMPSent, "packets_received": path.ICMPRecv},
-			"tcp":  tcp,
+			"tcp": tcp,
+		}
+		if path.HasICMP {
+			item["icmp"] = gin.H{"ok": path.ICMPOk, "rtt_ms": path.ICMPRttMs, "loss": path.ICMPLoss, "packets_sent": path.ICMPSent, "packets_received": path.ICMPRecv}
 		}
 		if path.SampledAt > 0 {
 			item["sampled_at"] = optionalRFC3339Nano(path.SampledAt)
 			item["display_rtt_ms"] = optionalFloat(path.SampledAt, path.DisplayRttMs)
 		}
 		if path.MTR.HopCount > 0 {
-			mtr := gin.H{"loss": path.MTR.Loss, "hop_count": path.MTR.HopCount}
+			mtr := gin.H{"loss": path.MTR.Loss, "hop_count": path.MTR.HopCount, "protocol": path.MTR.Protocol}
+			if path.MTR.Port > 0 {
+				mtr["port"] = path.MTR.Port
+			}
 			if path.MTR.SampledAt > 0 {
 				mtr["sampled_at"] = optionalRFC3339Nano(path.MTR.SampledAt)
 			}
@@ -2510,21 +2515,52 @@ func v2ProbeTrace(c *gin.Context) {
 		writeV2Data(c, http.StatusOK, nil)
 		return
 	}
-	hops := make([]gin.H, 0, len(trace.Hops))
-	for _, hop := range trace.Hops {
-		hops = append(hops, gin.H{
-			"ttl": hop.TTL, "address": hop.Address, "loss": hop.Loss,
-			"avg_ms": durationMilliseconds(hop.Avg), "sent": hop.Sent,
-		})
-	}
-	writeV2Data(c, http.StatusOK, gin.H{
+	payload := gin.H{
 		"collector_id": trace.CollectorID, "server_id": trace.ServerID,
-		"sampled_at": optionalRFC3339Nano(trace.SampledAt), "destination": trace.Destination, "hops": hops,
-	})
+		"sampled_at": optionalRFC3339Nano(trace.SampledAt), "destination": trace.Destination,
+		"hops": hopItems(trace.Hops), "protocol": trace.Protocol,
+	}
+	if trace.Port > 0 {
+		payload["port"] = trace.Port
+	}
+	if trace.ICMP != nil {
+		payload["icmp"] = gin.H{
+			"sampled_at": optionalRFC3339Nano(trace.ICMP.SampledAt), "destination": trace.ICMP.Destination,
+			"hops": hopItems(trace.ICMP.Hops),
+		}
+	}
+	if trace.TCP != nil {
+		tcp := gin.H{
+			"sampled_at": optionalRFC3339Nano(trace.TCP.SampledAt), "destination": trace.TCP.Destination,
+			"hops": hopItems(trace.TCP.Hops),
+		}
+		if trace.TCP.Port > 0 {
+			tcp["port"] = trace.TCP.Port
+		}
+		payload["tcp"] = tcp
+	}
+	writeV2Data(c, http.StatusOK, payload)
 }
 
-func durationMilliseconds(value time.Duration) float64 {
-	return float64(value) / float64(time.Millisecond)
+func hopItems(hops []telemetry.ProbeHopView) []gin.H {
+	items := make([]gin.H, 0, len(hops))
+	for _, hop := range hops {
+		item := gin.H{
+			"ttl": hop.TTL, "address": hop.Address, "loss": hop.Loss,
+			"avg_ms": hop.AvgMs, "sent": hop.Sent,
+		}
+		if hop.Geo != "" {
+			item["geo"] = hop.Geo
+		}
+		if hop.CountryCode != "" {
+			item["country_code"] = hop.CountryCode
+		}
+		if hop.Private {
+			item["private"] = true
+		}
+		items = append(items, item)
+	}
+	return items
 }
 
 func v2TelemetryDataset(c *gin.Context) {

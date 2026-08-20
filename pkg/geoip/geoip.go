@@ -28,6 +28,15 @@ type IPInfo struct {
 	CountryName   string `maxminddb:"country_name"`
 	Continent     string `maxminddb:"continent"`
 	ContinentName string `maxminddb:"continent_name"`
+	ASN           string `maxminddb:"asn"`
+	ASName        string `maxminddb:"as_name"`
+}
+
+type HopInfo struct {
+	CountryCode string
+	CountryName string
+	ASName      string
+	Private     bool
 }
 
 func init() {
@@ -104,6 +113,45 @@ func LookupCodeFromAddr(v4v6Bundle string) string {
 		return ""
 	}
 	return code
+}
+
+func LookupHop(addr string) HopInfo {
+	ip := net.ParseIP(strings.TrimSpace(addr))
+	if ip == nil {
+		return HopInfo{}
+	}
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+		return HopInfo{Private: true}
+	}
+	record := &IPInfo{}
+	code, err := Lookup(ip, record)
+	if err != nil {
+		return HopInfo{}
+	}
+	return HopInfo{
+		CountryCode: code,
+		CountryName: strings.TrimSpace(record.CountryName),
+		ASName:      strings.TrimSpace(record.ASName),
+	}
+}
+
+func FormatHopGeo(info HopInfo) string {
+	if info.Private {
+		return ""
+	}
+	country := strings.TrimSpace(info.CountryName)
+	if country == "" {
+		country = strings.ToUpper(strings.TrimSpace(info.CountryCode))
+	}
+	asName := strings.TrimSpace(info.ASName)
+	switch {
+	case country != "" && asName != "":
+		return country + " · " + asName
+	case asName != "":
+		return asName
+	default:
+		return country
+	}
 }
 
 func queryIPFromBundle(v4v6Bundle string) net.IP {

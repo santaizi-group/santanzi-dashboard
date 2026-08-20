@@ -7,14 +7,11 @@
  *
  * OpenAPI spec version: 2.0.0
  */
+import type { ProbeMTRHop } from './probeMTRHop';
 
-export interface ProbeMTRHop {
-  ttl: number;
-  address?: string;
-  loss?: number;
-  avg_ms?: number;
-  sent?: number;
-  geo?: string;
-  country_code?: string;
-  private?: boolean;
+export interface ProbeTraceLeg {
+  sampled_at?: string;
+  destination?: string;
+  port?: number;
+  hops: ProbeMTRHop[];
 }

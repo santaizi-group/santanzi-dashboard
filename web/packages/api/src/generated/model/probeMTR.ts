@@ -7,9 +7,12 @@
  *
  * OpenAPI spec version: 2.0.0
  */
+import type { ProbeMTRProtocol } from './probeMTRProtocol';
 
 export interface ProbeMTR {
   loss?: number;
   hop_count?: number;
   sampled_at?: string;
+  protocol?: ProbeMTRProtocol;
+  port?: number;
 }

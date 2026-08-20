@@ -76,7 +76,6 @@ function toggleOnline(value: 'online' | 'offline') {
       </div>
       <el-button-group class="nazhua-filter__modes">
         <el-button :type="listMode === 'card' ? 'primary' : 'default'" :aria-label="t('nazhua.modeCard')" @click="emit('update:listMode', 'card')"><i class="ri-gallery-view-2"></i></el-button>
-        <el-button :type="listMode === 'row' ? 'primary' : 'default'" :aria-label="t('nazhua.modeRow')" @click="emit('update:listMode', 'row')"><i class="ri-list-view"></i></el-button>
         <el-button :type="listMode === 'server-status' ? 'primary' : 'default'" :aria-label="t('nazhua.modeServerStatus')" @click="emit('update:listMode', 'server-status')"><i class="ri-server-line"></i></el-button>
       </el-button-group>
     </div>

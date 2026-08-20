@@ -610,6 +610,8 @@ message ProbeMTRTrace {
     int64 sampled_at_unix_nano = 1;
     string destination = 2;
     repeated ProbeMTRHop hops = 3;
+    string protocol = 4;
+    uint32 port = 5;
 }
 
 message ProbeSample {
@@ -619,6 +621,7 @@ message ProbeSample {
     repeated ProbeTCPSample tcp = 4;
     ProbeMTRTrace mtr = 5;
     string last_error = 6;
+    ProbeMTRTrace mtr_tcp = 7;
 }
 
 message ProbeSampleBatch {

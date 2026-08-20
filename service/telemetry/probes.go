@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hi2shark/santaizi-dashboard/model"
+	"github.com/hi2shark/santaizi-dashboard/pkg/geoip"
 	"github.com/hi2shark/santaizi-dashboard/pkg/netprobe"
 	"github.com/hi2shark/santaizi-dashboard/pkg/utils"
 	pb "github.com/hi2shark/santaizi-dashboard/proto"
@@ -57,6 +58,7 @@ type ProbePath struct {
 	ICMPSent      uint32
 	ICMPRecv      uint32
 	TCP           []ProbeTCPView
+	HasICMP       bool
 	HasTrace      bool
 	MTR           ProbeMTRView
 }
@@ -65,6 +67,8 @@ type ProbeMTRView struct {
 	Loss      float64
 	HopCount  int
 	SampledAt int64
+	Protocol  string
+	Port      uint
 }
 
 type ProbePathFilter struct {
@@ -94,12 +98,34 @@ type ProbeSampleRow struct {
 	FailCount    uint32
 }
 
+type ProbeHopView struct {
+	TTL         uint
+	Address     string
+	Loss        float64
+	AvgMs       float64
+	Sent        int
+	Geo         string
+	CountryCode string
+	Private     bool
+}
+
+type ProbeTraceLegView struct {
+	SampledAt   int64
+	Destination string
+	Port        uint
+	Hops        []ProbeHopView
+}
+
 type ProbeTraceView struct {
 	CollectorID string
 	ServerID    uint64
 	SampledAt   int64
 	Destination string
-	Hops        []netprobe.Hop
+	Protocol    string
+	Port        uint
+	Hops        []ProbeHopView
+	ICMP        *ProbeTraceLegView
+	TCP         *ProbeTraceLegView
 }
 
 func CollectorKind(kind string) string {
@@ -244,23 +270,36 @@ func loadProbePaths(db *gorm.DB, filter ProbePathFilter, now time.Time) ([]Probe
 				continue
 			}
 			if latest, ok := latestByKey[collector.CollectorUUID+"/"+fmt.Sprintf("%d", server.ID)]; ok && online {
+				enableICMP, enableTCP, enableMTR := EffectiveProbeTypes(server, &collector)
 				path.Reachable = latest.Reachable
 				path.DisplayRttMs = latest.DisplayRttMs
 				path.SampledAt = latest.SampledAt
 				path.LastError = latest.LastError
-				path.ICMPOk = latest.ICMPOk
-				path.ICMPRttMs = latest.ICMPRttMs
-				path.ICMPLoss = latest.ICMPLoss
-				path.ICMPSent = latest.ICMPSent
-				path.ICMPRecv = latest.ICMPRecv
-				path.HasTrace = latest.HasTrace
-				if len(latest.TCPJSON) > 0 {
+				if enableICMP && (latest.ICMPOk || latest.ICMPSent > 0) {
+					path.HasICMP = true
+					path.ICMPOk = latest.ICMPOk
+					path.ICMPRttMs = latest.ICMPRttMs
+					path.ICMPLoss = latest.ICMPLoss
+					path.ICMPSent = latest.ICMPSent
+					path.ICMPRecv = latest.ICMPRecv
+				}
+				if enableTCP && len(latest.TCPJSON) > 0 {
 					_ = json.Unmarshal(latest.TCPJSON, &path.TCP)
 				}
-				if trace, ok := traceByKey[collector.CollectorUUID+"/"+fmt.Sprintf("%d", server.ID)]; ok {
-					if mtr, ok := probeMTRFromTrace(trace); ok {
-						path.MTR = mtr
-						path.HasTrace = true
+				if enableMTR {
+					if trace, ok := traceByKey[collector.CollectorUUID+"/"+fmt.Sprintf("%d", server.ID)]; ok {
+						var icmpMTR, tcpMTR ProbeMTRView
+						icmpOK, tcpOK := false, false
+						if enableICMP {
+							icmpMTR, icmpOK = probeMTRFromHops(trace.HopsJSON, trace.SampledAt, "icmp", 0)
+						}
+						if enableTCP {
+							tcpMTR, tcpOK = probeMTRFromHops(trace.TCPHopsJSON, trace.TCPSampledAt, "tcp", trace.TCPPort)
+						}
+						if mtr, ok := selectProbeMTR(icmpMTR, tcpMTR, icmpOK, tcpOK); ok {
+							path.MTR = mtr
+							path.HasTrace = true
+						}
 					}
 				}
 			}
@@ -270,16 +309,29 @@ func loadProbePaths(db *gorm.DB, filter ProbePathFilter, now time.Time) ([]Probe
 	return paths, nil
 }
 
-func probeMTRFromTrace(row model.ProbeTrace) (ProbeMTRView, bool) {
+func probeMTRFromHops(raw []byte, sampledAt int64, protocol string, port uint) (ProbeMTRView, bool) {
 	var hops []netprobe.Hop
-	if len(row.HopsJSON) > 0 {
-		_ = json.Unmarshal(row.HopsJSON, &hops)
+	if len(raw) > 0 {
+		_ = json.Unmarshal(raw, &hops)
 	}
 	if len(hops) == 0 {
 		return ProbeMTRView{}, false
 	}
 	last := hops[len(hops)-1]
-	return ProbeMTRView{Loss: last.Loss, HopCount: len(hops), SampledAt: row.SampledAt}, true
+	return ProbeMTRView{Loss: last.Loss, HopCount: len(hops), SampledAt: sampledAt, Protocol: protocol, Port: port}, true
+}
+
+func selectProbeMTR(icmp, tcp ProbeMTRView, icmpOK, tcpOK bool) (ProbeMTRView, bool) {
+	if icmpOK && tcpOK && icmp.Loss >= 1 {
+		return tcp, true
+	}
+	if icmpOK {
+		return icmp, true
+	}
+	if tcpOK {
+		return tcp, true
+	}
+	return ProbeMTRView{}, false
 }
 
 func ListProbeSamples(db *gorm.DB, filter ProbeSampleFilter, offset, limit int) ([]ProbeSampleRow, int64, error) {
@@ -340,11 +392,70 @@ func GetProbeTrace(db *gorm.DB, collectorID string, serverID uint64) (*ProbeTrac
 		}
 		return nil, err
 	}
-	view := &ProbeTraceView{CollectorID: row.CollectorUUID, ServerID: row.ServerID, SampledAt: row.SampledAt, Destination: row.Destination}
-	if len(row.HopsJSON) > 0 {
-		_ = json.Unmarshal(row.HopsJSON, &view.Hops)
+	var collector model.Collector
+	var collectorPtr *model.Collector
+	if err := db.Where("collector_uuid = ?", collectorID).First(&collector).Error; err == nil {
+		collectorPtr = &collector
+	}
+	var server model.Server
+	_ = db.First(&server, serverID).Error
+	enableICMP, enableTCP, enableMTR := EffectiveProbeTypes(server, collectorPtr)
+	if !enableMTR {
+		return nil, nil
+	}
+	view := &ProbeTraceView{CollectorID: row.CollectorUUID, ServerID: row.ServerID}
+	if enableICMP {
+		if hops := decodeAnnotatedHops(row.HopsJSON); len(hops) > 0 {
+			view.ICMP = &ProbeTraceLegView{SampledAt: row.SampledAt, Destination: row.Destination, Hops: hops}
+		}
+	}
+	if enableTCP {
+		if hops := decodeAnnotatedHops(row.TCPHopsJSON); len(hops) > 0 {
+			view.TCP = &ProbeTraceLegView{SampledAt: row.TCPSampledAt, Destination: row.TCPDestination, Port: row.TCPPort, Hops: hops}
+		}
+	}
+	icmpOK := view.ICMP != nil
+	tcpOK := view.TCP != nil
+	if !icmpOK && !tcpOK {
+		return nil, nil
+	}
+	icmpView, tcpView := ProbeMTRView{}, ProbeMTRView{}
+	if icmpOK {
+		icmpView, _ = probeMTRFromHops(row.HopsJSON, row.SampledAt, "icmp", 0)
+	}
+	if tcpOK {
+		tcpView, _ = probeMTRFromHops(row.TCPHopsJSON, row.TCPSampledAt, "tcp", row.TCPPort)
+	}
+	selected, _ := selectProbeMTR(icmpView, tcpView, icmpOK, tcpOK)
+	view.Protocol = selected.Protocol
+	view.Port = selected.Port
+	view.SampledAt = selected.SampledAt
+	if selected.Protocol == "tcp" && view.TCP != nil {
+		view.Destination = view.TCP.Destination
+		view.Hops = view.TCP.Hops
+	} else if view.ICMP != nil {
+		view.Destination = view.ICMP.Destination
+		view.Hops = view.ICMP.Hops
+		view.Protocol = "icmp"
 	}
 	return view, nil
+}
+
+func decodeAnnotatedHops(raw []byte) []ProbeHopView {
+	var hops []netprobe.Hop
+	if len(raw) > 0 {
+		_ = json.Unmarshal(raw, &hops)
+	}
+	out := make([]ProbeHopView, 0, len(hops))
+	for _, hop := range hops {
+		info := geoip.LookupHop(hop.Address)
+		out = append(out, ProbeHopView{
+			TTL: hop.TTL, Address: hop.Address, Loss: hop.Loss,
+			AvgMs: float64(hop.Avg) / float64(time.Millisecond), Sent: hop.Sent,
+			Geo: geoip.FormatHopGeo(info), CountryCode: info.CountryCode, Private: info.Private,
+		})
+	}
+	return out
 }
 
 func IngestProbeSamples(db *gorm.DB, collector *model.Collector, batch *pb.ProbeSampleBatch, now time.Time) error {
@@ -407,12 +518,15 @@ func ingestProbeSample(db *gorm.DB, collector *model.Collector, sample *pb.Probe
 		}
 	}
 	tcpJSON, _ := json.Marshal(tcpViews)
-	hasTrace := sample.GetMtr() != nil && len(sample.GetMtr().GetHops()) > 0
+	icmpTrace := sample.GetMtr()
+	tcpTrace := sample.GetMtrTcp()
+	hasICMPTrace := icmpTrace != nil && len(icmpTrace.GetHops()) > 0
+	hasTCPTrace := tcpTrace != nil && len(tcpTrace.GetHops()) > 0
 	latest := model.ProbeLatest{
 		CollectorUUID: collector.CollectorUUID, ServerID: sample.GetServerId(), SampledAt: sampledAt,
 		Reachable: reachable, DisplayRttMs: display, LastError: sample.GetLastError(),
 		ICMPOk: icmpOK, ICMPRttMs: icmpRtt, ICMPLoss: icmpLoss,
-		TCPJSON: tcpJSON, HasTrace: hasTrace, UpdatedAt: now,
+		TCPJSON: tcpJSON, HasTrace: hasICMPTrace || hasTCPTrace, UpdatedAt: now,
 	}
 	if icmp != nil {
 		latest.ICMPSent = icmp.GetPacketsSent()
@@ -421,24 +535,51 @@ func ingestProbeSample(db *gorm.DB, collector *model.Collector, sample *pb.Probe
 	if err := db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&latest).Error; err != nil {
 		return err
 	}
-	if hasTrace {
-		hops := make([]netprobe.Hop, 0, len(sample.GetMtr().GetHops()))
-		for _, hop := range sample.GetMtr().GetHops() {
-			hops = append(hops, netprobe.Hop{
-				TTL: uint(hop.GetTtl()), Address: hop.GetAddress(), Loss: hop.GetLoss(),
-				Avg: time.Duration(hop.GetAvgMs() * float64(time.Millisecond)), Sent: int(hop.GetSent()),
-			})
-		}
-		hopsJSON, _ := json.Marshal(hops)
-		if err := db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&model.ProbeTrace{
-			CollectorUUID: collector.CollectorUUID, ServerID: sample.GetServerId(),
-			SampledAt: sample.GetMtr().GetSampledAtUnixNano(), Destination: sample.GetMtr().GetDestination(),
-			HopsJSON: hopsJSON, UpdatedAt: now,
-		}).Error; err != nil {
+	if hasICMPTrace || hasTCPTrace {
+		if err := upsertProbeTrace(db, collector.CollectorUUID, sample.GetServerId(), icmpTrace, tcpTrace, now); err != nil {
 			return err
 		}
 	}
 	return evaluateProbeAlert(db, collector, sample.GetServerId(), reachable, hasConnectivity, display, sample.GetLastError(), now)
+}
+
+func upsertProbeTrace(db *gorm.DB, collectorUUID string, serverID uint64, icmpTrace, tcpTrace *pb.ProbeMTRTrace, now time.Time) error {
+	var row model.ProbeTrace
+	err := db.Where("collector_uuid = ? AND server_id = ?", collectorUUID, serverID).First(&row).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return err
+	}
+	if err == gorm.ErrRecordNotFound {
+		row = model.ProbeTrace{CollectorUUID: collectorUUID, ServerID: serverID}
+	}
+	if hopsJSON, ok := hopsJSONFromProto(icmpTrace); ok {
+		row.SampledAt = icmpTrace.GetSampledAtUnixNano()
+		row.Destination = icmpTrace.GetDestination()
+		row.HopsJSON = hopsJSON
+	}
+	if hopsJSON, ok := hopsJSONFromProto(tcpTrace); ok {
+		row.TCPSampledAt = tcpTrace.GetSampledAtUnixNano()
+		row.TCPDestination = tcpTrace.GetDestination()
+		row.TCPHopsJSON = hopsJSON
+		row.TCPPort = uint(tcpTrace.GetPort())
+	}
+	row.UpdatedAt = now
+	return db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&row).Error
+}
+
+func hopsJSONFromProto(trace *pb.ProbeMTRTrace) ([]byte, bool) {
+	if trace == nil || len(trace.GetHops()) == 0 {
+		return nil, false
+	}
+	hops := make([]netprobe.Hop, 0, len(trace.GetHops()))
+	for _, hop := range trace.GetHops() {
+		hops = append(hops, netprobe.Hop{
+			TTL: uint(hop.GetTtl()), Address: hop.GetAddress(), Loss: hop.GetLoss(),
+			Avg: time.Duration(hop.GetAvgMs() * float64(time.Millisecond)), Sent: int(hop.GetSent()),
+		})
+	}
+	raw, _ := json.Marshal(hops)
+	return raw, true
 }
 
 func upsertProbeBucket(db *gorm.DB, collectorUUID string, serverID uint64, kind string, port uint, sampledAt int64, ok bool, rttMs, loss float64) error {

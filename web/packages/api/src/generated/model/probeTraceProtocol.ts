@@ -8,13 +8,10 @@
  * OpenAPI spec version: 2.0.0
  */
 
-export interface ProbeMTRHop {
-  ttl: number;
-  address?: string;
-  loss?: number;
-  avg_ms?: number;
-  sent?: number;
-  geo?: string;
-  country_code?: string;
-  private?: boolean;
-}
+export type ProbeTraceProtocol = typeof ProbeTraceProtocol[keyof typeof ProbeTraceProtocol];
+
+
+export const ProbeTraceProtocol = {
+  icmp: 'icmp',
+  tcp: 'tcp',
+} as const;

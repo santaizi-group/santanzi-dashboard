@@ -8,11 +8,17 @@
  * OpenAPI spec version: 2.0.0
  */
 import type { ProbeMTRHop } from './probeMTRHop';
+import type { ProbeTraceLeg } from './probeTraceLeg';
+import type { ProbeTraceProtocol } from './probeTraceProtocol';
 
 export interface ProbeTrace {
   collector_id: string;
   server_id: number;
   sampled_at: string;
   destination?: string;
+  protocol?: ProbeTraceProtocol;
+  port?: number;
   hops: ProbeMTRHop[];
+  icmp?: ProbeTraceLeg;
+  tcp?: ProbeTraceLeg;
 }

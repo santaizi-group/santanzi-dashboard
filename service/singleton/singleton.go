@@ -319,11 +319,22 @@ func migrateDatabase(db *gorm.DB) error {
 		current = 13
 	}
 	if current < 14 {
-		return db.Transaction(func(tx *gorm.DB) error {
+		if err := db.Transaction(func(tx *gorm.DB) error {
 			if err := tx.AutoMigrate(&model.AvailabilityBucket{}); err != nil {
 				return err
 			}
 			return tx.Create(&model.SchemaMigration{Version: 14, AppliedAt: time.Now().UTC()}).Error
+		}); err != nil {
+			return err
+		}
+		current = 14
+	}
+	if current < 15 {
+		return db.Transaction(func(tx *gorm.DB) error {
+			if err := tx.AutoMigrate(&model.ProbeTrace{}); err != nil {
+				return err
+			}
+			return tx.Create(&model.SchemaMigration{Version: 15, AppliedAt: time.Now().UTC()}).Error
 		})
 	}
 	return nil

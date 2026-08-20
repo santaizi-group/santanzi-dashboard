@@ -10,8 +10,8 @@ import (
 )
 
 type probeState struct {
-	lastCycle    time.Time
-	lastMTR      time.Time
+	lastCycle     time.Time
+	lastMTR       time.Time
 	lastReachable *bool
 }
 
@@ -133,18 +133,32 @@ func (r *Runtime) runProbeTarget(ctx context.Context, target model.CollectorCach
 				break
 			}
 		}
-		trace := netprobe.MTROn(ctx, mtrHost, mtrFamily, 30, 3, time.Second)
-		state.lastMTR = now
-		pbTrace := &pb.ProbeMTRTrace{SampledAtUnixNano: now.UnixNano(), Destination: trace.Destination}
-		for _, hop := range trace.Hops {
-			pbTrace.Hops = append(pbTrace.Hops, &pb.ProbeMTRHop{
-				Ttl: uint32(hop.TTL), Address: hop.Address, Loss: hop.Loss,
-				AvgMs: durationMilliseconds(hop.Avg), Sent: uint32(hop.Sent),
-			})
+		sampledAt := now.UnixNano()
+		if target.EnableICMP {
+			sample.Mtr = probeTraceToProto(netprobe.MTROn(ctx, mtrHost, mtrFamily, 30, 3, time.Second), "icmp", 0, sampledAt)
 		}
-		sample.Mtr = pbTrace
+		if target.EnableTCP {
+			port := netprobe.TCPMTRPort(tcpResults, netprobe.ParsePorts(target.TCPPorts))
+			if port > 0 {
+				sample.MtrTcp = probeTraceToProto(netprobe.MTRTCPOn(ctx, mtrHost, mtrFamily, port, 30, 3, time.Second), "tcp", port, sampledAt)
+			}
+		}
+		state.lastMTR = now
 	}
 	return sample
+}
+
+func probeTraceToProto(trace netprobe.TraceResult, protocol string, port uint, sampledAt int64) *pb.ProbeMTRTrace {
+	pbTrace := &pb.ProbeMTRTrace{
+		SampledAtUnixNano: sampledAt, Destination: trace.Destination, Protocol: protocol, Port: uint32(port),
+	}
+	for _, hop := range trace.Hops {
+		pbTrace.Hops = append(pbTrace.Hops, &pb.ProbeMTRHop{
+			Ttl: uint32(hop.TTL), Address: hop.Address, Loss: hop.Loss,
+			AvgMs: durationMilliseconds(hop.Avg), Sent: uint32(hop.Sent),
+		})
+	}
+	return pbTrace
 }
 
 func (r *Runtime) queueProbeSamples(samples []*pb.ProbeSample) {

@@ -1,20 +1,24 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { ProbePath, ProbeSampleBucket, ProbeTrace } from '@santaizi/api'
+import type { ProbeMTRHop, ProbePath, ProbeSampleBucket, ProbeTrace } from '@santaizi/api'
 import { AppDialog, AppEmpty } from '@santaizi/ui'
 import ProbeRttBars from '@/components/ProbeRttBars.vue'
 import { getProbeTrace, listProbeSamples } from '@/api/adminApi'
 import { formatAdminValue } from '@/composables/format'
 import { notifyAPIError } from '@/composables/notify'
 import {
+  defaultProbeRouteProtocol,
   formatProbeLoss,
+  hopGeoText,
   probeBestTCP,
   probeICMPMetric,
   probeLossPercent,
   probeMTRMetric,
   probeTCPMetric,
   probeTargetText,
+  type ProbeMetricTone,
+  type ProbeRouteProtocol,
 } from '@/domain/probePath'
 
 const props = defineProps<{
@@ -25,6 +29,7 @@ const emit = defineEmits<{ 'update:modelValue': [boolean] }>()
 const { t, te, locale } = useI18n()
 const loading = ref(false)
 const tab = ref('latency')
+const routeProtocol = ref<ProbeRouteProtocol>('icmp')
 const samples = ref<ProbeSampleBucket[]>([])
 const icmpBuckets = ref<ProbeSampleBucket[]>([])
 const tcpBuckets = ref<ProbeSampleBucket[]>([])
@@ -33,7 +38,18 @@ const meta = reactive({ page: 1, page_size: 20, total: 0 })
 
 const icmpMetric = computed(() => props.path ? probeICMPMetric(props.path, locale.value, t('probeTimeout')) : { text: '—', tone: '' as const })
 const tcpMetric = computed(() => props.path ? probeTCPMetric(props.path, locale.value, t('probeTimeout')) : { text: '—', tone: '' as const })
-const mtrMetric = computed(() => props.path ? probeMTRMetric(props.path, locale.value) : { text: '—', tone: '' as const })
+const activeHops = computed<ProbeMTRHop[]>(() => {
+  if (routeProtocol.value === 'tcp') return trace.value?.tcp?.hops || []
+  return trace.value?.icmp?.hops || trace.value?.hops || []
+})
+const mtrMetric = computed(() => {
+  const hops = activeHops.value
+  if (hops.length) {
+    const loss = hops[hops.length - 1]?.loss ?? 0
+    return { text: formatProbeLoss(loss, locale.value), tone: (loss > 0 ? 'is-fail' : 'is-ok') as ProbeMetricTone }
+  }
+  return props.path ? probeMTRMetric(props.path, locale.value) : { text: '—', tone: '' as const }
+})
 const tcpLabel = computed(() => tcpMetric.value.port != null ? `${t('tcp')} :${tcpMetric.value.port}` : t('tcp'))
 const tcpChart = computed(() => {
   if (!props.path) return tcpBuckets.value
@@ -42,9 +58,23 @@ const tcpChart = computed(() => {
   const matched = tcpBuckets.value.filter(row => row.port === port)
   return matched.length ? matched : tcpBuckets.value
 })
+const icmpRouteDisabled = computed(() => !trace.value?.icmp?.hops?.length)
+const tcpRouteDisabled = computed(() => !trace.value?.tcp?.hops?.length)
+const routeOptions = computed(() => [
+  { label: t('icmp'), value: 'icmp', disabled: icmpRouteDisabled.value },
+  { label: tcpRouteLabel.value, value: 'tcp', disabled: tcpRouteDisabled.value },
+])
+const tcpRouteLabel = computed(() => {
+  const port = trace.value?.tcp?.port || trace.value?.port
+  return port ? `${t('tcp')} :${port}` : t('tcp')
+})
 
 function pretty(value: unknown, key = '') {
   return formatAdminValue(value, key, locale.value, t as never, te)
+}
+
+function hopLabel(hop: ProbeMTRHop) {
+  return hopGeoText(hop, t('hopPrivate'))
 }
 
 async function load() {
@@ -66,6 +96,7 @@ async function load() {
     samples.value = sampleList.data
     meta.total = sampleList.meta.total || sampleList.data.length
     trace.value = nextTrace
+    routeProtocol.value = defaultProbeRouteProtocol(nextTrace)
   } catch (error) {
     notifyAPIError(error, t as never, te)
   } finally {
@@ -77,6 +108,7 @@ watch(() => [props.modelValue, props.path?.collector_id, props.path?.server_id],
   if (!props.modelValue || !props.path) return
   meta.page = 1
   tab.value = 'latency'
+  routeProtocol.value = 'icmp'
   trace.value = null
   icmpBuckets.value = []
   tcpBuckets.value = []
@@ -125,10 +157,14 @@ watch(() => [props.modelValue, props.path?.collector_id, props.path?.server_id],
           <AppEmpty v-if="!icmpBuckets.length && !tcpChart.length" icon="ri-timer-line" :description="t('noData')" />
         </el-tab-pane>
         <el-tab-pane :label="t('probeRoute')" name="route">
-          <ol v-if="trace?.hops?.length" class="probe-hops">
-            <li v-for="(hop, index) in trace.hops" :key="`${hop.ttl}-${hop.address || ''}-${index}`" class="probe-hop">
+          <el-segmented v-if="trace?.icmp || trace?.tcp" v-model="routeProtocol" :options="routeOptions" class="probe-route-switch" />
+          <ol v-if="activeHops.length" class="probe-hops">
+            <li v-for="(hop, index) in activeHops" :key="`${hop.ttl}-${hop.address || ''}-${index}`" class="probe-hop">
               <span class="probe-hop__ttl">{{ hop.ttl }}</span>
-              <span class="probe-hop__addr">{{ hop.address || '—' }}</span>
+              <span class="probe-hop__addr" :title="[hop.address, hopLabel(hop)].filter(Boolean).join(' · ')">
+                <span class="probe-hop__ip">{{ hop.address || '—' }}</span>
+                <span v-if="hopLabel(hop)" class="probe-hop__geo">{{ hopLabel(hop) }}</span>
+              </span>
               <span class="probe-hop__rtt">{{ pretty(hop.avg_ms, 'avg_ms') }}</span>
               <span class="probe-hop__track" aria-hidden="true"><span class="probe-hop__fill" :style="{ width: `${probeLossPercent(hop.loss)}%` }"></span></span>
               <span class="probe-hop__loss">{{ formatProbeLoss(hop.loss, locale) }}</span>
