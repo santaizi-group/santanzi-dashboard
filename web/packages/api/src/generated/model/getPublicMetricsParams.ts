@@ -12,7 +12,16 @@ import type { GetPublicMetricsResolution } from './getPublicMetricsResolution';
 export type GetPublicMetricsParams = {
 resolution?: GetPublicMetricsResolution;
 /**
- * @minimum 1
+ * 窗口开始。RFC3339 或 Unix 秒。须与 end 成对使用，优先于 hours。
+ */
+start?: string;
+/**
+ * 窗口结束。RFC3339 或 Unix 秒。须晚于 start。
+ */
+end?: string;
+/**
+ * 相对回看小时数（无 start/end 时）。支持 0.5；超过保留期时夹取。
+ * @minimum 0.5
  */
 hours?: number;
 };

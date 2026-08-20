@@ -99,19 +99,81 @@ func TestClampPublicMetricWindow(t *testing.T) {
 
 	resolution, hours := clampPublicMetricWindow("1m", 24)
 	if resolution != "1m" || hours != 24 {
-		t.Fatalf("default 1m: %s %d", resolution, hours)
+		t.Fatalf("default 1m: %s %v", resolution, hours)
+	}
+	resolution, hours = clampPublicMetricWindow("1m", 0.5)
+	if resolution != "1m" || hours != 0.5 {
+		t.Fatalf("half hour: %s %v", resolution, hours)
 	}
 	resolution, hours = clampPublicMetricWindow("weird", 0)
 	if resolution != "1m" || hours != 24 {
-		t.Fatalf("invalid: %s %d", resolution, hours)
+		t.Fatalf("invalid: %s %v", resolution, hours)
 	}
 	resolution, hours = clampPublicMetricWindow("1m", 10_000)
 	if resolution != "1m" || hours != 48 {
-		t.Fatalf("1m clamp: %s %d", resolution, hours)
+		t.Fatalf("1m clamp: %s %v", resolution, hours)
 	}
 	resolution, hours = clampPublicMetricWindow("1h", 10_000)
 	if resolution != "1h" || hours != 72 {
-		t.Fatalf("1h clamp: %s %d", resolution, hours)
+		t.Fatalf("1h clamp: %s %v", resolution, hours)
+	}
+}
+
+func TestParsePublicMetricTime(t *testing.T) {
+	t.Parallel()
+	rfc, ok := parsePublicMetricTime("2026-08-13T10:00:00Z")
+	if !ok || !rfc.Equal(time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)) {
+		t.Fatalf("rfc3339: %v %v", rfc, ok)
+	}
+	unix, ok := parsePublicMetricTime("1786612800")
+	if !ok || unix.Unix() != 1786612800 {
+		t.Fatalf("unix: %v %v", unix, ok)
+	}
+	if _, ok := parsePublicMetricTime("24"); ok {
+		t.Fatal("short integer must not be unix seconds")
+	}
+	if _, ok := parsePublicMetricTime("not-a-time"); ok {
+		t.Fatal("garbage")
+	}
+}
+
+func TestResolvePublicMetricRange(t *testing.T) {
+	original := singleton.Conf
+	t.Cleanup(func() { singleton.Conf = original })
+	singleton.Conf = &model.Config{Retention: model.RetentionConfig{StateOneMinuteDays: 2, StateOneHourDays: 3}}
+	now := time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)
+
+	resolution, from, to, problem := resolvePublicMetricRange("1m", "", "", "", now)
+	if problem != nil || resolution != "1m" || !to.Equal(now) || !from.Equal(now.Add(-24*time.Hour)) {
+		t.Fatalf("default hours: %s %v %v %v", resolution, from, to, problem)
+	}
+
+	resolution, from, to, problem = resolvePublicMetricRange("1m", "0.5", "", "", now)
+	if problem != nil || resolution != "1m" || !from.Equal(now.Add(-30*time.Minute)) {
+		t.Fatalf("half hour: %s %v %v", resolution, from, problem)
+	}
+
+	start := now.Add(-6 * time.Hour)
+	resolution, from, to, problem = resolvePublicMetricRange("1m", "24", start.Format(time.RFC3339), now.Format(time.RFC3339), now)
+	if problem != nil || resolution != "1m" || !from.Equal(start) || !to.Equal(now) {
+		t.Fatalf("start/end: %s %v %v %v", resolution, from, to, problem)
+	}
+
+	_, _, _, problem = resolvePublicMetricRange("1m", "", now.Format(time.RFC3339), start.Format(time.RFC3339), now)
+	if problem == nil || problem.code != "invalid_range" {
+		t.Fatalf("end before start: %#v", problem)
+	}
+	_, _, _, problem = resolvePublicMetricRange("1m", "", start.Format(time.RFC3339), "", now)
+	if problem == nil || problem.code != "invalid_range" {
+		t.Fatalf("unpaired: %#v", problem)
+	}
+	_, _, _, problem = resolvePublicMetricRange("1m", "", now.Add(-80*time.Hour).Format(time.RFC3339), now.Format(time.RFC3339), now)
+	if problem == nil || problem.code != "range_too_large" {
+		t.Fatalf("span: %#v", problem)
+	}
+	_, _, _, problem = resolvePublicMetricRange("1m", "0.2", "", "", now)
+	if problem == nil || problem.code != "invalid_hours" {
+		t.Fatalf("hours: %#v", problem)
 	}
 }
 

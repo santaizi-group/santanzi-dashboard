@@ -253,7 +253,9 @@ const getPublicServerAvailability = (
 
 /**
  * 从 StateRollup 读取该服务器当前节点的 CPU / 内存 / 磁盘 / 网速 / 进程数 / TCP / UDP 平均值序列。
- * 无节点绑定或无数据时返回空列表，不返回 404。`hours` 按保留期夹取。
+ * 无节点绑定或无数据时返回空列表，不返回 404。
+ * 优先使用成对的 `start`/`end`（RFC3339 或 Unix 秒）；跨度超过该分辨率保留期时返回 400，不夹取。
+ * 未提供起止时，`hours` 为相对回看（默认 24，最小 0.5），超过保留期时夹取。
  * @summary 公开资源历史
  */
 const getPublicMetrics = (

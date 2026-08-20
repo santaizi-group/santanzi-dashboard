@@ -693,6 +693,38 @@ html.dark .topology-globe__canvas { filter: none; }
   overflow: hidden;
 }
 .connections-nodes .toolbar { flex: 0 0 auto; }
+.servers-page { display: flex; flex-direction: column; }
+@media (min-width: 861px) {
+  .admin-content:has(> .servers-page) { overflow: hidden; }
+  .admin-content > .servers-page {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .servers-page > .table-card {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .servers-page .table-card .toolbar,
+  .servers-page .table-card .pagination {
+    flex: 0 0 auto;
+  }
+  .servers-page .servers-table-wrap {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .servers-page .servers-table-wrap .el-table {
+    height: 100%;
+    width: 100%;
+  }
+  .servers-page .servers-table-wrap .el-table .el-table__inner-wrapper {
+    height: 100%;
+  }
+}
 .toolbar .search-input { width: min(320px,100%); }
 .toolbar .search-input .el-input__wrapper,
 .toolbar .el-button {

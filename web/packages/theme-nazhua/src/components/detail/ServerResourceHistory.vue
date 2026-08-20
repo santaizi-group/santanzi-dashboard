@@ -7,6 +7,13 @@ import { AppEmpty } from '@santaizi/ui'
 import { percentOf, toNazhuaServerView } from '../../domain/nazhuaServerView'
 import ResourceHistoryChart, { type HistorySeries, type HistoryUnit } from './ResourceHistoryChart.vue'
 
+const DEFAULT_RANGE_MS = 24 * 3600 * 1000
+const MAX_RANGE_MS = 30 * 24 * 3600 * 1000
+
+function defaultHistoryRange(now = Date.now()): [Date, Date] {
+  return [new Date(now - DEFAULT_RANGE_MS), new Date(now)]
+}
+
 const COLORS = {
   cpu: '#4e90ff',
   memory: '#27c975',
@@ -33,8 +40,25 @@ const { t } = useI18n()
 const loading = ref(true)
 const failed = ref(false)
 const empty = ref(false)
+const range = ref<[Date, Date]>(defaultHistoryRange())
 const points = ref<PublicMetricPoint[]>([])
+const hasCharts = computed(() => points.value.length > 0)
 let requestSeq = 0
+
+function disabledHistoryDate(date: Date) {
+  const now = Date.now()
+  const time = date.getTime()
+  return time > now || time < now - MAX_RANGE_MS
+}
+
+function rangeQuery(): { start: string; end: string } | null {
+  const value = range.value
+  if (!value?.[0] || !value[1]) return null
+  const start = value[0].getTime()
+  const end = value[1].getTime()
+  if (!(end > start) || end - start > MAX_RANGE_MS) return null
+  return { start: value[0].toISOString(), end: value[1].toISOString() }
+}
 
 const view = computed(() => toNazhuaServerView(props.server))
 
@@ -123,19 +147,24 @@ const cards = computed<HistoryCard[]>(() => {
 
 async function load() {
   if (!props.server.id) return
+  const query = rangeQuery()
+  if (!query) return
   const seq = ++requestSeq
   loading.value = true
-  failed.value = false
-  empty.value = false
+  if (!points.value.length) {
+    failed.value = false
+    empty.value = false
+  }
   try {
-    const result = await getPublicMetrics(props.server.id, { resolution: '1m', hours: 24 })
+    const result = await getPublicMetrics(props.server.id, { resolution: '1m', ...query })
     if (seq !== requestSeq) return
     points.value = result.data || []
     empty.value = !points.value.length
+    failed.value = false
   } catch {
     if (seq !== requestSeq) return
     failed.value = true
-    points.value = []
+    if (!points.value.length) empty.value = false
   } finally {
     if (seq === requestSeq) loading.value = false
   }
@@ -146,39 +175,56 @@ watch(() => props.server.id, load, { immediate: true })
 
 <template>
   <section class="nazhua-history">
-    <h2>{{ t('nazhua.resourceHistory') }}</h2>
-    <div v-if="failed || empty || loading" class="nazhua-monitor__empty">
-      <AppEmpty
-        :tone="failed ? 'danger' : 'default'"
-        :icon="failed ? 'ri-error-warning-line' : loading ? 'ri-loader-4-line' : 'ri-line-chart-line'"
-        :title="failed ? t('nazhua.loadFailed') : ''"
-        :description="t(failed ? 'nazhua.requestFailed' : loading ? 'nazhua.loading' : 'nazhua.noData')"
+    <header class="nazhua-history__head">
+      <h2>{{ t('nazhua.resourceHistory') }}</h2>
+      <el-date-picker
+        v-model="range"
+        class="nazhua-history__range"
+        type="datetimerange"
+        format="YYYY-MM-DD HH:mm"
+        unlink-panels
+        :clearable="false"
+        :disabled-date="disabledHistoryDate"
+        :start-placeholder="t('startedAt')"
+        :end-placeholder="t('endedAt')"
+        :aria-label="t('nazhua.resourceHistory')"
+        @change="load"
       />
-      <button v-if="failed" type="button" @click="load"><i class="ri-refresh-line"></i>{{ t('nazhua.refresh') }}</button>
-    </div>
-    <div v-else class="nazhua-history__grid">
-      <article v-for="card in cards" :key="card.key" class="nazhua-history__card">
-        <header>
-          <strong>{{ card.title }}</strong>
-          <div v-if="card.metrics" class="nazhua-history__metrics">
-            <span
-              v-for="metric in card.metrics"
-              :key="metric.key"
-              class="nazhua-history__metric"
-              :style="{ '--metric-color': metric.color }"
-            >
-              <em></em>
-              <span>{{ metric.label }}</span>
-              <b>{{ metric.value }}</b>
-            </span>
-          </div>
-          <div v-else class="nazhua-history__summary">
-            <span>{{ card.summary }}</span>
-            <small v-if="card.detail">{{ card.detail }}</small>
-          </div>
-        </header>
-        <ResourceHistoryChart :series="card.series" :unit="card.unit" />
-      </article>
+    </header>
+    <div class="nazhua-history__body" v-loading="loading && hasCharts">
+      <div v-if="!hasCharts && (loading || failed || empty)" class="nazhua-monitor__empty">
+        <AppEmpty
+          :tone="failed ? 'danger' : 'default'"
+          :icon="failed ? 'ri-error-warning-line' : loading ? 'ri-loader-4-line' : 'ri-line-chart-line'"
+          :title="failed ? t('nazhua.loadFailed') : ''"
+          :description="t(failed ? 'nazhua.requestFailed' : loading ? 'nazhua.loading' : 'nazhua.noData')"
+        />
+        <button v-if="failed" type="button" @click="load"><i class="ri-refresh-line"></i>{{ t('nazhua.refresh') }}</button>
+      </div>
+      <div v-else-if="hasCharts" class="nazhua-history__grid">
+        <article v-for="card in cards" :key="card.key" class="nazhua-history__card">
+          <header>
+            <strong>{{ card.title }}</strong>
+            <div v-if="card.metrics" class="nazhua-history__metrics">
+              <span
+                v-for="metric in card.metrics"
+                :key="metric.key"
+                class="nazhua-history__metric"
+                :style="{ '--metric-color': metric.color }"
+              >
+                <em></em>
+                <span>{{ metric.label }}</span>
+                <b>{{ metric.value }}</b>
+              </span>
+            </div>
+            <div v-else class="nazhua-history__summary">
+              <span>{{ card.summary }}</span>
+              <small v-if="card.detail">{{ card.detail }}</small>
+            </div>
+          </header>
+          <ResourceHistoryChart :series="card.series" :unit="card.unit" />
+        </article>
+      </div>
     </div>
   </section>
 </template>

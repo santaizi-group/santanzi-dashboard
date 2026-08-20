@@ -2,6 +2,10 @@
 import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import zhTw from 'element-plus/es/locale/lang/zh-tw'
+import en from 'element-plus/es/locale/lang/en'
+import es from 'element-plus/es/locale/lang/es'
 import { STATUS_STORE_KEY } from '@santaizi/status-core'
 import { useStatusStore } from './stores/status'
 import {
@@ -14,8 +18,10 @@ import {
   writeStoredPublicTheme,
   type PublicThemeId,
 } from './publicThemes'
+import { applyFaviconHref, resolveFaviconHref } from './domain/favicon'
 
 const { locale } = useI18n()
+const elementLocale = computed(() => ({ 'zh-CN': zhCn, 'zh-TW': zhTw, 'en-US': en, 'es-ES': es }[locale.value] || zhCn))
 const route = useRoute()
 const router = useRouter()
 const store = useStatusStore()
@@ -60,6 +66,8 @@ watch(actualColorMode, (value) => {
 watch(() => store.bootstrap, (value) => {
   if (!value) return
   if (value.primary_color) document.documentElement.style.setProperty('--ss-accent', value.primary_color)
+  if (value.brand) document.title = value.brand
+  applyFaviconHref(resolveFaviconHref(value.logo_url))
   let style = document.querySelector<HTMLStyleElement>('#santaizi-site-style')
   if (!style) {
     style = document.createElement('style')
@@ -88,16 +96,18 @@ onBeforeUnmount(store.stop)
 </script>
 
 <template>
-  <component
-    :is="activeDefinition.Shell"
-    :key="publicTheme"
-    :public-theme="publicTheme"
-    :allow-theme-switch="allowThemeSwitch"
-    :actual-color-mode="actualColorMode"
-    @select-theme="setPublicTheme"
-    @select-locale="setLocale"
-    @toggle-color="toggleColorMode"
-  >
-    <RouterView :key="`${publicTheme}:${route.fullPath}`" />
-  </component>
+  <el-config-provider :locale="elementLocale">
+    <component
+      :is="activeDefinition.Shell"
+      :key="publicTheme"
+      :public-theme="publicTheme"
+      :allow-theme-switch="allowThemeSwitch"
+      :actual-color-mode="actualColorMode"
+      @select-theme="setPublicTheme"
+      @select-locale="setLocale"
+      @toggle-color="toggleColorMode"
+    >
+      <RouterView :key="`${publicTheme}:${route.fullPath}`" />
+    </component>
+  </el-config-provider>
 </template>

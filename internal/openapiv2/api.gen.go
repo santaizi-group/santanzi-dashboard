@@ -3679,7 +3679,15 @@ type ListPublicCycleTransferParams struct {
 // GetPublicMetricsParams defines parameters for GetPublicMetrics.
 type GetPublicMetricsParams struct {
 	Resolution *GetPublicMetricsParamsResolution `form:"resolution,omitempty" json:"resolution,omitempty"`
-	Hours      *int                              `form:"hours,omitempty" json:"hours,omitempty"`
+
+	// Start 窗口开始。RFC3339 或 Unix 秒。须与 end 成对使用，优先于 hours。
+	Start *string `form:"start,omitempty" json:"start,omitempty"`
+
+	// End 窗口结束。RFC3339 或 Unix 秒。须晚于 start。
+	End *string `form:"end,omitempty" json:"end,omitempty"`
+
+	// Hours 相对回看小时数（无 start/end 时）。支持 0.5；超过保留期时夹取。
+	Hours *float32 `form:"hours,omitempty" json:"hours,omitempty"`
 }
 
 // GetPublicMetricsParamsResolution defines parameters for GetPublicMetrics.
@@ -8461,9 +8469,25 @@ func (siw *ServerInterfaceWrapper) GetPublicMetrics(c *gin.Context) {
 		return
 	}
 
+	// ------------- Optional query parameter "start" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "start", c.Request.URL.Query(), &params.Start, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter start: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "end" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "end", c.Request.URL.Query(), &params.End, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter end: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	// ------------- Optional query parameter "hours" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "hours", c.Request.URL.Query(), &params.Hours, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "hours", c.Request.URL.Query(), &params.Hours, runtime.BindQueryParameterOptions{Type: "number", Format: ""})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter hours: %w", err), http.StatusBadRequest)
 		return

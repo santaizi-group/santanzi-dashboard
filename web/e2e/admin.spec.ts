@@ -937,6 +937,52 @@ test('connection observation refreshes node chip latency on poll', async ({ page
   await expect(chips.filter({ hasText: /88 ms/ })).toBeVisible()
 })
 
+test('servers list scrolls table body on desktop without moving the page', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'admin-mobile', 'table body lock is desktop-only')
+  const servers = Array.from({ length: 20 }, (_, index) => ({
+    id: index + 1,
+    name: `host-${String(index + 1).padStart(2, '0')}`,
+    tag: 'edge',
+    display_index: 2000 - index,
+    online: true,
+    last_active: '2026-08-14T03:36:00Z',
+    host: { Platform: 'debian', Version: '1.0.0' },
+    public_note: {},
+    telemetry: { available: true, coverage: '1/1' },
+  }))
+  await page.route('**/api/v2/admin/servers**', route => fulfillJSON(route, list(servers)))
+  await page.goto('/admin/servers')
+  await expect(page.getByRole('heading', { name: '主机管理' })).toBeVisible()
+  await expect(page.locator('.servers-page .toolbar .search-input')).toBeVisible()
+  await expect(page.locator('.servers-page .pagination .el-pagination').filter({ visible: true })).toBeVisible()
+  await assertAdminContentDoesNotScroll(page)
+  expect(await page.evaluate(() => window.scrollY)).toBe(0)
+  expect(await page.locator('.admin-topbar').evaluate((el: HTMLElement) => el.getBoundingClientRect().top)).toBeLessThan(2)
+
+  const lastRow = page.locator('.servers-page .el-table__row').filter({ hasText: 'host-20' })
+  await expect(lastRow).toBeAttached()
+  await expect(lastRow).not.toBeInViewport()
+
+  const scrolled = await page.locator('.servers-page .el-table').evaluate((table: HTMLElement) => {
+    const wrap = (table.querySelector('.el-scrollbar__wrap') || table.querySelector('.el-table__body-wrapper')) as HTMLElement | null
+    if (!wrap) return { ok: false, scrollHeight: 0, clientHeight: 0, scrollTop: 0 }
+    wrap.scrollTop = wrap.scrollHeight
+    return {
+      ok: wrap.scrollHeight > wrap.clientHeight,
+      scrollHeight: wrap.scrollHeight,
+      clientHeight: wrap.clientHeight,
+      scrollTop: wrap.scrollTop,
+    }
+  })
+  expect(scrolled.ok, JSON.stringify(scrolled)).toBe(true)
+  expect(scrolled.scrollTop).toBeGreaterThan(0)
+  await expect(lastRow).toBeInViewport()
+  await expect(page.getByRole('heading', { name: '主机管理' })).toBeInViewport()
+  await expect(page.locator('.servers-page .toolbar .search-input')).toBeInViewport()
+  await expect(page.locator('.servers-page .pagination .el-pagination').filter({ visible: true })).toBeInViewport()
+  expect(await page.evaluate(() => window.scrollY)).toBe(0)
+})
+
 test('servers list shows reported agent version', async ({ page }) => {
   await page.route('**/api/v2/admin/servers**', route => fulfillJSON(route, list([{
     id: 7, name: 'edge-a', tag: 'edge', online: true, last_active: '2026-08-14T03:36:00Z',

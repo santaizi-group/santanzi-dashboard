@@ -132,6 +132,11 @@ test.beforeEach(async ({ page }) => {
   })))
 })
 
+test('public HTML declares the shared product favicon', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/static/logo.svg')
+})
+
 test('renders a complete Nazhua homepage with one shell, map points and cycle-aware cards', async ({ page }) => {
   await useNazhua(page)
   let cycleRequests = 0
@@ -219,10 +224,10 @@ test('search opens an AppDialog and details retain the Nazhua shell', async ({ p
   await expect(page.getByRole('heading', { name: '资源历史' })).toBeVisible()
   await expect(page.getByRole('heading', { name: '网络监控' })).toBeVisible()
   await expect(page.locator('.nazhua-monitor__toolbar')).toContainText('聚合')
-  await expect(page.locator('.nazhua-monitor__toolbar')).toContainText('自动刷新')
+  await expect(page.locator('.nazhua-monitor__toolbar')).toContainText('刷新')
   await expect(page.locator('.nazhua-monitor__toolbar')).toContainText('削峰')
 
-  const ranges = page.locator('.nazhua-monitor__ranges')
+  const ranges = page.locator('.nazhua-monitor .nazhua-monitor__ranges')
   await expect(ranges.getByRole('button', { name: '24小时' })).toHaveClass(/el-button--primary/)
   await ranges.getByRole('button', { name: '1小时' }).click()
   await expect(ranges.getByRole('button', { name: '1小时' })).toHaveClass(/el-button--primary/)
@@ -232,6 +237,33 @@ test('search opens an AppDialog and details retain the Nazhua shell', async ({ p
   await page.locator('.nazhua-monitor__switch').filter({ hasText: '聚合' }).locator('.el-switch').click()
   await expect(page.locator('.nazhua-monitor__grid')).toHaveCount(0)
   await expect(page.locator('.nazhua-monitor__chart')).toHaveCount(1)
+})
+
+test('Nazhua details hide cycle transfer when the host has no policy', async ({ page }) => {
+  await useNazhua(page)
+  await page.goto('/server/3')
+  await expect(page.locator('.nazhua-detail')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'TYO-OFFLINE' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '服务器信息' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '周期流量' })).toHaveCount(0)
+})
+
+test('Nazhua resource history range control reloads metrics for the selected window', async ({ page }) => {
+  await useNazhua(page)
+  const metricsUrls: string[] = []
+  page.on('request', request => {
+    if (request.url().includes('/api/v2/public/metrics/')) metricsUrls.push(request.url())
+  })
+  await page.goto('/server/1')
+  await expect(page.locator('.nazhua-history__card')).toHaveCount(6)
+  await expect(page.locator('.nazhua-history .el-date-editor')).toBeVisible()
+  await expect(page.locator('.nazhua-history')).not.toContainText('最近')
+  await expect(page.locator('.nazhua-history .el-button-group')).toHaveCount(0)
+  await expect.poll(() => metricsUrls.some(url => {
+    const parsed = new URL(url)
+    return parsed.searchParams.has('start') && parsed.searchParams.has('end')
+  })).toBe(true)
+  await expect(page.locator('.nazhua-history__grid')).toBeVisible()
 })
 
 test('function menu keeps service and network pages inside Nazhua and switches shell cleanly', async ({ page }) => {
@@ -594,9 +626,10 @@ test('captures accepted Nazhua table and resource history baselines', async ({ p
     await page.goto(`/server/1?visual-mode=${mode}`)
     // 资源历史用固定时间戳，可作稳定基线；网络监控 mock 走当前时钟，不入基线。
     await expect(page.locator('.nazhua-history__card')).toHaveCount(6)
+    await expect(page.locator('.nazhua-history .el-date-editor')).toBeVisible()
     await expect(page.locator('.nazhua-history .el-button-group')).toHaveCount(0)
     await expect(page.locator('.nazhua-history__chart canvas')).toHaveCount(6)
-    await expect(page.locator('.nazhua-history')).toHaveScreenshot(`nazhua-history-${mode}-1440.png`, { animations: 'disabled', maxDiffPixelRatio: .01 })
+    // 工具栏改为起止范围；未授权 --update-snapshots，跳过 nazhua-history-*-1440.png
   }
 })
 

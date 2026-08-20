@@ -87,6 +87,7 @@ export const nazhuaMessageStubs = {
       loading: '加载中…',
       noData: '暂无数据',
       refresh: '刷新',
+      autoRefresh: '刷新',
     },
   },
 } as const

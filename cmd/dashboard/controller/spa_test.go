@@ -202,6 +202,9 @@ func TestEmbeddedStatusAssetsAreServedWhenBuilt(t *testing.T) {
 	if !strings.Contains(html, "<div id=\"app\">") {
 		t.Fatalf("GET / did not return status index.html: %s", html)
 	}
+	if !strings.Contains(html, `rel="icon"`) || !strings.Contains(html, `href="/static/logo.svg"`) {
+		t.Fatal("status index.html missing favicon link to /static/logo.svg")
+	}
 
 	assetRefs := regexp.MustCompile(`(?:src|href)="(/assets/[^"]+)"`).FindAllStringSubmatch(html, -1)
 	if len(assetRefs) == 0 {
@@ -223,5 +226,14 @@ func TestEmbeddedStatusAssetsAreServedWhenBuilt(t *testing.T) {
 	handler.ServeHTTP(nazhuaMap, httptest.NewRequest(http.MethodGet, "/static/theme-nazhua/maps/world.geo.json", nil))
 	if nazhuaMap.Code != http.StatusOK {
 		t.Fatalf("GET nazhua world.geo.json status = %d: %s", nazhuaMap.Code, nazhuaMap.Body.String())
+	}
+
+	logo := httptest.NewRecorder()
+	handler.ServeHTTP(logo, httptest.NewRequest(http.MethodGet, "/static/logo.svg", nil))
+	if logo.Code != http.StatusOK {
+		t.Fatalf("GET /static/logo.svg status = %d: %s", logo.Code, logo.Body.String())
+	}
+	if !strings.Contains(logo.Header().Get("Content-Type"), "svg") && !strings.Contains(logo.Body.String(), "<svg") {
+		t.Fatalf("GET /static/logo.svg is not an SVG: %s", logo.Header().Get("Content-Type"))
 	}
 }

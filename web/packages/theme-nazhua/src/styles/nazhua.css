@@ -536,8 +536,9 @@ html.dark .nazhua-card:hover,
 .nazhua-card__head { display: flex; align-items: center; gap: 10px; min-width: 0; height: 50px; padding: 0 15px; border-radius: 12px 12px 0 0; background: var(--nazhua-card-chrome); color: inherit; box-shadow: 0 1px 0 var(--nazhua-border); text-decoration: none; }
 .nazhua-card__head strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 700; }
 .nazhua-card.offline .nazhua-card__head strong { color: var(--nazhua-offline); }
-.nazhua-card__spec { display: inline-flex; align-items: center; gap: var(--icon-text-gap); height: 24px; margin-left: auto; padding: 0 8px; border: 1px solid var(--nazhua-spec-border); border-radius: 4px; background: var(--nazhua-spec-bg); color: var(--nazhua-spec-text); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }
+.nazhua-card__spec { display: inline-flex; align-items: center; gap: var(--icon-text-gap); min-width: 0; height: 24px; margin-left: auto; overflow: hidden; padding: 0; border: 0; border-radius: 0; background: none; color: var(--nazhua-spec-text); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }
 .nazhua-card__spec .nazhua-os-logo { color: var(--nazhua-card-text); }
+.nazhua-card__spec > span:not(.nazhua-os-logo) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .nazhua-os-logo { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; font-size: 14px; line-height: 1; }
 .nazhua-status-table__os,
 .nazhua-status-table__flag,
@@ -750,6 +751,17 @@ html.dark .nazhua-globe__chart,
 .nazhua-cycle-transfer h2,
 .nazhua-monitor h2,
 .nazhua-history h2 { margin: 0 0 14px; font-size: 17px; }
+.nazhua-history__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.nazhua-history__head h2 { margin: 0; }
+.nazhua-history__range { flex: 1 1 280px; min-width: 0; max-width: 420px; }
+.nazhua-history__range.el-date-editor {
+  width: 100%;
+  height: 32px;
+  font-size: 12px;
+}
+.nazhua-history__range .el-range-input,
+.nazhua-history__range .el-range-separator { font-size: 12px; }
+.nazhua-history__body { position: relative; min-width: 0; }
 .nazhua-info-box dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin: 0; }
 .nazhua-info-box dl > .is-span { grid-column: 1 / -1; }
 .nazhua-info-box dt { margin-bottom: 4px; color: var(--nazhua-muted); font-size: 12px; }
@@ -924,6 +936,7 @@ html.dark .nazhua-footer a,
   .nazhua-history__chart { min-height: 200px; }
   .nazhua-history__card header strong { font-size: 14px; }
   .nazhua-history__summary { font-size: 15px; }
+  .nazhua-history__range { max-width: none; }
   .nazhua-detail-status__metric .nazhua-donut { --nazhua-donut-size: 140px; }
   .nazhua-detail-status__metric .nazhua-donut__text strong { font-size: 24px; }
   .nazhua-status-table__head,
@@ -957,6 +970,7 @@ html.dark .nazhua-footer a,
   .nazhua-monitor__switch { min-height: 44px; }
   .nazhua-monitor__ranges .el-button-group { border-radius: 22px; }
   .nazhua-monitor__ranges .el-button-group > .el-button { height: 42px; min-height: 42px; min-width: 46px; padding: 0 12px; }
+  .nazhua-history__range.el-date-editor { height: 44px; min-height: 44px; }
   .nazhua-filter__tools { flex: 0 0 auto; flex-wrap: nowrap; gap: 8px; }
   .nazhua-filter .el-button.nazhua-filter__sort { padding-right: 0; }
   .nazhua-sort-menu .el-dropdown-menu__item { min-height: 44px; }

@@ -29,6 +29,7 @@ async function load() {
 }
 
 const hasRows = computed(() => rows.value.length > 0)
+const visible = computed(() => failed.value || hasRows.value)
 
 function statusKey(status?: string) {
   if (!status || status === 'normal' || status === 'ok') return 'ok'
@@ -55,19 +56,19 @@ watch(() => props.server.id, load)
 </script>
 
 <template>
-  <section class="nazhua-cycle-transfer">
+  <section v-if="visible" class="nazhua-cycle-transfer">
     <header class="nazhua-cycle-transfer__head">
       <h2>{{ t('nazhua.cycleTransfer') }}</h2>
-      <button type="button" @click="load"><i class="ri-refresh-line"></i>{{ t('nazhua.refresh') }}</button>
+      <button type="button" :disabled="loading" @click="load"><i class="ri-refresh-line"></i>{{ t('nazhua.refresh') }}</button>
     </header>
-    <div v-if="loading || failed || !hasRows" class="nazhua-cycle-transfer__empty">
+    <div v-if="failed" class="nazhua-cycle-transfer__empty">
       <AppEmpty
-        :tone="failed ? 'danger' : 'default'"
-        :icon="failed ? 'ri-error-warning-line' : loading ? 'ri-loader-4-line' : 'ri-pie-chart-line'"
-        :title="failed ? t('nazhua.loadFailed') : ''"
-        :description="t(failed ? 'nazhua.requestFailed' : loading ? 'nazhua.loading' : 'nazhua.noData')"
+        tone="danger"
+        icon="ri-error-warning-line"
+        :title="t('nazhua.loadFailed')"
+        :description="t('nazhua.requestFailed')"
       />
-      <button v-if="failed" type="button" @click="load"><i class="ri-refresh-line"></i>{{ t('nazhua.refresh') }}</button>
+      <button type="button" :disabled="loading" @click="load"><i class="ri-refresh-line"></i>{{ t('nazhua.refresh') }}</button>
     </div>
     <div v-else class="nazhua-cycle-transfer__list">
       <article v-for="row in rows" :key="row.policy_id" class="nazhua-cycle-transfer__item">

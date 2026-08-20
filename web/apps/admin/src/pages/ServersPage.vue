@@ -338,6 +338,7 @@ onUnmounted(() => { hoverMedia?.removeEventListener('change', onHoverMediaChange
 </script>
 
 <template>
+  <div class="servers-page">
   <div class="page-head"><h1>{{ t('servers') }}</h1><el-button type="primary" @click="open()"><i class="ri-add-line"></i>{{ t('createServer') }}</el-button></div>
   <section class="surface table-card">
     <div class="toolbar">
@@ -354,7 +355,8 @@ onUnmounted(() => { hoverMedia?.removeEventListener('change', onHoverMediaChange
       <el-button :loading="exporting" @click="exportAll"><i class="ri-download-line"></i>{{ t('exportServers') }}</el-button>
       <el-button @click="load"><i class="ri-refresh-line"></i>{{ t('refresh') }}</el-button>
     </div>
-    <el-table class="desktop-only" v-loading="loading" :data="items" row-key="id" @selection-change="selected=$event">
+    <div class="servers-table-wrap desktop-only">
+    <el-table v-loading="loading" height="100%" :data="items" row-key="id" @selection-change="selected=$event">
       <el-table-column type="selection" width="46"/>
       <el-table-column class-name="col-status" label-class-name="col-status" width="44" align="center">
         <template #default="{row}">
@@ -459,6 +461,7 @@ onUnmounted(() => { hoverMedia?.removeEventListener('change', onHoverMediaChange
       </el-table-column>
       <template #empty><AppEmpty icon="ri-server-line" :description="t('noData')"/></template>
     </el-table>
+    </div>
     <div class="mobile-only" v-loading="loading">
       <AppEmpty v-if="!items.length && !loading" icon="ri-server-line" :description="t('noData')"/>
       <div v-else class="mobile-card-list">
@@ -621,6 +624,7 @@ onUnmounted(() => { hoverMedia?.removeEventListener('change', onHoverMediaChange
     </el-tabs>
   </AppDrawer>
   <ProbePathDialog v-model="probeDialog" :path="activeProbe" />
+  </div>
 </template>
 
 <style scoped>
