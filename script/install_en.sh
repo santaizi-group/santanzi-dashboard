@@ -6,7 +6,7 @@
 # Defaults to this repo's agent-only install script
 #========================================================
 
-shell_url="${SANTAIZI_SCRIPT_URL:-https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install_agent_en.sh}"
+shell_url="${SANTAIZI_SCRIPT_URL:-https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_agent_en.sh}"
 
 if command -v wget >/dev/null 2>&1; then
     wget -O santaizi_v0.sh "$shell_url"

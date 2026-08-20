@@ -613,7 +613,7 @@ test('ServerStatus shell uses a tokenized table without particle canvas', async 
   const footer = page.locator('.server-status-shell > footer')
   await expect(footer).toContainText('三太子监控')
   await expect(footer).toContainText('test')
-  await expect(footer.locator('a[href="https://github.com/hi2shark/santaizi-dashboard"]')).toBeVisible()
+  await expect(footer.locator('a[href="https://github.com/santaizi-group/santanzi-dashboard"]')).toBeVisible()
   await expect(footer).not.toContainText('naiba')
   await expect(footer).not.toContainText('哪吒')
   await expect(page.locator('.ss-row').first().locator('.ss-chip--muted')).toHaveText('香港')

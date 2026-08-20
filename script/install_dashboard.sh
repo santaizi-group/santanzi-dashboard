@@ -10,7 +10,7 @@ green='\033[0;32m'
 yellow='\033[0;33m'
 plain='\033[0m'
 
-GHCR_IMAGE="ghcr.io/hi2shark/santaizi-dashboard"
+GHCR_IMAGE="ghcr.io/santaizi-group/santaizi-dashboard"
 
 err() {
     printf "${red}%s${plain}\n" "$*" >&2
@@ -35,7 +35,7 @@ sudo() {
             err "ERROR: 当前非 root，且未安装 sudo/doas，无法继续。"
             err "请先切换到 root 后运行："
             err "  su -"
-            err "  sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install_dashboard.sh)\""
+            err "  sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_dashboard.sh)\""
             exit 1
         fi
     else
@@ -277,7 +277,7 @@ main() {
     if ! [ -t 0 ]; then
         err "检测到脚本通过管道执行（如 curl ... | bash），但本脚本需要交互式输入。"
         err "请改用以下一键运行方式："
-        err "  sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install_dashboard.sh)\""
+        err "  sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_dashboard.sh)\""
         err "如果当前不是 root，请先使用 sudo、doas 或 su - 提权后再运行上面的命令。"
         exit 1
     fi

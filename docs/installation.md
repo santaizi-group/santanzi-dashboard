@@ -5,7 +5,7 @@
 ### 方式一：一键安装脚本（推荐）
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install_dashboard.sh)"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_dashboard.sh)"
 ```
 
 脚本会交互式询问：
@@ -30,7 +30,7 @@ mkdir -p ~/santaizi/data ~/santaizi/config && cd ~/santaizi
 ```yaml
 services:
   santaizi-dashboard:
-    image: ghcr.io/hi2shark/santaizi-dashboard:latest
+    image: ghcr.io/santaizi-group/santaizi-dashboard:latest
     container_name: santaizi-dashboard
     restart: unless-stopped
     ports:
@@ -82,7 +82,7 @@ CLI 参数：
 也可手动执行（参数需替换）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install_collector.sh | bash -s -- \
+curl -fsSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_collector.sh | bash -s -- \
   --primary-endpoint primary.example.com:5555 \
   --token <registration_token> \
   --grpc-port 5556 \
@@ -100,18 +100,18 @@ curl -fsSL https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/
 
 ## Agent 安装
 
-Agent 默认从 `hi2shark/santaizi-agent` 仓库下载，可通过环境变量 `SANTAIZI_AGENT_REPO` 覆盖。
+Agent 默认从 `santaizi-group/santaizi-agent` 仓库下载，可通过环境变量 `SANTAIZI_AGENT_REPO` 覆盖。
 
 ### Linux
 
 ```bash
-curl -fSL https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install_agent.sh | bash -s -- install_agent <面板地址> <端口> <密钥> --clean-install --confirm-clean-install [--server-ip <主端IP>]
+curl -fSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_agent.sh | bash -s -- install_agent <面板地址> <端口> <密钥> --clean-install --confirm-clean-install [--server-ip <主端IP>]
 ```
 
 英文版脚本：
 
 ```bash
-curl -fSL https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install_agent_en.sh | bash -s -- install_agent <面板地址> <端口> <密钥> --clean-install --confirm-clean-install
+curl -fSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_agent_en.sh | bash -s -- install_agent <面板地址> <端口> <密钥> --clean-install --confirm-clean-install
 ```
 
 安装路径：`/opt/santaizi/agent`；默认配置 `/etc/santaizi/agent.yaml`；可靠探测数据 `/var/lib/santaizi-agent/`
@@ -119,7 +119,7 @@ curl -fSL https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/s
 ### Windows
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([ScriptBlock]::Create((Invoke-WebRequest 'https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install.ps1' -UseBasicParsing).Content)) -Server '<面板地址>:<端口>' -Key '<密钥>' -CleanInstall -ConfirmCleanInstall"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([ScriptBlock]::Create((Invoke-WebRequest 'https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install.ps1' -UseBasicParsing).Content)) -Server '<面板地址>:<端口>' -Key '<密钥>' -CleanInstall -ConfirmCleanInstall"
 ```
 
 安装路径：`C:\santaizi`
@@ -127,7 +127,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([ScriptBlock]::Create
 ### macOS
 
 ```bash
-curl -fSL https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install.command | sudo bash -s -- install_agent <面板地址> <端口> <密钥> --clean-install --confirm-clean-install
+curl -fSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install.command | sudo bash -s -- install_agent <面板地址> <端口> <密钥> --clean-install --confirm-clean-install
 ```
 
 安装路径：`/opt/santaizi/agent`
@@ -222,13 +222,13 @@ docker compose up -d
 已安装从端在本机执行升级脚本即可拉取 GHCR 镜像并重建容器，**不改**配置与数据目录。请先升级 Primary，再升级从端，最后升级探针。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/upgrade_collector.sh | bash
+curl -fsSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade_collector.sh | bash
 ```
 
 指定版本（会改 compose 中的镜像标签后再拉取）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/upgrade_collector.sh | bash -s -- v1.0.1
+curl -fsSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade_collector.sh | bash -s -- v1.0.1
 ```
 
 工作目录默认 `/opt/santaizi/collector`，可用 `--dir` 或 `SANTAIZI_COLLECTOR_DIR` 覆盖。也可重跑 `install_collector.sh` 且不传 `--token`。
@@ -240,13 +240,13 @@ Dashboard 不提供远程或自动更新。已安装的探针在本机执行升�
 Linux：
 
 ```bash
-curl -fSL https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/upgrade_agent.sh | bash
+curl -fSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade_agent.sh | bash
 ```
 
 指定版本：
 
 ```bash
-curl -fSL https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/upgrade_agent.sh | bash -s -- v1.0.1
+curl -fSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade_agent.sh | bash -s -- v1.0.1
 ```
 
 英文脚本：`upgrade_agent_en.sh`。可用 `SANTAIZI_AGENT_REPO`、`SANTAIZI_AGENT_VERSION` 覆盖仓库与版本。
@@ -254,13 +254,13 @@ curl -fSL https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/s
 Windows：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([ScriptBlock]::Create((Invoke-WebRequest 'https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/upgrade.ps1' -UseBasicParsing).Content))"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([ScriptBlock]::Create((Invoke-WebRequest 'https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade.ps1' -UseBasicParsing).Content))"
 ```
 
 macOS：
 
 ```bash
-curl -fSL https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/upgrade.command | sudo bash
+curl -fSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade.command | sudo bash
 ```
 
 管理后台「主机管理」行内操作也可复制同一条命令。

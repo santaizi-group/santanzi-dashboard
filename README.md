@@ -30,7 +30,7 @@
 ### 一键安装（推荐）
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install_dashboard.sh)"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_dashboard.sh)"
 ```
 
 非 root 时先 `sudo -i`、`doas sh` 或 `su -` 再执行。也可先下载脚本再 `sh install_dashboard.sh`。
@@ -48,7 +48,7 @@ mkdir -p /opt/santaizi && cd /opt/santaizi
 ```yaml
 services:
   santaizi-dashboard:
-    image: ghcr.io/hi2shark/santaizi-dashboard:latest
+    image: ghcr.io/santaizi-group/santaizi-dashboard:latest
     container_name: santaizi-dashboard
     restart: unless-stopped
     ports:
@@ -67,7 +67,7 @@ services:
 
 ```bash
 mkdir -p config data
-curl -fsSL https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/config.yaml -o config/dashboard.yaml
+curl -fsSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/config.yaml -o config/dashboard.yaml
 ```
 
 至少填写：
@@ -114,14 +114,14 @@ docker compose up -d
 从端：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/upgrade_collector.sh | bash
+curl -fsSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade_collector.sh | bash
 ```
 
 ### 安装探针
 
 进入后台 → 服务器 → 添加服务器，保存后在卡片上复制对应平台的一键安装命令，到被监控主机执行。
 
-默认探针下载源为 `hi2shark/santaizi-agent`，可用 `SANTAIZI_AGENT_REPO` 覆盖。
+默认探针下载源为 `santaizi-group/santaizi-agent`，可用 `SANTAIZI_AGENT_REPO` 覆盖。
 
 ### 常见问题
 

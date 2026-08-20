@@ -11,7 +11,7 @@ green='\033[0;32m'
 yellow='\033[0;33m'
 plain='\033[0m'
 
-GHCR_IMAGE="ghcr.io/hi2shark/santaizi-dashboard"
+GHCR_IMAGE="ghcr.io/santaizi-group/santaizi-dashboard"
 PRIMARY_ENDPOINT=""
 REGISTRATION_TOKEN=""
 GRPC_PORT="5556"

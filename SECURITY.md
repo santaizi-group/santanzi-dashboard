@@ -4,11 +4,11 @@
 
 仅 `main` 分支与最新 SemVer Release。旧 tag 不回溯修复。
 
-主面板、从端与探针（[`santaizi-agent`](https://github.com/hi2shark/santaizi-agent)）线协议不兼容旧版，须成对升级。
+主面板、从端与探针（[`santaizi-agent`](https://github.com/santaizi-group/santaizi-agent)）线协议不兼容旧版，须成对升级。
 
 ## 报告漏洞
 
-请通过 [GitHub 私密安全公告](https://github.com/hi2shark/santaizi-dashboard/security/advisories/new) 提交，**不要**用公开 Issue 或 PR 披露。
+请通过 [GitHub 私密安全公告](https://github.com/santaizi-group/santanzi-dashboard/security/advisories/new) 提交，**不要**用公开 Issue 或 PR 披露。
 
 请附复现步骤、受影响版本与部署形态（Primary / Collector / 探针）。报告中请勿包含真实主机地址、Token 或私钥。
 

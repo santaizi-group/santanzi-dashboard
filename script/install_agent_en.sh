@@ -2,7 +2,7 @@
 
 #========================================================
 #   Santaizi Agent One-Key Install Script
-#   Default repo: hi2shark/santaizi-agent, override via SANTAIZI_AGENT_REPO
+#   Default repo: santaizi-group/santaizi-agent, override via SANTAIZI_AGENT_REPO
 #========================================================
 
 SANTAIZI_BASE_PATH="/opt/santaizi"
@@ -13,7 +13,7 @@ green='\033[0;32m'
 yellow='\033[0;33m'
 plain='\033[0m'
 
-SANTAIZI_AGENT_REPO="${SANTAIZI_AGENT_REPO:-hi2shark/santaizi-agent}"
+SANTAIZI_AGENT_REPO="${SANTAIZI_AGENT_REPO:-santaizi-group/santaizi-agent}"
 CLEAN_INSTALL=0
 CLEAN_INSTALL_CONFIRMED=0
 

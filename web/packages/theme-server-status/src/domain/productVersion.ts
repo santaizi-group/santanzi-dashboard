@@ -1,4 +1,4 @@
-export const PRODUCT_REPO_URL = 'https://github.com/hi2shark/santaizi-dashboard'
+export const PRODUCT_REPO_URL = 'https://github.com/santaizi-group/santanzi-dashboard'
 
 export function formatProductVersion(raw?: string) {
   const value = (raw || '').trim()

@@ -2,7 +2,7 @@
 
 欢迎使用 **Santaizi** —— 一个开源、自托管的服务器监控与运维面板。本文档将帮助你完成安装、配置和日常使用。
 
-> 本文档对应项目源码：`https://github.com/hi2shark/santaizi-dashboard`
+> 本文档对应项目源码：`https://github.com/santaizi-group/santanzi-dashboard`
 
 ## 快速导航
 

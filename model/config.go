@@ -421,37 +421,37 @@ func (c *Config) Read(path string) error {
 	}
 	// 默认使用本仓库 script/ 目录下的 Agent 专用安装脚本
 	if c.InstallScript.Linux == "" {
-		c.InstallScript.Linux = "https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install_agent.sh"
+		c.InstallScript.Linux = "https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_agent.sh"
 	}
 	if c.InstallScript.LinuxEn == "" {
-		c.InstallScript.LinuxEn = "https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install_agent_en.sh"
+		c.InstallScript.LinuxEn = "https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_agent_en.sh"
 	}
 	if c.InstallScript.Windows == "" {
-		c.InstallScript.Windows = "https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install.ps1"
+		c.InstallScript.Windows = "https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install.ps1"
 	}
 	if c.InstallScript.MacOS == "" {
-		c.InstallScript.MacOS = "https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install.command"
+		c.InstallScript.MacOS = "https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install.command"
 	}
 	if c.InstallScript.Collector == "" {
-		c.InstallScript.Collector = "https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install_collector.sh"
+		c.InstallScript.Collector = "https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_collector.sh"
 	}
 	if c.InstallScript.Dashboard == "" {
-		c.InstallScript.Dashboard = "https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install_dashboard.sh"
+		c.InstallScript.Dashboard = "https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_dashboard.sh"
 	}
 	if c.InstallScript.UpgradeCollector == "" {
-		c.InstallScript.UpgradeCollector = "https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/upgrade_collector.sh"
+		c.InstallScript.UpgradeCollector = "https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade_collector.sh"
 	}
 	if c.InstallScript.UpgradeLinux == "" {
-		c.InstallScript.UpgradeLinux = "https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/upgrade_agent.sh"
+		c.InstallScript.UpgradeLinux = "https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade_agent.sh"
 	}
 	if c.InstallScript.UpgradeLinuxEn == "" {
-		c.InstallScript.UpgradeLinuxEn = "https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/upgrade_agent_en.sh"
+		c.InstallScript.UpgradeLinuxEn = "https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade_agent_en.sh"
 	}
 	if c.InstallScript.UpgradeWindows == "" {
-		c.InstallScript.UpgradeWindows = "https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/upgrade.ps1"
+		c.InstallScript.UpgradeWindows = "https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade.ps1"
 	}
 	if c.InstallScript.UpgradeMacOS == "" {
-		c.InstallScript.UpgradeMacOS = "https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/upgrade.command"
+		c.InstallScript.UpgradeMacOS = "https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade.command"
 	}
 	if c.Oauth2.OidcScopes == "" {
 		c.Oauth2.OidcScopes = "openid,profile,email"

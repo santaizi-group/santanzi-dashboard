@@ -2230,7 +2230,7 @@ func v2CollectorInstallPreview(c *gin.Context) {
 	}
 	script := singleton.Conf.InstallScript.Collector
 	if script == "" {
-		script = "https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install_collector.sh"
+		script = "https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_collector.sh"
 	}
 	command := buildCollectorInstallCommand(script, endpoint, collector.RegistrationToken, grpcPort, request.PrimaryTLS, request.PrimaryInsecureTLS)
 	defaultTLS := false

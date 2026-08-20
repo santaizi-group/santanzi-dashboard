@@ -27,7 +27,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$AgentRepository = if ($env:SANTAIZI_AGENT_REPO) { $env:SANTAIZI_AGENT_REPO } else { "hi2shark/santaizi-agent" }
+$AgentRepository = if ($env:SANTAIZI_AGENT_REPO) { $env:SANTAIZI_AGENT_REPO } else { "santaizi-group/santaizi-agent" }
 $InstallDirectory = "C:\santaizi"
 $AgentBinary = "C:\santaizi\santaizi-agent.exe"
 $ConfigurationDirectory = "C:\ProgramData\santaizi"

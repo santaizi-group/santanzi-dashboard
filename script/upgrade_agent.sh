@@ -3,14 +3,14 @@
 #========================================================
 #   Santaizi Agent 通用升级脚本
 #   只替换二进制并重启服务；保留配置、节点身份和 WAL
-#   默认从 hi2shark/santaizi-agent 下载，可通过 SANTAIZI_AGENT_REPO 覆盖
+#   默认从 santaizi-group/santaizi-agent 下载，可通过 SANTAIZI_AGENT_REPO 覆盖
 #========================================================
 
 SANTAIZI_BASE_PATH="/opt/santaizi"
 SANTAIZI_AGENT_PATH="${SANTAIZI_AGENT_PATH:-${SANTAIZI_BASE_PATH}/agent}"
 SANTAIZI_AGENT_BIN="${SANTAIZI_AGENT_PATH}/santaizi-agent"
 SANTAIZI_AGENT_CONFIG="${SANTAIZI_AGENT_CONFIG:-/etc/santaizi/agent.yaml}"
-SANTAIZI_AGENT_REPO="${SANTAIZI_AGENT_REPO:-hi2shark/santaizi-agent}"
+SANTAIZI_AGENT_REPO="${SANTAIZI_AGENT_REPO:-santaizi-group/santaizi-agent}"
 
 red='\033[0;31m'
 green='\033[0;32m'

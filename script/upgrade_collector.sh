@@ -5,7 +5,7 @@
 #   只拉取镜像并重建容器；保留配置、注册身份和数据目录
 #========================================================
 
-GHCR_IMAGE="ghcr.io/hi2shark/santaizi-dashboard"
+GHCR_IMAGE="ghcr.io/santaizi-group/santaizi-dashboard"
 WORK_DIR="${SANTAIZI_COLLECTOR_DIR:-/opt/santaizi/collector}"
 REQUESTED_VERSION="${SANTAIZI_COLLECTOR_VERSION:-}"
 

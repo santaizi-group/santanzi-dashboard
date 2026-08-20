@@ -367,17 +367,17 @@ Primary 每 5 分钟限时清过期探测数据。心跳 / 原始状态 / 探针
 
 | 配置项 | 默认值 |
 |--------|--------|
-| `installscript.linux` | `https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install_agent.sh` |
-| `installscript.linuxen` | `https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install_agent_en.sh` |
-| `installscript.windows` | `https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install.ps1` |
-| `installscript.macos` | `https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install.command` |
-| `installscript.collector` | `https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install_collector.sh` |
-| `installscript.dashboard` | `https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install_dashboard.sh` |
-| `installscript.upgrade_collector` | `https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/upgrade_collector.sh` |
-| `installscript.upgrade_linux` | `https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/upgrade_agent.sh` |
-| `installscript.upgrade_linuxen` | `https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/upgrade_agent_en.sh` |
-| `installscript.upgrade_windows` | `https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/upgrade.ps1` |
-| `installscript.upgrade_macos` | `https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/upgrade.command` |
+| `installscript.linux` | `https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_agent.sh` |
+| `installscript.linuxen` | `https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_agent_en.sh` |
+| `installscript.windows` | `https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install.ps1` |
+| `installscript.macos` | `https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install.command` |
+| `installscript.collector` | `https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_collector.sh` |
+| `installscript.dashboard` | `https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_dashboard.sh` |
+| `installscript.upgrade_collector` | `https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade_collector.sh` |
+| `installscript.upgrade_linux` | `https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade_agent.sh` |
+| `installscript.upgrade_linuxen` | `https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade_agent_en.sh` |
+| `installscript.upgrade_windows` | `https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade.ps1` |
+| `installscript.upgrade_macos` | `https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade.command` |
 
 如果你 fork 了仓库或在内网部署，建议替换为自有地址。
 

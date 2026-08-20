@@ -5,7 +5,7 @@
 
 set -eu
 
-SANTAIZI_INSTALL_SCRIPT_URL="${SANTAIZI_INSTALL_SCRIPT_URL:-https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/install_agent.sh}"
+SANTAIZI_INSTALL_SCRIPT_URL="${SANTAIZI_INSTALL_SCRIPT_URL:-https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_agent.sh}"
 SANTAIZI_INSTALL_TMP="$(mktemp -t santaizi-agent-install.XXXXXX)"
 trap 'rm -f "$SANTAIZI_INSTALL_TMP"' EXIT HUP INT TERM
 

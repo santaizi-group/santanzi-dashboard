@@ -2,7 +2,7 @@
 
 #========================================================
 #   Santaizi Agent 一键安装脚本
-#   默认从 hi2shark/santaizi-agent 下载，可通过 SANTAIZI_AGENT_REPO 覆盖
+#   默认从 santaizi-group/santaizi-agent 下载，可通过 SANTAIZI_AGENT_REPO 覆盖
 #========================================================
 
 SANTAIZI_BASE_PATH="/opt/santaizi"
@@ -13,7 +13,7 @@ green='\033[0;32m'
 yellow='\033[0;33m'
 plain='\033[0m'
 
-SANTAIZI_AGENT_REPO="${SANTAIZI_AGENT_REPO:-hi2shark/santaizi-agent}"
+SANTAIZI_AGENT_REPO="${SANTAIZI_AGENT_REPO:-santaizi-group/santaizi-agent}"
 CLEAN_INSTALL=0
 CLEAN_INSTALL_CONFIRMED=0
 

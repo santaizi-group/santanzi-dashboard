@@ -4,7 +4,7 @@
 
 set -eu
 
-SANTAIZI_UPGRADE_SCRIPT_URL="${SANTAIZI_UPGRADE_SCRIPT_URL:-https://raw.githubusercontent.com/hi2shark/santaizi-dashboard/master/script/upgrade_agent.sh}"
+SANTAIZI_UPGRADE_SCRIPT_URL="${SANTAIZI_UPGRADE_SCRIPT_URL:-https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade_agent.sh}"
 SANTAIZI_UPGRADE_TMP="$(mktemp -t santaizi-agent-upgrade.XXXXXX)"
 trap 'rm -f "$SANTAIZI_UPGRADE_TMP"' EXIT HUP INT TERM
 

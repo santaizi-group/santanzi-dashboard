@@ -3,14 +3,14 @@
 #========================================================
 #   Santaizi Agent upgrade script
 #   Replaces the binary and restarts the service; keeps config, identity, and WAL
-#   Default repo: hi2shark/santaizi-agent, override via SANTAIZI_AGENT_REPO
+#   Default repo: santaizi-group/santaizi-agent, override via SANTAIZI_AGENT_REPO
 #========================================================
 
 SANTAIZI_BASE_PATH="/opt/santaizi"
 SANTAIZI_AGENT_PATH="${SANTAIZI_AGENT_PATH:-${SANTAIZI_BASE_PATH}/agent}"
 SANTAIZI_AGENT_BIN="${SANTAIZI_AGENT_PATH}/santaizi-agent"
 SANTAIZI_AGENT_CONFIG="${SANTAIZI_AGENT_CONFIG:-/etc/santaizi/agent.yaml}"
-SANTAIZI_AGENT_REPO="${SANTAIZI_AGENT_REPO:-hi2shark/santaizi-agent}"
+SANTAIZI_AGENT_REPO="${SANTAIZI_AGENT_REPO:-santaizi-group/santaizi-agent}"
 
 red='\033[0;31m'
 green='\033[0;32m'
