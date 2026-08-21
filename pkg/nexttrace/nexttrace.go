@@ -145,7 +145,7 @@ func compactError(msg string) string {
 }
 
 func runCommand(ctx context.Context, bin string, args []string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, bin, args...)
+	cmd := exec.CommandContext(ctx, bin, args...) // #nosec G204 -- bin resolved via ResolveBinary, args built internally
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

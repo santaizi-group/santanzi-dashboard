@@ -16,7 +16,6 @@ export interface Bootstrap {
   version: string;
   csrf_token?: string;
   logo_url: string;
-  background_url?: string;
   footer_text?: string;
   primary_color?: string;
   custom_css?: string;

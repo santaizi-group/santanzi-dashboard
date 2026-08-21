@@ -114,7 +114,6 @@ SANTAIZI_GEOIP_DB=/var/lib/santaizi-dashboard/country.mmdb
 | `site.primarycolor` | `#2563eb` | ServerStatus 品牌色 |
 | `site.footertext` | `""` | 公开站页脚文字 |
 | `site.logourl` | `/static/logo.svg` | 本地或 data image Logo |
-| `site.backgroundurl` | ServerStatus 背景 | 本地或 data image 背景 |
 | `site.safecustomcss` | `""` | 受限 CSS；禁止远程和可执行规则 |
 | `web.delivery` | `embedded` | `embedded` 或同域反向代理下的 `external` |
 

@@ -14,7 +14,7 @@ const dbStatus = ref<DatabaseStatus | null>(null)
 const form = reactive<Record<string, unknown>>({
   site_title: '三太子监控', language: 'zh-CN', view_password: '', view_password_configured: false, clear_view_password: false,
   grpc_host: '', proxy_grpc_port: 0, tls: false, nameservers: [], show_availability_guest: true,
-  primary_color: '#2563eb', footer_text: '', logo_url: '/static/logo.svg', background_url: '', custom_css: '', theme: 'server-status',
+  primary_color: '#2563eb', footer_text: '', logo_url: '/static/logo.svg', custom_css: '', theme: 'server-status',
   allow_frontend_theme_switch: true, primary_location: '',
 })
 const dbLabel = computed(() => {
@@ -110,10 +110,10 @@ onUnmounted(stopPoll)
         </el-form-item>
         <el-form-item :label="t('grpcHost')"><el-input v-model="form.grpc_host"/></el-form-item>
         <el-form-item :label="t('grpcProxyPort')"><el-input v-model.number="form.proxy_grpc_port" inputmode="numeric" :placeholder="t('grpcProxyPortPlaceholder')" style="width:100%"/></el-form-item>
-        <el-form-item :label="t('grpcTLS')"><el-switch v-model="form.tls"/></el-form-item>
         <el-form-item :label="t('primaryLocation')"><LocationPicker :model-value="String(form.primary_location || '')" @update:model-value="form.primary_location = $event"/></el-form-item>
-        <el-form-item class="span-2" :label="t('nameservers')"><el-select v-model="form.nameservers" multiple allow-create filterable style="width:100%"/></el-form-item>
+        <el-form-item :label="t('grpcTLS')"><el-switch v-model="form.tls"/></el-form-item>
         <el-form-item :label="t('showAvailabilityGuest')"><el-switch v-model="form.show_availability_guest"/></el-form-item>
+        <el-form-item class="span-2" :label="t('nameservers')"><el-select v-model="form.nameservers" multiple allow-create filterable style="width:100%"/></el-form-item>
       </div>
     </section>
     <section class="surface settings-section">
@@ -125,11 +125,10 @@ onUnmounted(stopPoll)
             <el-option :label="t('themeNazhua')" value="nazhua"/>
           </el-select>
         </el-form-item>
+        <el-form-item :label="t('logoURL')"><el-input v-model="form.logo_url"/></el-form-item>
         <el-form-item :label="t('allowFrontendThemeSwitch')"><el-switch v-model="form.allow_frontend_theme_switch"/></el-form-item>
         <el-form-item :label="t('primaryColor')"><el-color-picker v-model="form.primary_color"/></el-form-item>
-        <el-form-item :label="t('footerText')"><el-input v-model="form.footer_text"/></el-form-item>
-        <el-form-item :label="t('logoURL')"><el-input v-model="form.logo_url"/></el-form-item>
-        <el-form-item :label="t('backgroundURL')"><el-input v-model="form.background_url"/></el-form-item>
+        <el-form-item class="span-2" :label="t('footerText')"><el-input v-model="form.footer_text"/></el-form-item>
         <el-form-item class="span-2" :label="t('customCSS')"><el-input v-model="form.custom_css" type="textarea" :rows="8" class="mono"/><small>{{ t('safeCSSRules') }}</small></el-form-item>
       </div>
     </section>

@@ -2176,8 +2176,6 @@ components:
           type: string
         logo_url:
           type: string
-        background_url:
-          type: string
         footer_text:
           type: string
         primary_color:

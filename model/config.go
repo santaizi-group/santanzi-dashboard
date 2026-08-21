@@ -65,7 +65,6 @@ type SiteConfig struct {
 	PrimaryColor        string
 	FooterText          string
 	LogoURL             string
-	BackgroundURL       string
 	SafeCustomCSS       string
 	PrimaryLocation     string // 主面板在地球上的位置：ISO2 或 "lat,lon"
 }
@@ -297,9 +296,6 @@ func (c *Config) Read(path string) error {
 	}
 	if c.Site.LogoURL == "" {
 		c.Site.LogoURL = "/static/logo.svg"
-	}
-	if c.Site.BackgroundURL == "" {
-		c.Site.BackgroundURL = "/static/theme-server-status/img/bg.jpg"
 	}
 	if c.Web.Delivery == "" {
 		c.Web.Delivery = "embedded"

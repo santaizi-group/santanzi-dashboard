@@ -55,7 +55,7 @@ const zhCN = {
   optimizeDatabase: '优化数据库', optimizeDatabaseConfirm: '将删除过期探测数据，必要时压缩文件并短暂停写，确认继续吗？', optimizeDatabaseStarted: '已开始优化', optimizeDatabaseDone: '优化完成',
   notifyRecovery: '发送恢复通知', showAvailabilityGuest: '向访客展示可用性', telemetryNotifications: '探测通知', connectivityNotification: '连通性降级通知',
   correctionNotification: '历史修正通知', collectorOfflineNotification: '从端离线通知', collectorOnlineNotification: '从端上线通知', dataLossNotification: '数据丢失通知', plainIPInNotification: '通知中显示完整 IP', appearance: '外观定制',
-  primaryColor: '品牌主色', footerText: '页脚文字', logoURL: 'Logo 地址', backgroundURL: '背景地址', customCSS: '受限自定义 CSS', deprecatedCode: '自定义代码已停用',
+  primaryColor: '品牌主色', footerText: '页脚文字', logoURL: 'Logo 地址', customCSS: '受限自定义 CSS', deprecatedCode: '自定义代码已停用',
   tokenNote: 'Token 备注', issueToken: '签发 Token', apiDocs: '接口文档', apiDocHint: '在独立接口文档中查看完整 OpenAPI 和调用示例。',
   tokenPermission: '权限', tokenReadOnly: '只读', tokenWrite: '操作', tokenExpiresAt: '有效期', tokenNeverExpires: '永不过期',
   tokenExpiry7d: '7 天', tokenExpiry30d: '30 天', tokenExpiry90d: '90 天', tokenExpiry365d: '365 天', tokenExpiryCustom: '自定义',
@@ -285,7 +285,7 @@ const enUS = {
   optimizeDatabase: 'Optimize database', optimizeDatabaseConfirm: 'Expired probe data will be deleted. Compacting may briefly pause writes. Continue?', optimizeDatabaseStarted: 'Optimization started', optimizeDatabaseDone: 'Optimization finished',
   showAvailabilityGuest: 'Show availability to guests', telemetryNotifications: 'Probe notifications', connectivityNotification: 'Connectivity degradation', correctionNotification: 'History corrections',
   collectorOfflineNotification: 'Collector offline', collectorOnlineNotification: 'Collector online', dataLossNotification: 'Probe data loss', plainIPInNotification: 'Show full IP in notifications', appearance: 'Appearance', primaryColor: 'Primary color', footerText: 'Footer text',
-  logoURL: 'Logo URL', backgroundURL: 'Background URL', customCSS: 'Restricted custom CSS', deprecatedCode: 'Custom code is disabled', tokenNote: 'Token note', issueToken: 'Issue token',
+  logoURL: 'Logo URL', customCSS: 'Restricted custom CSS', deprecatedCode: 'Custom code is disabled', tokenNote: 'Token note', issueToken: 'Issue token',
   tokenPermission: 'Permission', tokenReadOnly: 'Read-only', tokenWrite: 'Operational', tokenExpiresAt: 'Expires', tokenNeverExpires: 'Never expires',
   tokenExpiry7d: '7 days', tokenExpiry30d: '30 days', tokenExpiry90d: '90 days', tokenExpiry365d: '365 days', tokenExpiryCustom: 'Custom',
   tokenExpired: 'Expired', copyToken: 'Copy token', issueTokenSuccess: 'Token issued',
@@ -537,7 +537,7 @@ const editorEsES = {
 
 const commonZhTW = {
   appName: '三太子監控', actions: '操作', address: '位址', listenPort: '監聽連接埠', accessPort: '訪問連接埠', adminNavigation: '管理後台導覽', alerts: '探測警報', apiDocs: '介面文件', apiTokens: '介面令牌', appearance: '外觀自訂',
-  availability: '可用性', availabilityRate: '可用率', averageLatency: '平均延遲', backHome: '返回總覽', backgroundURL: '背景位址', batchDelete: '批次刪除', batchGroup: '批次修改分組', bindDomain: '綁定網域',
+  availability: '可用性', availabilityRate: '可用率', averageLatency: '平均延遲', backHome: '返回總覽', batchDelete: '批次刪除', batchGroup: '批次修改分組', bindDomain: '綁定網域',
   bodyForm: '表單', bodyJSON: 'JSON', cancel: '取消', checkInterval: '檢測間隔（秒）', cleanupHistory: '清理逾期歷史', cleanupHistoryConfirm: '將依目前保留策略刪除已結束的逾期離線歷史，確定繼續嗎？', cleanupHistoryResult: '已清理 {count} 筆歷史',
   optimizeDatabase: '優化資料庫', optimizeDatabaseConfirm: '將刪除過期探測資料，必要時壓縮檔案並短暫停止寫入，確定繼續嗎？', optimizeDatabaseStarted: '已開始優化', optimizeDatabaseDone: '優化完成',
   clearGroup: '清空分組', clearGroupConfirm: '清空後伺服器將回到未分組，確定繼續嗎？', clearPassword: '清除密碼', close: '關閉', closeNavigation: '關閉導覽', collapse: '收起導覽', collectorOfflineNotification: '從端離線通知', collectorOnlineNotification: '從端上線通知', collector_offline: '從端離線', collector_online: '從端上線', collectorVersion: '從端版本', configVersion: '設定版本', confirm: '確認', confirmAction: '確定執行此操作嗎？',
@@ -579,7 +579,7 @@ const commonZhTW = {
 
 const commonEsES = {
   accessPassword: 'Contraseña del sitio público', actions: 'Acciones', address: 'Dirección', listenPort: 'Puerto de escucha', accessPort: 'Puerto de acceso', adminNavigation: 'Navegación de administración', agentDelivery: 'Estado del agente', apiDocs: 'Documentación de la API', apiTokens: 'Tokens de API',
-  appearance: 'Apariencia', availabilityRate: 'Tasa de disponibilidad', averageLatency: 'Latencia media', backHome: 'Volver al resumen', backgroundURL: 'URL del fondo', batchDelete: 'Eliminar selección', batchGroup: 'Cambiar grupo', bindDomain: 'Dominio vinculado', bodyForm: 'Formulario', bodyJSON: 'JSON',
+  appearance: 'Apariencia', availabilityRate: 'Tasa de disponibilidad', averageLatency: 'Latencia media', backHome: 'Volver al resumen', batchDelete: 'Eliminar selección', batchGroup: 'Cambiar grupo', bindDomain: 'Dominio vinculado', bodyForm: 'Formulario', bodyJSON: 'JSON',
   checkInterval: 'Intervalo de comprobación (s)', cleanupHistory: 'Limpiar historial caducado', cleanupHistoryConfirm: 'Se eliminará el historial sin conexión caducado según la política de retención. ¿Continuar?', cleanupHistoryResult: 'Se eliminaron {count} registros',
   optimizeDatabase: 'Optimizar base de datos', optimizeDatabaseConfirm: 'Se eliminarán datos de sondeo caducados. Compactar puede pausar escrituras un momento. ¿Continuar?', optimizeDatabaseStarted: 'Optimización iniciada', optimizeDatabaseDone: 'Optimización terminada',
   clearGroup: 'Vaciar grupo', clearGroupConfirm: 'Los servidores de este grupo quedarán sin agrupar. ¿Continuar?', clearPassword: 'Borrar contraseña', close: 'Cerrar', closeNavigation: 'Cerrar navegación', collapse: 'Contraer navegación', collectorOfflineNotification: 'Aviso de recolector sin conexión', collectorOnlineNotification: 'Aviso de recolector en línea', collector_offline: 'Recolector sin conexión', collector_online: 'Recolector en línea', collectorVersion: 'Versión del recolector', configVersion: 'Versión de configuración', confirm: 'Confirmar',

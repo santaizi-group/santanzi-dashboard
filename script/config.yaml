@@ -14,7 +14,6 @@ site:
   cookiename: "santaizi-dashboard" #浏览器 Cookie 字段名，可不改
   primarycolor: "#2563eb"
   logourl: "/static/logo.svg"
-  backgroundurl: "/static/theme-server-status/img/bg.jpg"
 web:
   delivery: "embedded" # external 仅用于同域反向代理托管已构建 SPA
 telemetry:

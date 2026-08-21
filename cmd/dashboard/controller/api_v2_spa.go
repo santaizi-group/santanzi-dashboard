@@ -264,8 +264,8 @@ func v2PublicBootstrap(c *gin.Context) {
 	_, verified := c.Get(model.CtxKeyViewPasswordVerified)
 	writeV2Data(c, http.StatusOK, gin.H{
 		"brand": singleton.Conf.Site.Brand, "locale": singleton.Conf.Language, "version": singleton.Version,
-		"csrf_token": mygin.CSRFToken(c),
-		"logo_url":   safeAssetURL(singleton.Conf.Site.LogoURL, "/static/logo.svg"), "background_url": safeAssetURL(singleton.Conf.Site.BackgroundURL, "/static/theme-server-status/img/bg.jpg"),
+		"csrf_token":  mygin.CSRFToken(c),
+		"logo_url":    safeAssetURL(singleton.Conf.Site.LogoURL, "/static/logo.svg"),
 		"footer_text": singleton.Conf.Site.FooterText, "primary_color": singleton.Conf.Site.PrimaryColor, "custom_css": singleton.Conf.Site.SafeCustomCSS,
 		"requires_view_password": singleton.Conf.Site.ViewPassword != "", "view_password_verified": member || verified,
 		"show_availability": singleton.Conf.ShowAvailabilityToGuest, "authenticated": member,
@@ -1539,7 +1539,7 @@ func v2SettingsDTO() gin.H {
 		"correction_notification": singleton.Conf.Telemetry.EnableCorrectionNotification, "collector_offline_notification": singleton.Conf.Telemetry.EnableCollectorOfflineNotification,
 		"collector_online_notification": singleton.Conf.Telemetry.EnableCollectorOnlineNotification,
 		"data_loss_notification":        singleton.Conf.Telemetry.EnableDataLossNotification, "primary_color": singleton.Conf.Site.PrimaryColor, "footer_text": singleton.Conf.Site.FooterText,
-		"logo_url": singleton.Conf.Site.LogoURL, "background_url": singleton.Conf.Site.BackgroundURL, "custom_css": singleton.Conf.Site.SafeCustomCSS,
+		"logo_url": singleton.Conf.Site.LogoURL, "custom_css": singleton.Conf.Site.SafeCustomCSS,
 		"primary_location": singleton.Conf.Site.PrimaryLocation,
 		"theme":            model.NormalizePublicTheme(singleton.Conf.Site.Theme), "allow_frontend_theme_switch": !singleton.Conf.DisableSwitchTemplateInFrontend,
 		"retention": snakeValue(singleton.Conf.Retention), "web_delivery": singleton.Conf.Web.Delivery,
@@ -1698,14 +1698,6 @@ func v2UpdateSettings(c *gin.Context) {
 			return
 		}
 		singleton.Conf.Site.LogoURL = candidate
-	}
-	if value, exists := body["background_url"]; exists {
-		candidate := stringValue(value)
-		if candidate != "" && safeAssetURL(candidate, "") == "" {
-			writeV2Problem(c, 400, "unsafe_asset_url", "背景只允许 /static/ 或 data:image/ 地址")
-			return
-		}
-		singleton.Conf.Site.BackgroundURL = candidate
 	}
 	if value, exists := body["custom_css"]; exists {
 		css := fmt.Sprint(value)

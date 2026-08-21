@@ -1726,7 +1726,6 @@ type BatchServerGroupWrite struct {
 type Bootstrap struct {
 	AllowFrontendThemeSwitch *bool           `json:"allow_frontend_theme_switch,omitempty"`
 	Authenticated            bool            `json:"authenticated"`
-	BackgroundUrl            *string         `json:"background_url,omitempty"`
 	Brand                    string          `json:"brand"`
 	CsrfToken                *string         `json:"csrf_token,omitempty"`
 	CustomCss                *string         `json:"custom_css,omitempty"`
