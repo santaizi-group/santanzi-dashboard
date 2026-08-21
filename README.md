@@ -131,4 +131,4 @@ curl -fsSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/m
 - **OAuth 登录失败 / redirect_uri mismatch**：提供商控制台的回调必须是 `https://<面板域名>/oauth2/callback`，不能只填首页；反向代理须转发 `/oauth2` 并带上 `Host` 与 `X-Forwarded-Proto`。
 - **登录后没有管理员权限**：确认 `oauth2.admin` 填写的是 OAuth2 平台返回的用户名/ID。
 
-可靠探测、从端部署、保留策略和升级顺序见 [可靠探测运维指南](docs/reliable-telemetry.md)。本版本只接受全新数据库；若数据库非空且没有 `schema_migrations`，进程会拒绝启动并保留原文件供诊断。
+可靠探测、从端部署、探测型路由（须自备 nexttrace）、保留策略和升级顺序见 [可靠探测运维指南](docs/reliable-telemetry.md)。本版本只接受全新数据库；若数据库非空且没有 `schema_migrations`，进程会拒绝启动并保留原文件供诊断。

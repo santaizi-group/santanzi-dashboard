@@ -111,11 +111,15 @@ async function submit() {
   }
   saving.value = true
   try {
-    await importServersBackup({
+    const result = await importServersBackup({
       document: props.document,
       actions: props.items.map(row => ({ index: row.index, action: actions[row.index] ?? row.suggested_action })),
     })
-    ElMessage.success(t('importSuccess'))
+    if (result.secrets_regenerated) {
+      ElMessage.success(t('importSuccessSecretsRegenerated', { n: result.secrets_regenerated }))
+    } else {
+      ElMessage.success(t('importSuccess'))
+    }
     emit('applied')
     emit('update:modelValue', false)
   } catch (error) {
@@ -139,6 +143,7 @@ async function submit() {
           <div class="import-name">
             <strong>{{ row.name }}</strong>
             <small v-if="row.warnings.includes('ddns_profiles_skipped')">{{ t('importWarningDdns') }}</small>
+            <small v-if="row.warnings.includes('secret_conflict')">{{ t('importWarningSecretConflict') }}</small>
           </div>
         </template>
       </el-table-column>

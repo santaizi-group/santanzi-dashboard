@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page, type Route } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
 
 const list = (data: unknown[] = []) => JSON.stringify({ data, meta: { page: 1, page_size: 20, total: data.length } })
 const item = (data: unknown) => JSON.stringify({ data })
@@ -133,7 +134,7 @@ test('exports and imports host backups from host management', async ({ page }) =
   await page.route('**/api/v2/admin/servers/export', route => fulfillJSON(route, item({
     format: 'santaizi.servers.v1',
     exported_at: '2026-08-20T00:00:00Z',
-    servers: [{ name: 'edge-a', tag: 'edge', traffic_policies: [] }],
+    servers: [{ name: 'edge-a', tag: 'edge', traffic_policies: [], secret: 'reusable-secret' }],
   })))
   await page.route('**/api/v2/admin/servers/import/preview', route => fulfillJSON(route, item({
     items: [
@@ -152,8 +153,14 @@ test('exports and imports host backups from host management', async ({ page }) =
 
   const downloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: '导出' }).click()
+  const exportBox = page.getByRole('dialog').filter({ hasText: '探针认证密钥' })
+  await expect(exportBox).toBeVisible()
+  await exportBox.getByRole('button', { name: '确认' }).click()
   const download = await downloadPromise
   expect(download.suggestedFilename()).toMatch(/^santaizi-servers-\d{8}\.json$/)
+  const downloadPath = await download.path()
+  expect(downloadPath).toBeTruthy()
+  expect(await readFile(downloadPath!, 'utf8')).toContain('reusable-secret')
 
   await page.getByRole('button', { name: '导入' }).click()
   await page.locator('input[type="file"]').setInputFiles({
@@ -484,6 +491,29 @@ test('collector and API token credentials can be viewed again by stable identifi
   await page.goto('/admin/api-tokens')
   await clickVisibleRowAction(page, '查看 Token')
   await expect(page.getByRole('dialog', { name: 'Token' }).locator('input')).toHaveValue('reusable-api-token')
+})
+
+test('probe collector hides observer replication stats', async ({ page }) => {
+  await page.route('**/api/v2/admin/telemetry/collectors**', route => fulfillJSON(route, list([
+    {
+      id: 'collector-1', name: 'Tokyo edge', address: 'observer.example.com:5555', listen_port: 5556, tls: true,
+      generation: 1, config_version: 1, status: 'online', revoked: false, kind: 'observer',
+      connected_agents: 31, pending_records: 6, spool_size: 646, last_seen: '2026-08-21T13:05:07Z',
+    },
+    {
+      id: 'collector-2', name: 'LAX probe', address: '', tls: false, generation: 1, config_version: 1,
+      status: 'online', revoked: false, kind: 'probe', connected_agents: 0, pending_records: 8072,
+      spool_size: 726528, last_seen: '2026-08-21T13:05:07Z',
+    },
+  ])))
+  await page.goto('/admin/telemetry')
+  const table = page.locator('.el-table').filter({ visible: true })
+  await expect(table.getByText('观测型')).toBeVisible()
+  await expect(table.getByText('探测型')).toBeVisible()
+  await expect(table.getByText('31', { exact: true })).toBeVisible()
+  await expect(table.getByText('6', { exact: true })).toBeVisible()
+  await expect(table).not.toContainText('8072')
+  await expect(table).not.toContainText('709.5')
 })
 
 test('admin sidebar shows panel version', async ({ page }) => {

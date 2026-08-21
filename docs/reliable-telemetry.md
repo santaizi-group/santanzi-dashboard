@@ -33,6 +33,21 @@ Santaizi 采用单 Primary 控制面与多从端（Collector）探测面。探�
 
 一键安装脚本：[`script/install_collector.sh`](../script/install_collector.sh)。
 
+## 探测型从端路由
+
+探测型从端（创建时类型选探测型）在 ICMP / TCP / MTR 之外，可对目标跑超低频路由。管理后台探测从端编辑器里设置间隔（1 小时 / 1 天 / 1 周，默认 1 天）和保留次数（默认 10）。探针观察详情「路由」tab 查看最近记录，也可按需再跑一次。只跟该主机与从端的 ICMP / TCP 开关；关 ICMP 不跑 ICMP 路由，关 TCP 不跑 TCP 路由，与 MTR 开关无关。Ping 与自研 MTR 不依赖 nexttrace。
+
+路由在从端本机 `exec` [nexttrace](https://github.com/nxtrace/NTrace-core) 二进制，**GHCR 镜像不内置**。找不到可执行文件时该次路由记错误、不出跳点，不影响 ping / MTR。二进制由运营自备，许可边界见 [`NOTICE`](../NOTICE)。路径不要写进管理后台表单。
+
+配置项 `collector.nexttrace_path`（环境变量 `SANTAIZI_COLLECTOR_NEXTTRACE_PATH`）：
+
+- 空：在容器 PATH 依次找 `nexttrace`、`nexttrace-tiny`
+- 非空：必须是绝对路径且可执行；**不**再回退 PATH
+
+一键安装在首次安装或带 `--token` 重写配置时，若宿主机 PATH 有上述二者之一，会只读挂到 `/opt/nexttrace/nexttrace` 并写入配置。升级且不传 `--token` 不改现有挂载；之后才安装 nexttrace 须手动改 compose，或带 `--token` 重写。
+
+从端镜像基于 musl。把宿主机 glibc 动态链接的 nexttrace 挂进去可能无法执行，该次路由同样记错误。请使用与容器 ABI 匹配的静态或 musl 构建。单次超时约 45 秒，从端同时只跑一条。
+
 ## 可用性语义
 
 每个 30 秒 Bucket 根据当时有效 Assignment 计算 expected，以 Observer Health 计算 healthy，以 Observation 计算 seen：

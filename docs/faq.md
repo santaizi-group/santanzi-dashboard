@@ -46,6 +46,20 @@ Collector 另需备份其 `collector.db` 和凭证主密钥。Agent 的 `/var/li
 
 ---
 
+## 从端
+
+### Q: 探针观察「路由」没有跳点
+
+A: 路由要在探测型从端本机执行 nexttrace，GHCR 镜像不带这个二进制。确认：
+
+1. 从端类型是探测型，且该主机与从端的 ICMP 或 TCP 已打开（关哪路就不跑哪路；与 MTR 开关无关）
+2. 容器内能执行 `collector.nexttrace_path` 指向的文件，或 PATH 上有 `nexttrace` / `nexttrace-tiny`
+3. 镜像是 musl：宿主机 glibc 动态链接的 nexttrace 挂进去可能跑不起来
+
+找不到可执行文件或 ABI 不匹配时，该次路由会记错误，ping / MTR 仍正常。安装与路径见 [可靠探测运维指南](reliable-telemetry.md#探测型从端路由)。
+
+---
+
 ## Agent
 
 ### Q: Agent 安装后没有上线

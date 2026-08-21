@@ -283,3 +283,29 @@ func TestMigrateV7AddsCachedMTRProbes(t *testing.T) {
 		t.Fatalf("version = %d", version)
 	}
 }
+
+func TestDiscardOutboxClearsHealthBacklog(t *testing.T) {
+	store := openTestStore(t)
+	if err := store.RecordHealth(context.Background(), &pb.ObserverHealthSample{
+		ObserverId: "probe-a", SampledAtUnixNano: time.Now().UnixNano(), Healthy: true, ProcessSession: "sess",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	stats, err := store.RuntimeStats(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.Pending != 1 || stats.SpoolBytes == 0 {
+		t.Fatalf("pending=%d spool=%d", stats.Pending, stats.SpoolBytes)
+	}
+	if err := store.DiscardOutbox(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	stats, err = store.RuntimeStats(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.Pending != 0 || stats.SpoolBytes != 0 || stats.OldestPending != 0 {
+		t.Fatalf("after discard pending=%d spool=%d oldest=%d", stats.Pending, stats.SpoolBytes, stats.OldestPending)
+	}
+}

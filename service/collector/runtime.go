@@ -131,6 +131,7 @@ func (r *Runtime) AgentCAPool() *x509.CertPool {
 }
 
 func (r *Runtime) Start() {
+	r.discardProbeOutbox()
 	r.wg.Add(5)
 	go r.syncLoop()
 	go r.replicationLoop()
@@ -233,6 +234,7 @@ func (r *Runtime) syncOnce() error {
 				}
 				if config.GetKind() == pb.CollectorKind_COLLECTOR_KIND_PROBE {
 					r.setKind(model.CollectorKindProbe)
+					r.discardProbeOutbox()
 				} else {
 					r.setKind(model.CollectorKindObserver)
 				}
@@ -422,6 +424,15 @@ func nextReplicationRetry(current time.Duration) time.Duration {
 	}
 }
 
+func (r *Runtime) discardProbeOutbox() {
+	if r.store == nil || !r.isProbe() {
+		return
+	}
+	if err := r.store.DiscardOutbox(r.ctx); err != nil {
+		fmt.Printf("SANTAIZI>> discard probe collector outbox: %v\n", err)
+	}
+}
+
 func (r *Runtime) healthLoop() {
 	defer r.wg.Done()
 	ticker := time.NewTicker(30 * time.Second)
@@ -431,6 +442,10 @@ func (r *Runtime) healthLoop() {
 		case <-r.ctx.Done():
 			return
 		case sampledAt := <-ticker.C:
+			if r.isProbe() {
+				r.discardProbeOutbox()
+				continue
+			}
 			r.mu.RLock()
 			observerID := r.collectorUUID
 			r.mu.RUnlock()
@@ -554,6 +569,15 @@ func (r *Runtime) runtimeSnapshot() *pb.CollectorRuntime {
 	}
 	if cache != nil {
 		runtime.LastPrimarySeenUnixNano = cache.LastPrimarySeenNano
+	}
+	if r.isProbe() {
+		runtime.SpoolSize = 0
+		runtime.PendingRecords = 0
+		runtime.OldestPendingUnixNano = 0
+		runtime.ReplicationCursor = 0
+		runtime.ReplicationRttMs = 0
+		runtime.ReplicationRttSampledAtUnixNano = 0
+		runtime.ConnectedAgents = 0
 	}
 	return runtime
 }

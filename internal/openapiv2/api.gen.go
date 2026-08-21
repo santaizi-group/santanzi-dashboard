@@ -2720,7 +2720,7 @@ type ServerBackupItem struct {
 	ProbeTcpPorts     *string            `json:"probe_tcp_ports,omitempty"`
 	PublicNote        *PublicNote        `json:"public_note,omitempty"`
 
-	// Secret 禁止出现。若存在则整份备份被拒绝。
+	// Secret 探针认证密钥明文；新建时若未冲突会直接复用，留空则自动生成。
 	Secret          *string               `json:"secret,omitempty"`
 	Tag             *string               `json:"tag,omitempty"`
 	TrafficPolicies *[]TrafficPolicyWrite `json:"traffic_policies,omitempty"`
@@ -2820,9 +2820,11 @@ type ServerImportPreviewItem struct {
 
 // ServerImportResult defines model for ServerImportResult.
 type ServerImportResult struct {
-	Created     int `json:"created"`
-	Overwritten int `json:"overwritten"`
-	Skipped     int `json:"skipped"`
+	Created            int  `json:"created"`
+	Overwritten        int  `json:"overwritten"`
+	SecretsRegenerated *int `json:"secrets_regenerated,omitempty"`
+	SecretsReused      *int `json:"secrets_reused,omitempty"`
+	Skipped            int  `json:"skipped"`
 }
 
 // ServerImportWrite defines model for ServerImportWrite.

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hi2shark/santaizi-dashboard/model"
 	pb "github.com/hi2shark/santaizi-dashboard/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -130,5 +131,27 @@ func TestMatchIngestCertificateRequiresAgentWhenForced(t *testing.T) {
 	runtime.forceAgentIngest = false
 	if err := runtime.matchIngestCertificate(context.Background(), node, node); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestProbeRuntimeOmitsOutboxStats(t *testing.T) {
+	store := openTestStore(t)
+	if err := store.RecordHealth(context.Background(), &pb.ObserverHealthSample{
+		ObserverId: "probe-a", SampledAtUnixNano: time.Now().UnixNano(), Healthy: true, ProcessSession: "sess",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	runtime := &Runtime{store: store, ctx: context.Background(), collectorUUID: "probe-a", kind: model.CollectorKindProbe}
+	snap := runtime.runtimeSnapshot()
+	if snap.GetPendingRecords() != 0 || snap.GetSpoolSize() != 0 || snap.GetOldestPendingUnixNano() != 0 || snap.GetConnectedAgents() != 0 {
+		t.Fatalf("probe snapshot pending=%d spool=%d oldest=%d agents=%d", snap.GetPendingRecords(), snap.GetSpoolSize(), snap.GetOldestPendingUnixNano(), snap.GetConnectedAgents())
+	}
+	runtime.discardProbeOutbox()
+	stats, err := store.RuntimeStats(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.Pending != 0 || stats.SpoolBytes != 0 {
+		t.Fatalf("discard left pending=%d spool=%d", stats.Pending, stats.SpoolBytes)
 	}
 }

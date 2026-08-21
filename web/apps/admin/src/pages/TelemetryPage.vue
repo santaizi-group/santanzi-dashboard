@@ -226,13 +226,13 @@ onMounted(async () => {
           <template #default="{row}">{{ pretty(row.last_seen, 'last_seen') }}</template>
         </el-table-column>
         <el-table-column :label="t('connectedAgents')" width="120">
-          <template #default="{row}">{{ pretty(row.connected_agents, 'connected_agents') }}</template>
+          <template #default="{row}">{{ isProbeCollector(row) ? '—' : pretty(row.connected_agents, 'connected_agents') }}</template>
         </el-table-column>
         <el-table-column :label="t('pendingRecords')" width="120">
-          <template #default="{row}">{{ pretty(row.pending_records, 'pending_records') }}</template>
+          <template #default="{row}">{{ isProbeCollector(row) ? '—' : pretty(row.pending_records, 'pending_records') }}</template>
         </el-table-column>
         <el-table-column :label="t('spoolSize')" width="120">
-          <template #default="{row}">{{ pretty(row.spool_size, 'spool_size') }}</template>
+          <template #default="{row}">{{ isProbeCollector(row) ? '—' : pretty(row.spool_size, 'spool_size') }}</template>
         </el-table-column>
         <el-table-column :label="t('actions')" width="72" fixed="right">
           <template #default="{row}">
@@ -288,9 +288,9 @@ onMounted(async () => {
               <div><dt>{{ t('configVersion') }}</dt><dd>{{ row.config_version }}</dd></div>
               <div><dt>{{ t('collectorVersion') }}</dt><dd>{{ collectorVersionText(row) }}</dd></div>
               <div><dt>{{ t('lastSeen') }}</dt><dd>{{ pretty(row.last_seen, 'last_seen') }}</dd></div>
-              <div><dt>{{ t('connectedAgents') }}</dt><dd>{{ pretty(row.connected_agents, 'connected_agents') }}</dd></div>
-              <div><dt>{{ t('pendingRecords') }}</dt><dd>{{ pretty(row.pending_records, 'pending_records') }}</dd></div>
-              <div><dt>{{ t('spoolSize') }}</dt><dd>{{ pretty(row.spool_size, 'spool_size') }}</dd></div>
+              <div><dt>{{ t('connectedAgents') }}</dt><dd>{{ isProbeCollector(row) ? '—' : pretty(row.connected_agents, 'connected_agents') }}</dd></div>
+              <div><dt>{{ t('pendingRecords') }}</dt><dd>{{ isProbeCollector(row) ? '—' : pretty(row.pending_records, 'pending_records') }}</dd></div>
+              <div><dt>{{ t('spoolSize') }}</dt><dd>{{ isProbeCollector(row) ? '—' : pretty(row.spool_size, 'spool_size') }}</dd></div>
             </dl>
           </article>
         </div>

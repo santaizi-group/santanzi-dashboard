@@ -90,7 +90,7 @@ curl -fsSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/m
   --primary-insecure-tls false
 ```
 
-生成的 `dashboard.yaml` 已带 `collector.primary_tls` / `primary_insecure_tls` 与默认关闭的 `grpc_tls`。连接 Primary 改命令里的 true/false；从端对外 gRPC 要开 TLS 时，把证书放到 `data/pki/server.{crt,key}` 并把 `grpc_tls.enabled` 改为 true。
+生成的 `dashboard.yaml` 已带 `collector.primary_tls` / `primary_insecure_tls` 与默认关闭的 `grpc_tls`。连接 Primary 改命令里的 true/false；从端对外 gRPC 要开 TLS 时，把证书放到 `data/pki/server.{crt,key}` 并把 `grpc_tls.enabled` 改为 true。首次安装（或带 `--token` 重写）时，若宿主机已有 `nexttrace` / `nexttrace-tiny`，脚本会挂进容器供探测型从端做路由；镜像本身不含该二进制。详见 [可靠探测运维指南](reliable-telemetry.md#探测型从端路由)。
 
 已安装的从端可重跑该脚本（不必再传 token）以拉取新镜像并重建容器，配置与数据目录保留。也可使用专用升级脚本，见下文「更新 / 从端」。
 

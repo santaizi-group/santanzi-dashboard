@@ -7,7 +7,7 @@
 | 登录与退出 | `getSession`, `logout` | 顶栏用户与退出、侧栏面板版本 | 会话含 `version`、CSRF 与 SPA 导航 |
 | 服务器 CRUD | `createServer`, `updateServer`, `deleteServer` | `/admin/servers` 专用编辑弹窗与删除 | 公开备注结构化编辑、脏数据关闭确认 |
 | 服务器批量管理 | `batchUpdateServerGroup`, `batchDeleteServers` | 表格多选、批量分组和删除 | 批量请求与危险确认 |
-| 主机配置备份 | `exportServers`, `previewServerImport`, `importServers` | `/admin/servers` 工具栏导出 JSON、导入预览后按名称新建或覆盖 | 导出不含 Secret；导入预览可改动作；覆盖流量策略去 id 全量替换 |
+| 主机配置备份 | `exportServers`, `previewServerImport`, `importServers` | `/admin/servers` 工具栏导出 JSON、导入预览后按名称新建或覆盖 | 导出含明文密钥，下载前二次确认；新建复用未占用密钥，冲突则重新生成；覆盖流量策略去 id 全量替换且不改密钥 |
 | 服务器排序与分组管理 | `updateServerDisplayIndex`, `listServerGroups`, `renameServerGroup` | 列表行内改序、分组管理弹窗、编辑器分组下拉 | 单字段改序与派生 tag 重命名/合并 |
 | 凭据与安装 | `getServerCredential`, `resetServerSecret`, `getProbeCapabilities`, `getServerInstallPreview`, `getServerUpgradePreview` | 密钥查看/复制、分平台能力化安装弹窗、分平台升级命令复制 | 标准·云/标准·物理/轻量/仅存活、IP 位置子选项与清洁安装确认；升级命令不含密钥 |
 | 流量策略 | `createServer`/`updateServer` 可选 `traffic_policies` 原子提交；`listTrafficPolicies`, `createTrafficPolicy`, `updateTrafficPolicy`, `deleteTrafficPolicy`, `getTrafficPolicyUsage`, `getServerTrafficHistory`；`listServers` 附 `traffic_summaries` | 服务器编辑器内多策略卡片，随服务器一次保存；主机列表流量列与历史抽屉流量页签（近 24 小时 / 按天） | 累计/周期策略与用量进度；缺名称不发写请求；后端 400 时服务器未创建；列表无策略不占位；历史按 `tz` 切日界 |
@@ -23,7 +23,7 @@
 | Collector 生命周期 | `createCollector`, `updateCollector`, `getCollectorToken`, `rotateCollectorToken`, `revokeCollector`, `deleteCollector`, `getCollectorInstallPreview` | `/admin/telemetry` 专用编辑弹窗、安装命令与操作菜单；列表展示从端二进制版本 | Token 查看/轮换、安装预览、撤销和删除；`software_version` |
 | Collector Scope | `updateCollectorScope` | All/Server/Group/Tag 类型化范围 | Scope 选择与配置版本更新 |
 | 连接观察 | `getConnectionSummary`, `listConnectionPaths`, `listConnectionLatency`, `listCollectors` | `/admin/connections` 主从卡片与节点卡片（卡内观测点芯片）及延迟抽屉历史；总览连接摘要；主机历史抽屉节点连接页。不含探测型 | 心跳派生从端状态、路径 sink、RTT 最近一次与采样时刻、48h 分钟桶 |
-| 探测型从端 | `createCollector`/`updateCollector` 的 `kind` 与探测配置；`getProbeSummary`, `listProbePaths`, `listProbeSamples`, `getProbeTrace` | `/admin/probes` 探针观察按从端分组卡片；主机历史抽屉探针观察 tab；`/admin/telemetry` 从端编辑器 | 独立 `/api/v2/admin/probes/*`；不混入 connections；无地址不告警；`x-ui-route` `/admin/probes` |
+| 探测型从端 | `createCollector`/`updateCollector` 的 `kind` 与探测配置（含路由间隔/保留次数）；`getProbeSummary`, `listProbePaths`, `listProbeSamples`, `getProbeTrace`, `getProbeRoute`, `createProbeRoute` | `/admin/probes` 探针观察按从端分组卡片；详情弹窗 MTR 与「路由」tab（最近 N 次、按需再跑）；主机历史抽屉探针观察 tab；`/admin/telemetry` 从端编辑器 | 独立 `/api/v2/admin/probes/*`；路由与 MTR 分开展示；不混入 connections；无地址不告警；`x-ui-route` `/admin/probes` |
 | 公开可用性与资源历史 | `getPublicServerAvailability`, `getPublicMetrics` | Nazhua 详情六卡资源曲线（CPU / 内存 / 磁盘 / 进程 / 网速 / TCP·UDP）；可用性受 `show_availability_to_guest` 门控 | 匿名 403、无绑定空 list、rollup Average 序列含进程与连接 |
 | 可靠探测数据 | `listObserverAssignments`, `listAgentReliability`, `listIncidents`, `listIncidentRevisions`, `listTelemetryDataLoss`, `listTelemetryAlerts` | `/admin/telemetry` 六个数据 tab 固定列、只读抽屉与 `page`/`page_size` 翻页 | 解码 sink/证据、RFC3339 时间、分类小写、截断 UUID、列表分页 |
 

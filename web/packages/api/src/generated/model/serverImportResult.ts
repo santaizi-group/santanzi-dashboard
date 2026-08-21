@@ -12,4 +12,6 @@ export interface ServerImportResult {
   created: number;
   overwritten: number;
   skipped: number;
+  secrets_reused?: number;
+  secrets_regenerated?: number;
 }

@@ -431,6 +431,11 @@ func DrainRetention(ctx context.Context, db *gorm.DB, policy RetentionPolicy, no
 			return deleted, err
 		}
 	}
+	if sqliteTableExists(db, "connection_latency_buckets") {
+		if err := add(PruneConnectionLatencyByCount(ctx, db, deadline, batch)); err != nil {
+			return deleted, err
+		}
+	}
 
 	completedMinute := now.Truncate(time.Minute).UnixNano()
 	if sqliteTableExists(db, "telemetry_events") {

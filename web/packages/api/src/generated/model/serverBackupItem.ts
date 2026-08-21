@@ -35,6 +35,9 @@ export interface ServerBackupItem {
   probe_enable_icmp?: boolean;
   probe_enable_tcp?: boolean;
   probe_enable_mtr?: boolean;
-  /** 禁止出现。若存在则整份备份被拒绝。 */
+  /**
+     * 探针认证密钥明文；新建时若未冲突会直接复用，留空则自动生成。
+     * @maxLength 128
+     */
   secret?: string;
 }

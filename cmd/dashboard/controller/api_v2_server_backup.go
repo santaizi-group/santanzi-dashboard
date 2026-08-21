@@ -18,14 +18,16 @@ import (
 const serverBackupFormatV1 = "santaizi.servers.v1"
 
 const (
-	serverImportMatchCreate     = "create"
-	serverImportMatchUpdate     = "update"
-	serverImportMatchUnchanged  = "unchanged"
-	serverImportMatchAmbiguous  = "ambiguous"
-	serverImportActionCreate    = "create"
-	serverImportActionOverwrite = "overwrite"
-	serverImportActionSkip      = "skip"
-	serverImportWarnDDNSSkipped = "ddns_profiles_skipped"
+	serverImportMatchCreate        = "create"
+	serverImportMatchUpdate        = "update"
+	serverImportMatchUnchanged     = "unchanged"
+	serverImportMatchAmbiguous     = "ambiguous"
+	serverImportActionCreate       = "create"
+	serverImportActionOverwrite    = "overwrite"
+	serverImportActionSkip         = "skip"
+	serverImportWarnDDNSSkipped    = "ddns_profiles_skipped"
+	serverImportWarnSecretConflict = "secret_conflict"
+	serverBackupSecretMaxLen       = 128
 )
 
 type serverBackupDocument struct {
@@ -205,14 +207,24 @@ func v2ImportServers(c *gin.Context) {
 		writeV2Problem(c, http.StatusBadRequest, "server_import_conflict", err.Error())
 		return
 	}
+	usedSecrets := snapshotUsedSecrets(snapshot)
 	applied := make([]importedServer, 0, len(planned))
+	var secretsReused, secretsRegenerated int
 	err = singleton.DB.Transaction(func(tx *gorm.DB) error {
 		for _, item := range planned {
-			row, created, persistErr := persistImportedServer(tx, item.existing, item.backup)
+			hadSecret := backupSecret(item.backup) != ""
+			row, created, reused, persistErr := persistImportedServer(tx, item.existing, item.backup, usedSecrets)
 			if persistErr != nil {
 				return persistErr
 			}
 			applied = append(applied, importedServer{server: *row, created: created})
+			if created && hadSecret {
+				if reused {
+					secretsReused++
+				} else {
+					secretsRegenerated++
+				}
+			}
 		}
 		return nil
 	})
@@ -224,7 +236,13 @@ func v2ImportServers(c *gin.Context) {
 		writeV2Problem(c, http.StatusInternalServerError, "assignment_refresh_failed", err.Error())
 		return
 	}
-	writeV2Data(c, http.StatusOK, gin.H{"created": createdN, "overwritten": overwrittenN, "skipped": skippedN})
+	writeV2Data(c, http.StatusOK, gin.H{
+		"created":             createdN,
+		"overwritten":         overwrittenN,
+		"skipped":             skippedN,
+		"secrets_reused":      secretsReused,
+		"secrets_regenerated": secretsRegenerated,
+	})
 }
 
 func loadServerBackupSnapshot() (*serverBackupSnapshot, error) {
@@ -268,9 +286,11 @@ func normalizeServerBackup(document *serverBackupDocument) error {
 	seen := make(map[string]struct{}, len(document.Servers))
 	for i := range document.Servers {
 		item := &document.Servers[i]
-		if item.Secret != nil {
-			return errors.New("backup must not include secrets")
+		secret, err := normalizeBackupSecret(item.Secret)
+		if err != nil {
+			return err
 		}
+		item.Secret = secret
 		item.Name = strings.TrimSpace(item.Name)
 		if item.Name == "" || len(item.Name) > 100 {
 			return errors.New("server name is required")
@@ -308,6 +328,7 @@ func policiesFromBackup(items []trafficPolicyWriteDTO) ([]model.TrafficPolicy, e
 }
 
 func previewServerBackup(document serverBackupDocument, snapshot *serverBackupSnapshot) []serverImportPreviewItem {
+	usedSecrets := snapshotUsedSecrets(snapshot)
 	items := make([]serverImportPreviewItem, 0, len(document.Servers))
 	for index, item := range document.Servers {
 		preview := serverImportPreviewItem{
@@ -327,6 +348,13 @@ func previewServerBackup(document serverBackupDocument, snapshot *serverBackupSn
 			preview.Match = serverImportMatchCreate
 			preview.SuggestedAction = serverImportActionCreate
 			preview.AllowedActions = []string{serverImportActionCreate, serverImportActionSkip}
+			if secret := backupSecret(item); secret != "" {
+				if _, taken := usedSecrets[secret]; taken {
+					preview.Warnings = append(preview.Warnings, serverImportWarnSecretConflict)
+				} else {
+					usedSecrets[secret] = struct{}{}
+				}
+			}
 		case 1:
 			current := matches[0]
 			preview.CurrentID = current.ID
@@ -391,40 +419,56 @@ func planServerImport(document serverBackupDocument, snapshot *serverBackupSnaps
 	return planned, created, overwritten, skipped, nil
 }
 
-func persistImportedServer(tx *gorm.DB, existing *model.Server, item serverBackupItem) (*model.Server, bool, error) {
+func persistImportedServer(tx *gorm.DB, existing *model.Server, item serverBackupItem, usedSecrets map[string]struct{}) (*model.Server, bool, bool, error) {
 	created := existing == nil
 	server := model.Server{}
 	if !created {
 		if err := tx.First(&server, existing.ID).Error; err != nil {
-			return nil, false, err
+			return nil, false, false, err
 		}
 	}
 	if err := applyServerWriteFields(&server, item.asWrite(), created); err != nil {
-		return nil, false, err
+		return nil, false, false, err
 	}
 	policies, err := policiesFromBackup(item.TrafficPolicies)
 	if err != nil {
-		return nil, false, err
+		return nil, false, false, err
 	}
 	for i := range policies {
 		policies[i].ID = 0
 	}
+	reused := false
 	if created {
-		secret, err := utils.GenerateRandomString(18)
-		if err != nil {
-			return nil, false, err
+		if usedSecrets == nil {
+			usedSecrets = map[string]struct{}{}
+		}
+		secret := backupSecret(item)
+		if secret != "" {
+			if _, taken := usedSecrets[secret]; !taken {
+				reused = true
+			} else {
+				secret = ""
+			}
+		}
+		if secret == "" {
+			generated, err := utils.GenerateRandomString(18)
+			if err != nil {
+				return nil, false, false, err
+			}
+			secret = generated
 		}
 		server.Secret = secret
+		usedSecrets[secret] = struct{}{}
 		if err := tx.Create(&server).Error; err != nil {
-			return nil, false, err
+			return nil, false, false, err
 		}
 	} else if err := tx.Save(&server).Error; err != nil {
-		return nil, false, err
+		return nil, false, false, err
 	}
 	if err := trafficservice.Replace(tx, server.ID, policies); err != nil {
-		return nil, false, err
+		return nil, false, false, err
 	}
-	return &server, created, nil
+	return &server, created, reused, nil
 }
 
 func rememberImportedServers(applied []importedServer) error {
@@ -505,6 +549,7 @@ func serverBackupItemJSON(server model.Server, policies []model.TrafficPolicy) g
 		"probe_enable_icmp":  model.BoolOrTrue(server.ProbeEnableICMP),
 		"probe_enable_tcp":   model.BoolOrTrue(server.ProbeEnableTCP),
 		"probe_enable_mtr":   model.BoolOrTrue(server.ProbeEnableMTR),
+		"secret":             server.Secret,
 	}
 }
 
@@ -527,6 +572,46 @@ func trafficPolicyBackupJSON(row model.TrafficPolicy) gin.H {
 		item["cycle_unit"] = row.CycleUnit
 	}
 	return item
+}
+
+func snapshotUsedSecrets(snapshot *serverBackupSnapshot) map[string]struct{} {
+	used := map[string]struct{}{}
+	if snapshot != nil {
+		for _, server := range snapshot.servers {
+			if server.Secret != "" {
+				used[server.Secret] = struct{}{}
+			}
+		}
+	}
+	singleton.ServerLock.RLock()
+	for secret := range singleton.SecretToID {
+		if secret != "" {
+			used[secret] = struct{}{}
+		}
+	}
+	singleton.ServerLock.RUnlock()
+	return used
+}
+
+func backupSecret(item serverBackupItem) string {
+	if item.Secret == nil {
+		return ""
+	}
+	return strings.TrimSpace(*item.Secret)
+}
+
+func normalizeBackupSecret(value *string) (*string, error) {
+	if value == nil {
+		return nil, nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil, nil
+	}
+	if len(trimmed) > serverBackupSecretMaxLen {
+		return nil, errors.New("secret is too long")
+	}
+	return &trimmed, nil
 }
 
 func filterKnownDDNS(ids []uint64, known map[uint64]struct{}) ([]uint64, bool) {

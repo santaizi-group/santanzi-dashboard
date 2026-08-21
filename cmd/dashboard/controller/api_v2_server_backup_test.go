@@ -89,16 +89,34 @@ func createBackupServer(t *testing.T, db *gorm.DB, name, secret, tag string) mod
 	return server
 }
 
-func TestNormalizeServerBackupRejectsSecretAndDuplicates(t *testing.T) {
-	secret := "leaked"
+func TestNormalizeServerBackupValidatesSecretAndDuplicates(t *testing.T) {
 	if err := normalizeServerBackup(&serverBackupDocument{Format: "nope"}); err == nil {
 		t.Fatal("expected invalid format")
 	}
+	secret := "reusable-secret"
 	if err := normalizeServerBackup(&serverBackupDocument{
 		Format:  serverBackupFormatV1,
 		Servers: []serverBackupItem{{Name: "edge", Secret: &secret}},
-	}); err == nil || !strings.Contains(err.Error(), "secret") {
-		t.Fatalf("secret: %v", err)
+	}); err != nil {
+		t.Fatalf("valid secret: %v", err)
+	}
+	tooLong := strings.Repeat("a", serverBackupSecretMaxLen+1)
+	if err := normalizeServerBackup(&serverBackupDocument{
+		Format:  serverBackupFormatV1,
+		Servers: []serverBackupItem{{Name: "edge", Secret: &tooLong}},
+	}); err == nil || !strings.Contains(err.Error(), "too long") {
+		t.Fatalf("long secret: %v", err)
+	}
+	blank := "  "
+	document := &serverBackupDocument{
+		Format:  serverBackupFormatV1,
+		Servers: []serverBackupItem{{Name: "edge", Secret: &blank}},
+	}
+	if err := normalizeServerBackup(document); err != nil {
+		t.Fatalf("blank secret: %v", err)
+	}
+	if document.Servers[0].Secret != nil {
+		t.Fatal("blank secret should normalize to nil")
 	}
 	if err := normalizeServerBackup(&serverBackupDocument{
 		Format:  serverBackupFormatV1,
@@ -141,7 +159,7 @@ func TestPreviewServerBackupMatchesByName(t *testing.T) {
 	}
 }
 
-func TestV2ExportServersOmitsSecret(t *testing.T) {
+func TestV2ExportServersIncludesSecret(t *testing.T) {
 	db := setupServerBackupTest(t)
 	server := createBackupServer(t, db, "edge-a", "super-secret-token", "edge")
 	if err := db.Create(&model.TrafficPolicy{
@@ -156,8 +174,8 @@ func TestV2ExportServersOmitsSecret(t *testing.T) {
 		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
 	body := recorder.Body.String()
-	if strings.Contains(body, "super-secret-token") || strings.Contains(body, `"secret"`) {
-		t.Fatalf("export leaked secret: %s", body)
+	if !strings.Contains(body, `"secret":"super-secret-token"`) {
+		t.Fatalf("export missing secret: %s", body)
 	}
 	if !strings.Contains(body, `"format":"santaizi.servers.v1"`) || !strings.Contains(body, `"name":"edge-a"`) || !strings.Contains(body, `"month"`) {
 		t.Fatalf("export missing fields: %s", body)
@@ -175,12 +193,15 @@ func TestV2ImportServersCreateOverwriteAndRejectConflict(t *testing.T) {
 		t.Fatal(err)
 	}
 	icmp, tcp, mtr := true, true, true
+	overwriteSecret := "should-not-apply"
+	freshSecret := "imported-fresh-secret"
 	document := serverBackupDocument{
 		Format: serverBackupFormatV1,
 		Servers: []serverBackupItem{
 			{
 				Name: "keep", Tag: "new", ProbeEnableICMP: &icmp, ProbeEnableTCP: &tcp, ProbeEnableMTR: &mtr,
 				PublicNote: map[string]any{}, MonitoringOptions: map[string]bool{},
+				Secret: &overwriteSecret,
 				TrafficPolicies: []trafficPolicyWriteDTO{{
 					Name: "fresh", Direction: model.TrafficDirectionTotal, Mode: model.TrafficModeCumulative,
 					QuotaBytes: 500, WarningPercent: 80, Enabled: true,
@@ -189,6 +210,7 @@ func TestV2ImportServersCreateOverwriteAndRejectConflict(t *testing.T) {
 			{
 				Name: "fresh-host", Tag: "edge", ProbeEnableICMP: &icmp, ProbeEnableTCP: &tcp, ProbeEnableMTR: &mtr,
 				PublicNote: map[string]any{}, MonitoringOptions: map[string]bool{},
+				Secret: &freshSecret,
 			},
 		},
 	}
@@ -224,6 +246,10 @@ func TestV2ImportServersCreateOverwriteAndRejectConflict(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("import status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
+	counts := decodeImportResult(t, recorder.Body.Bytes())
+	if counts.Created != 1 || counts.Overwritten != 1 || counts.Skipped != 0 || counts.SecretsReused != 1 || counts.SecretsRegenerated != 0 {
+		t.Fatalf("counts=%#v", counts)
+	}
 
 	var stored model.Server
 	if err := db.First(&stored, existing.ID).Error; err != nil {
@@ -243,8 +269,77 @@ func TestV2ImportServersCreateOverwriteAndRejectConflict(t *testing.T) {
 	if err := db.Where("name = ?", "fresh-host").First(&created).Error; err != nil {
 		t.Fatal(err)
 	}
+	if created.Secret != "imported-fresh-secret" {
+		t.Fatalf("created secret=%q", created.Secret)
+	}
+}
+
+func TestV2ImportServersRegeneratesConflictingSecret(t *testing.T) {
+	db := setupServerBackupTest(t)
+	createBackupServer(t, db, "keep", "original-secret", "old")
+	icmp, tcp, mtr := true, true, true
+	conflict := "original-secret"
+	document := serverBackupDocument{
+		Format: serverBackupFormatV1,
+		Servers: []serverBackupItem{{
+			Name: "fresh-host", Tag: "edge", ProbeEnableICMP: &icmp, ProbeEnableTCP: &tcp, ProbeEnableMTR: &mtr,
+			PublicNote: map[string]any{}, MonitoringOptions: map[string]bool{},
+			Secret: &conflict,
+		}},
+	}
+	ctx, recorder := backupHTTP(t, http.MethodPost, "/api/v2/admin/servers/import", serverImportWrite{
+		Document: document,
+		Actions:  []serverImportActionItem{{Index: 0, Action: serverImportActionCreate}},
+	})
+	v2ImportServers(ctx)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("import status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	counts := decodeImportResult(t, recorder.Body.Bytes())
+	if counts.Created != 1 || counts.SecretsReused != 0 || counts.SecretsRegenerated != 1 {
+		t.Fatalf("counts=%#v", counts)
+	}
+	var created model.Server
+	if err := db.Where("name = ?", "fresh-host").First(&created).Error; err != nil {
+		t.Fatal(err)
+	}
 	if created.Secret == "" || created.Secret == "original-secret" {
 		t.Fatalf("created secret=%q", created.Secret)
+	}
+}
+
+func TestPreviewServerBackupWarnsSecretConflict(t *testing.T) {
+	setupServerBackupTest(t)
+	taken, shared, free := "taken-secret", "shared-secret", "free-secret"
+	icmp, tcp, mtr := true, true, true
+	item := func(name, secret string) serverBackupItem {
+		value := secret
+		return serverBackupItem{
+			Name: name, Secret: &value, ProbeEnableICMP: &icmp, ProbeEnableTCP: &tcp, ProbeEnableMTR: &mtr,
+			PublicNote: map[string]any{}, MonitoringOptions: map[string]bool{},
+		}
+	}
+	snapshot := &serverBackupSnapshot{
+		servers:  []model.Server{{Name: "keep", Secret: taken}},
+		byName:   map[string][]model.Server{},
+		policies: map[uint64][]model.TrafficPolicy{},
+		ddnsIDs:  map[uint64]struct{}{},
+	}
+	items := previewServerBackup(serverBackupDocument{
+		Format:  serverBackupFormatV1,
+		Servers: []serverBackupItem{item("a", taken), item("b", shared), item("c", shared), item("d", free)},
+	}, snapshot)
+	if !containsString(items[0].Warnings, serverImportWarnSecretConflict) {
+		t.Fatalf("existing secret should warn: %#v", items[0])
+	}
+	if containsString(items[1].Warnings, serverImportWarnSecretConflict) {
+		t.Fatalf("first shared secret should reuse: %#v", items[1])
+	}
+	if !containsString(items[2].Warnings, serverImportWarnSecretConflict) {
+		t.Fatalf("second shared secret should warn: %#v", items[2])
+	}
+	if containsString(items[3].Warnings, serverImportWarnSecretConflict) {
+		t.Fatalf("free secret should not warn: %#v", items[3])
 	}
 }
 
@@ -297,4 +392,23 @@ func TestTrafficPolicyBackupJSONOmitsIdentity(t *testing.T) {
 	if strings.Contains(string(raw), `"id"`) || strings.Contains(string(raw), `"server_id"`) {
 		t.Fatalf("policy backup leaked ids: %s", raw)
 	}
+}
+
+type importResultCounts struct {
+	Created            int `json:"created"`
+	Overwritten        int `json:"overwritten"`
+	Skipped            int `json:"skipped"`
+	SecretsReused      int `json:"secrets_reused"`
+	SecretsRegenerated int `json:"secrets_regenerated"`
+}
+
+func decodeImportResult(t *testing.T, body []byte) importResultCounts {
+	t.Helper()
+	var payload struct {
+		Data importResultCounts `json:"data"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatal(err)
+	}
+	return payload.Data
 }

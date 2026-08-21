@@ -9,7 +9,7 @@
 - [快速开始](quickstart.md) — 5 分钟部署 Dashboard 和第一台 Agent
 - [安装指南](installation.md) — Dashboard / Agent 的完整安装方式
 - [配置参考](configuration.md) — `config.yaml` 全量配置项说明
-- [可靠探测运维指南](reliable-telemetry.md) — Primary / 从端（Collector） / 探针、可用性、容量与升级
+- [可靠探测运维指南](reliable-telemetry.md) — Primary / 从端（Collector） / 探针、探测型路由、可用性、容量与升级
 - [服务器管理](servers.md) — 添加服务器、分组、离线历史
 - [服务监控](monitoring.md) — HTTP / ICMP / TCP 监控与告警规则
 - [通知方式](notifications.md) — Webhook 通知与变量占位符

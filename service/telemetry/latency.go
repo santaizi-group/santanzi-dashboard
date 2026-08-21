@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"errors"
 	"time"
@@ -17,6 +18,7 @@ const (
 	LatencyKindCollectorReplication = "collector_replication"
 	LatencyKindPath                 = "path"
 	ConnectionLatencyRetention      = DefaultEvidenceRetain
+	ConnectionLatencyKeepMultiplier = 100
 	latencyBucketSize               = int64(time.Minute)
 )
 
@@ -207,6 +209,55 @@ func validLatencyKind(kind string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func connectionLatencyKeep(db *gorm.DB) (uint, error) {
+	var count int64
+	if sqliteTableExists(db, "collectors") {
+		if err := db.Model(&model.Collector{}).
+			Where("deleted = ? AND revoked = ? AND kind != ?", false, false, model.CollectorKindProbe).
+			Count(&count).Error; err != nil {
+			return 0, err
+		}
+	}
+	if count < 1 {
+		count = 1
+	}
+	return uint(count) * ConnectionLatencyKeepMultiplier, nil
+}
+
+func PruneConnectionLatencyByCount(ctx context.Context, db *gorm.DB, deadline time.Time, batchSize int) (int64, error) {
+	keep, err := connectionLatencyKeep(db)
+	if err != nil || keep == 0 {
+		return 0, err
+	}
+	if batchSize <= 0 {
+		batchSize = DefaultRetentionBatch
+	}
+	query := `DELETE FROM connection_latency_buckets WHERE rowid IN (
+		SELECT rowid FROM (
+			SELECT rowid, ROW_NUMBER() OVER (
+				PARTITION BY kind, collector_uuid, node_uuid, observer_id
+				ORDER BY bucket_start DESC
+			) AS rn FROM connection_latency_buckets
+		) WHERE rn > ? LIMIT ?)`
+	var total int64
+	for {
+		if err := ctx.Err(); err != nil {
+			return total, err
+		}
+		if !deadline.IsZero() && !time.Now().Before(deadline) {
+			return total, nil
+		}
+		result := db.WithContext(ctx).Exec(query, keep, batchSize)
+		if result.Error != nil {
+			return total, result.Error
+		}
+		total += result.RowsAffected
+		if result.RowsAffected == 0 {
+			return total, nil
+		}
 	}
 }
 

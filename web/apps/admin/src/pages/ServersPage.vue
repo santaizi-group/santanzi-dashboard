@@ -58,6 +58,15 @@ function onHoverMediaChange() {
 }
 
 async function exportAll() {
+  try {
+    await ElMessageBox.confirm(t('exportSecretWarning'), t('exportServers'), {
+      type: 'warning',
+      confirmButtonText: t('confirm'),
+      cancelButtonText: t('cancel'),
+    })
+  } catch {
+    return
+  }
   exporting.value = true
   try {
     const payload = await exportServers()

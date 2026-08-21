@@ -627,6 +627,10 @@ func (s *Store) RuntimeStats(ctx context.Context) (RuntimeStats, error) {
 	return stats, nil
 }
 
+func (s *Store) DiscardOutbox(ctx context.Context) error {
+	return s.db.WithContext(ctx).Where("1 = 1").Delete(&model.CollectorOutbox{}).Error
+}
+
 func (s *Store) EnforceSpoolPolicy(ctx context.Context, collectorUUID string, maxBytes uint64, maxAge time.Duration, now time.Time) error {
 	if collectorUUID == "" || maxBytes == 0 || maxAge <= 0 {
 		return errors.New("collector spool policy is invalid")

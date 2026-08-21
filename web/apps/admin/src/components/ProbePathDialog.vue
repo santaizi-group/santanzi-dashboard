@@ -3,7 +3,7 @@ import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ProbeMTRHop, ProbePath, ProbeRouteHistory, ProbeRouteHop, ProbeRouteRecord, ProbeSampleBucket, ProbeTrace } from '@santaizi/api'
 import { AppDialog, AppEmpty } from '@santaizi/ui'
-import ProbeRttBars from '@/components/ProbeRttBars.vue'
+import ProbeLatencyChart from '@/components/ProbeLatencyChart.vue'
 import { createProbeRoute, getProbeRoute, getProbeTrace, listProbeSamples } from '@/api/adminApi'
 import { formatAdminValue } from '@/composables/format'
 import { notifyAPIError } from '@/composables/notify'
@@ -219,21 +219,15 @@ onUnmounted(stopPoll)
           <span class="probe-metric__value">{{ mtrMetric.text }}</span>
         </div>
       </div>
-      <div v-if="path.tcp?.length" class="probe-tcp-chips">
+      <div v-if="path.tcp && path.tcp.length > 1" class="probe-tcp-chips">
         <span v-for="row in path.tcp" :key="row.port" class="probe-tcp-chip" :class="row.ok ? 'is-ok' : 'is-fail'">
           :{{ row.port }} {{ row.ok ? pretty(row.rtt_ms, 'rtt_ms') : t('probeTimeout') }}
         </span>
       </div>
       <el-tabs v-model="tab">
         <el-tab-pane :label="t('latency')" name="latency">
-          <section v-if="icmpBuckets.length" class="probe-chart">
-            <h3>{{ t('icmp') }}</h3>
-            <ProbeRttBars :points="icmpBuckets" />
-          </section>
-          <section v-if="tcpChart.length" class="probe-chart">
-            <h3>{{ tcpLabel }}</h3>
-            <ProbeRttBars :points="tcpChart" />
-          </section>
+          <ProbeLatencyChart v-if="icmpBuckets.length" :title="t('icmp')" :points="icmpBuckets" />
+          <ProbeLatencyChart v-if="tcpChart.length" :title="tcpLabel" :points="tcpChart" />
           <AppEmpty v-if="!icmpBuckets.length && !tcpChart.length" icon="ri-timer-line" :description="t('noData')" />
         </el-tab-pane>
         <el-tab-pane :label="t('probeRoute')" name="route">

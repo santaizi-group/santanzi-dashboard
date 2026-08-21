@@ -2045,7 +2045,7 @@ func collectorDTO(collector model.Collector) gin.H {
 	for _, scope := range scopes {
 		scopeItems = append(scopeItems, gin.H{"type": scope.ScopeType, "value": scope.ScopeValue})
 	}
-	return gin.H{
+	dto := gin.H{
 		"id": collector.CollectorUUID, "name": collector.Name, "address": collector.Address, "listen_port": collector.ListenPort, "tls": collector.TLS,
 		"insecure_tls": collector.InsecureTLS, "location": collector.Location, "kind": model.NormalizeCollectorKind(collector.Kind),
 		"probe_interval_seconds": collector.ProbeIntervalSec, "mtr_interval_seconds": collector.MTRIntervalSec, "mtr_probes": collector.MTRProbes, "tcp_ports": collector.TCPPorts,
@@ -2066,6 +2066,16 @@ func collectorDTO(collector model.Collector) gin.H {
 		"replication_rtt_ms":         optionalFloat(runtime.ReplicationRttSampledAt, runtime.ReplicationRttMs),
 		"replication_rtt_sampled_at": optionalRFC3339Nano(runtime.ReplicationRttSampledAt), "scopes": scopeItems,
 	}
+	if collector.IsProbe() {
+		dto["connected_agents"] = nil
+		dto["pending_records"] = nil
+		dto["spool_size"] = nil
+		dto["oldest_pending"] = nil
+		dto["replication_cursor"] = nil
+		dto["replication_rtt_ms"] = nil
+		dto["replication_rtt_sampled_at"] = nil
+	}
+	return dto
 }
 func v2Collectors(c *gin.Context) {
 	var rows []model.Collector

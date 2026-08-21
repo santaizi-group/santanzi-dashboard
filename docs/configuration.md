@@ -312,6 +312,7 @@ oauth2:
 | `collector.spool_max_bytes` | `5368709120` | Spool Hard Limit（5 GiB） |
 | `collector.spool_max_age_days` | `30` | Spool 保留上限 |
 | `collector.status_authorization` | 无 | 调用鉴权 `GetStatus` 的共享值 |
+| `collector.nexttrace_path` | 空 | 探测型从端路由用的 nexttrace 绝对路径。空则在 PATH 找 `nexttrace`、`nexttrace-tiny`。写了绝对路径就不回退 PATH。环境变量 `SANTAIZI_COLLECTOR_NEXTTRACE_PATH` |
 
 示例：
 
@@ -334,7 +335,7 @@ grpc_tls:
   key_file: /var/lib/santaizi-dashboard/pki/server.key
 ```
 
-一键安装脚本会写出 `primary_tls` / `primary_insecure_tls` 与默认关闭的 `grpc_tls`。从端对外 gRPC 要开 TLS 时放入证书并把 `enabled` 改为 true。
+一键安装脚本会写出 `primary_tls` / `primary_insecure_tls` 与默认关闭的 `grpc_tls`。从端对外 gRPC 要开 TLS 时放入证书并把 `enabled` 改为 true。宿主机 PATH 上有 `nexttrace` 或 `nexttrace-tiny` 时，脚本还会写入 `nexttrace_path` 并只读挂进容器；没有也不挡安装。路由依赖与 musl 镜像限制见 [可靠探测运维指南](reliable-telemetry.md#探测型从端路由)。
 
 ## `rollup` 与 `retention`
 

@@ -1,4 +1,4 @@
-import type { ProbePath, ProbeTCP } from '@santaizi/api'
+import type { ProbePath, ProbeSampleBucket, ProbeTCP } from '@santaizi/api'
 import { formatLatencyMs } from '@/composables/format'
 
 export type ProbeMetricTone = '' | 'is-ok' | 'is-fail'
@@ -7,6 +7,40 @@ export type ProbeMetric = {
   text: string
   tone: ProbeMetricTone
   port?: number
+}
+
+export interface ProbeLatencyStats {
+  min?: number
+  max?: number
+  avg?: number
+}
+
+export function probeLatencyStats(points: ProbeSampleBucket[]): ProbeLatencyStats {
+  let min = Number.POSITIVE_INFINITY
+  let max = Number.NEGATIVE_INFINITY
+  let weightedSum = 0
+  let weight = 0
+
+  for (const point of points) {
+    const count = Number(point.success_count)
+    if (!Number.isFinite(count) || count <= 0) continue
+
+    const pointMin = Number(point.min_ms)
+    const pointMax = Number(point.max_ms)
+    const pointAvg = Number(point.avg_ms)
+    if (Number.isFinite(pointMin)) min = Math.min(min, pointMin)
+    if (Number.isFinite(pointMax)) max = Math.max(max, pointMax)
+    if (Number.isFinite(pointAvg)) {
+      weightedSum += pointAvg * count
+      weight += count
+    }
+  }
+
+  return {
+    min: Number.isFinite(min) ? min : undefined,
+    max: Number.isFinite(max) ? max : undefined,
+    avg: weight > 0 ? weightedSum / weight : undefined,
+  }
 }
 
 export function probePathKey(path: ProbePath) {

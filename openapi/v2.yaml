@@ -303,7 +303,7 @@ paths:
       tags:
       - Servers
       summary: 导出服务器配置
-      description: 导出全部主机配置与流量策略。不含 Secret、运行态与流量用量。
+      description: 导出全部主机配置、流量策略与探针认证密钥明文。用于灾难恢复与重装；请妥善保管导出文件。不含运行态与流量用量。
       operationId: exportServers
       x-ui-route: /admin/servers
       responses:
@@ -337,7 +337,7 @@ paths:
       tags:
       - Servers
       summary: 导入服务器配置
-      description: 按预览结果执行新建或覆盖。覆盖时流量策略去掉 id 后全量替换。不含 Secret。
+      description: 按预览结果执行新建或覆盖。新建时若备份含密钥且未被占用则直接复用；冲突或未带密钥则生成新密钥。覆盖只改配置与流量策略，不改密钥。覆盖时流量策略去掉 id 后全量替换。
       operationId: importServers
       x-ui-route: /admin/servers
       security:
@@ -2761,7 +2761,8 @@ components:
           default: true
         secret:
           type: string
-          description: 禁止出现。若存在则整份备份被拒绝。
+          maxLength: 128
+          description: 探针认证密钥明文；新建时若未冲突会直接复用，留空则自动生成。
     ServerBackup:
       type: object
       additionalProperties: false
@@ -2870,6 +2871,10 @@ components:
         overwritten:
           type: integer
         skipped:
+          type: integer
+        secrets_reused:
+          type: integer
+        secrets_regenerated:
           type: integer
     MonitorScope:
       type: object
