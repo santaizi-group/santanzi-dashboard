@@ -8,6 +8,7 @@
  * OpenAPI spec version: 2.0.0
  */
 import type { CollectorKind } from './collectorKind';
+import type { CollectorRouteIntervalSeconds } from './collectorRouteIntervalSeconds';
 import type { CollectorScope } from './collectorScope';
 import type { CollectorStatus } from './collectorStatus';
 
@@ -35,6 +36,11 @@ export interface Collector {
   probe_interval_seconds?: number;
   /** @minimum 1 */
   mtr_interval_seconds?: number;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  mtr_probes?: number;
   /** 逗号分隔 TCP 端口，如 22,443 */
   tcp_ports?: string;
   enable_icmp?: boolean;
@@ -44,6 +50,12 @@ export interface Collector {
   enable_ipv4?: boolean;
   /** 探测 IPv6。与 enable_ipv4 至少开一项。 */
   enable_ipv6?: boolean;
+  route_interval_seconds?: CollectorRouteIntervalSeconds;
+  /**
+     * @minimum 1
+     * @maximum 50
+     */
+  route_keep?: number;
   notify?: boolean;
   notification_tag?: string;
   latency_notify?: boolean;

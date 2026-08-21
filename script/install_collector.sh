@@ -53,6 +53,31 @@ yaml_escape() {
     printf "%s" "$1" | sed "s/'/''/g"
 }
 
+detect_host_nexttrace() {
+    NT_HOST_BIN=""
+    if command -v nexttrace >/dev/null 2>&1; then
+        NT_HOST_BIN=$(command -v nexttrace)
+    elif command -v nexttrace-tiny >/dev/null 2>&1; then
+        NT_HOST_BIN=$(command -v nexttrace-tiny)
+    fi
+    if [ -z "$NT_HOST_BIN" ]; then
+        return 0
+    fi
+    resolved=""
+    if command -v readlink >/dev/null 2>&1; then
+        resolved=$(readlink -f "$NT_HOST_BIN" 2>/dev/null || true)
+    fi
+    if [ -z "$resolved" ] && command -v realpath >/dev/null 2>&1; then
+        resolved=$(realpath "$NT_HOST_BIN" 2>/dev/null || true)
+    fi
+    if [ -n "$resolved" ]; then
+        NT_HOST_BIN=$resolved
+    fi
+    if [ ! -x "$NT_HOST_BIN" ]; then
+        NT_HOST_BIN=""
+    fi
+}
+
 usage() {
     cat <<EOF
 Usage: $0 --primary-endpoint host:port --token <registration_token> [options]
@@ -383,6 +408,13 @@ pull_and_recreate() {
 
 write_compose() {
     mkdir -p "$1"
+    detect_host_nexttrace
+    nexttrace_volume=""
+    nexttrace_env=""
+    if [ -n "$NT_HOST_BIN" ]; then
+        nexttrace_volume="      - ${NT_HOST_BIN}:/opt/nexttrace/nexttrace:ro"
+        nexttrace_env="      - SANTAIZI_COLLECTOR_NEXTTRACE_PATH=/opt/nexttrace/nexttrace"
+    fi
     cat > "$1/docker-compose.yml" <<EOF
 services:
   santaizi-collector:
@@ -396,8 +428,10 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - ./data:/var/lib/santaizi-dashboard
       - ./config/dashboard.yaml:/etc/santaizi/dashboard.yaml:ro
+${nexttrace_volume}
     environment:
       - TZ=Asia/Shanghai
+${nexttrace_env}
     cap_add:
       - NET_RAW
 EOF
@@ -407,6 +441,11 @@ write_config() {
     mkdir -p "$1/data/pki" "$1/config"
     endpoint=$(yaml_escape "$PRIMARY_ENDPOINT")
     token=$(yaml_escape "$REGISTRATION_TOKEN")
+    detect_host_nexttrace
+    nexttrace_yaml=""
+    if [ -n "$NT_HOST_BIN" ]; then
+        nexttrace_yaml="  nexttrace_path: /opt/nexttrace/nexttrace"
+    fi
     cat > "$1/config/dashboard.yaml" <<EOF
 mode: collector
 debug: false
@@ -420,6 +459,7 @@ collector:
   primary_insecure_tls: ${PRIMARY_INSECURE_TLS}
   registration_token: '${token}'
   database_path: /var/lib/santaizi-dashboard/collector.db
+${nexttrace_yaml}
 grpc_tls:
   enabled: false
   cert_file: /var/lib/santaizi-dashboard/pki/server.crt

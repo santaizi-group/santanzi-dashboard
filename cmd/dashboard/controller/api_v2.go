@@ -199,6 +199,7 @@ type collectorRequest struct {
 	Location             string                  `json:"location"`
 	ProbeIntervalSeconds uint                    `json:"probe_interval_seconds"`
 	MTRIntervalSeconds   uint                    `json:"mtr_interval_seconds"`
+	MTRProbes            uint                    `json:"mtr_probes"`
 	TCPPorts             string                  `json:"tcp_ports"`
 	EnableICMP           *bool                   `json:"enable_icmp"`
 	EnableTCP            *bool                   `json:"enable_tcp"`
@@ -211,6 +212,8 @@ type collectorRequest struct {
 	MinLatencyMs         float64                 `json:"min_latency_ms"`
 	MaxLatencyMs         float64                 `json:"max_latency_ms"`
 	FailThreshold        uint                    `json:"fail_threshold"`
+	RouteIntervalSeconds uint                    `json:"route_interval_seconds"`
+	RouteKeep            uint                    `json:"route_keep"`
 	Scopes               []collectorScopeRequest `json:"scopes"`
 }
 

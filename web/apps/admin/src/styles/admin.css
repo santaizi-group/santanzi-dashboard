@@ -899,7 +899,29 @@ html.dark .topology-globe__canvas { filter: none; }
 }
 .probe-metric.is-ok .probe-metric__label,
 .probe-metric.is-fail .probe-metric__label { color: inherit; }
-.probe-dialog { display: grid; gap: 14px; }
+.probe-route-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.probe-route-runs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.probe-route-run.is-current {
+  background: var(--sz-primary-soft);
+  color: var(--sz-primary);
+  font-weight: 650;
+}
+.probe-route-error {
+  margin: 0 0 10px;
+  color: var(--sz-danger);
+  font-size: var(--font-size-caption);
+}
 .probe-dialog-meta {
   display: flex;
   flex-wrap: wrap;
@@ -1343,6 +1365,7 @@ html.dark .topology-globe__canvas { filter: none; }
 .editor-section-title { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
 .editor-section-title h3 { margin: 0; }
 .switch-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-bottom: 18px; }
+.switch-grid.switch-grid-3 { grid-template-columns: repeat(3,minmax(0,1fr)); }
 .switch-grid > label,.capability-item { min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 14px; border: 1px solid var(--sz-border); border-radius: 10px; background: var(--sz-surface); }
 .key-value-list,.condition-list,.traffic-policy-list,.scope-list { display: grid; gap: 12px; }
 .key-value-row { display: grid; grid-template-columns: minmax(140px,.65fr) minmax(200px,1fr) 36px; gap: 8px; }
@@ -1968,7 +1991,7 @@ html.dark .topology-globe__canvas { filter: none; }
   .user-button .user-button-name { display: none; }
   .pagination .el-pagination__sizes { display: none; }
   .mobile-card--server .mobile-card-meta--stats { grid-template-columns: 1fr; }
-  .setting-switches,.switch-grid,.capability-grid,.ip-report-box{grid-template-columns:1fr}.typed-scope-row{grid-template-columns:1fr var(--control-height)}.typed-scope-row>.el-select:first-child{grid-column:1/-1}.key-value-row{grid-template-columns:1fr var(--control-height)}.key-value-row>.el-input:first-child{grid-column:1/-1}.server-transfer{display:block}.server-transfer .el-transfer-panel{width:100%}.server-transfer .el-transfer__buttons{display:flex;justify-content:center;padding:var(--space-3)}.traffic-progress{grid-template-columns:1fr}.date-toggle{align-items:flex-start;flex-direction:column}.date-toggle .el-date-editor{width:100%}
+  .setting-switches,.switch-grid,.switch-grid.switch-grid-3,.capability-grid,.ip-report-box{grid-template-columns:1fr}.typed-scope-row{grid-template-columns:1fr var(--control-height)}.typed-scope-row>.el-select:first-child{grid-column:1/-1}.key-value-row{grid-template-columns:1fr var(--control-height)}.key-value-row>.el-input:first-child{grid-column:1/-1}.server-transfer{display:block}.server-transfer .el-transfer-panel{width:100%}.server-transfer .el-transfer__buttons{display:flex;justify-content:center;padding:var(--space-3)}.traffic-progress{grid-template-columns:1fr}.date-toggle{align-items:flex-start;flex-direction:column}.date-toggle .el-date-editor{width:100%}
 }
 
 /* 触控 / 粗指针：取消 cursor:pointer */

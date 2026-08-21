@@ -8,10 +8,16 @@ import LocationPicker from '@/components/LocationPicker.vue'
 import { useEditorSnapshot } from '@/composables/editorSnapshot'
 import { notifyAPIError } from '@/composables/notify'
 import { isProbeCollector } from '@/domain/collectorKind'
-import type { CollectorScope } from '@santaizi/api'
+import type { CollectorScope, CollectorWriteRouteIntervalSeconds } from '@santaizi/api'
 import { joinHostPort, parsePort, splitHostPort } from '@/domain/collectorAddress'
 
 const defaultListenPort = 5556
+const routeIntervals = [3600, 86400, 604800] as const satisfies readonly CollectorWriteRouteIntervalSeconds[]
+
+function normalizeRouteInterval(value: unknown): CollectorWriteRouteIntervalSeconds {
+  const n = Number(value)
+  return (routeIntervals as readonly number[]).includes(n) ? n as CollectorWriteRouteIntervalSeconds : 86400
+}
 
 const props = defineProps<{ modelValue: boolean; value?: CollectorRecord }>()
 const emit = defineEmits<{ 'update:modelValue': [boolean]; saved: [string, CollectorRecord?] }>()
@@ -33,6 +39,9 @@ const form = reactive({
   location: '',
   probe_interval_seconds: 30,
   mtr_interval_seconds: 300,
+  mtr_probes: 10,
+  route_interval_seconds: 86400 as CollectorWriteRouteIntervalSeconds,
+  route_keep: 10,
   tcp_ports: '22,443',
   enable_icmp: true,
   enable_tcp: true,
@@ -141,6 +150,9 @@ async function reset(value?: CollectorRecord) {
     location: value?.location || '',
     probe_interval_seconds: value?.probe_interval_seconds || 30,
     mtr_interval_seconds: value?.mtr_interval_seconds || 300,
+    mtr_probes: value?.mtr_probes || 10,
+    route_interval_seconds: normalizeRouteInterval(value?.route_interval_seconds),
+    route_keep: value?.route_keep || 10,
     tcp_ports: value?.tcp_ports || '22,443',
     enable_icmp: value?.enable_icmp ?? true,
     enable_tcp: value?.enable_tcp ?? true,
@@ -183,6 +195,9 @@ async function submit() {
   const probeFields = {
     probe_interval_seconds: Number(form.probe_interval_seconds) || 30,
     mtr_interval_seconds: Number(form.mtr_interval_seconds) || 300,
+    mtr_probes: Number(form.mtr_probes) || 10,
+    route_interval_seconds: normalizeRouteInterval(form.route_interval_seconds),
+    route_keep: Number(form.route_keep) || 10,
     tcp_ports: form.tcp_ports.trim() || '22,443',
     enable_icmp: form.enable_icmp,
     enable_tcp: form.enable_tcp,
@@ -267,6 +282,15 @@ watch(() => props.modelValue, value => { if (value) void reset(props.value) })
         <template v-if="isProbe">
           <el-form-item :label="t('probeInterval')"><el-input v-model.number="form.probe_interval_seconds" inputmode="numeric" /></el-form-item>
           <el-form-item :label="t('mtrInterval')"><el-input v-model.number="form.mtr_interval_seconds" inputmode="numeric" /></el-form-item>
+          <el-form-item :label="t('mtrProbes')"><el-input v-model.number="form.mtr_probes" inputmode="numeric" /></el-form-item>
+          <el-form-item :label="t('routeInterval')">
+            <el-select v-model="form.route_interval_seconds">
+              <el-option :label="t('routeIntervalHour')" :value="3600" />
+              <el-option :label="t('routeIntervalDay')" :value="86400" />
+              <el-option :label="t('routeIntervalWeek')" :value="604800" />
+            </el-select>
+          </el-form-item>
+          <el-form-item :label="t('routeKeep')"><el-input v-model.number="form.route_keep" inputmode="numeric" /></el-form-item>
           <el-form-item :label="t('defaultTcpPorts')"><el-input v-model="form.tcp_ports" /></el-form-item>
           <el-form-item :label="t('probeIPFamilies')" prop="ip_families" :rules="[{ required: true, type: 'array', min: 1, message: t('invalidProbeIPFamily') }]">
             <el-select v-model="form.ip_families" multiple>

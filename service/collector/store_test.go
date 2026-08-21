@@ -202,3 +202,84 @@ func TestCollectorRejectsUnversionedExistingDatabase(t *testing.T) {
 		t.Fatalf("rejected open left the sqlite file locked: %v", err)
 	}
 }
+
+func TestSaveAuthorizationStoresMTRProbes(t *testing.T) {
+	store := openTestStore(t)
+	now := time.Now()
+	config := &pb.CollectorAuthorizationConfig{
+		ConfigVersion: 1, PrimaryPublicKey: bytes.Repeat([]byte{4}, 32), KeyId: bytes.Repeat([]byte{5}, 16),
+		Kind:  pb.CollectorKind_COLLECTOR_KIND_PROBE,
+		Probe: &pb.ProbeConfig{MtrProbes: 8},
+		Targets: []*pb.ProbeTarget{
+			{ServerId: 1, ServerName: "explicit", Ipv4: "192.0.2.1", EnableIcmp: true, EnableMtr: true, MtrProbes: 10},
+			{ServerId: 2, ServerName: "fallback", Ipv4: "192.0.2.2", EnableIcmp: true, EnableMtr: true},
+		},
+	}
+	if err := store.SaveAuthorization(context.Background(), "collector-a", config, now); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := store.ProbeTargets(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	byID := map[uint64]model.CollectorCachedProbeTarget{}
+	for _, row := range rows {
+		byID[row.ServerID] = row
+	}
+	if got := byID[1]; got.MTRProbes != 10 {
+		t.Fatalf("explicit probes=%d", got.MTRProbes)
+	}
+	if got := byID[2]; got.MTRProbes != 8 {
+		t.Fatalf("config fallback probes=%d", got.MTRProbes)
+	}
+}
+
+func TestMigrateV7AddsCachedMTRProbes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v6.db")
+	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { closeTestGorm(t, db) })
+	if err := db.AutoMigrate(&model.CollectorSchemaMigration{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE TABLE collector_cached_probe_targets (
+		server_id INTEGER PRIMARY KEY,
+		server_name TEXT,
+		ipv4 TEXT,
+		ipv6 TEXT,
+		hostname TEXT,
+		tcp_ports TEXT,
+		enable_icmp INTEGER,
+		enable_tcp INTEGER,
+		enable_mtr INTEGER,
+		enable_ipv4 INTEGER,
+		enable_ipv6 INTEGER,
+		interval_sec INTEGER,
+		mtr_interval_sec INTEGER,
+		route_interval_sec INTEGER,
+		updated_at DATETIME
+	)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.CollectorSchemaMigration{Version: 6, AppliedAt: time.Now().UTC()}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if db.Migrator().HasColumn(&model.CollectorCachedProbeTarget{}, "mtr_probes") {
+		t.Fatal("fixture should omit mtr_probes")
+	}
+	if err := migrate(db); err != nil {
+		t.Fatal(err)
+	}
+	if !db.Migrator().HasColumn(&model.CollectorCachedProbeTarget{}, "mtr_probes") {
+		t.Fatal("v7 should add mtr_probes")
+	}
+	var version uint64
+	if err := db.Model(&model.CollectorSchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&version).Error; err != nil {
+		t.Fatal(err)
+	}
+	if version != 7 {
+		t.Fatalf("version = %d", version)
+	}
+}

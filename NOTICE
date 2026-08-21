@@ -15,3 +15,10 @@ Nazhua (https://github.com/hi2shark/nazhua) at commit
 d08c973bb4446a24356f49b81d75d6773286596e, Copyright (c) 2024 hi2hi,
 used under the MIT License. A copy is retained in
 web/packages/theme-nazhua/LICENSE.
+
+Optional probe routing on collector hosts may exec an independently
+installed nexttrace binary (https://github.com/nxtrace/NTrace-core),
+licensed under GNU GPL-3.0. Santaizi does not link NTrace-core, does
+not vendor it into Docker/GHCR images, and does not require it to run
+ping or MTR. Source: https://github.com/nxtrace/NTrace-core
+

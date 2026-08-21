@@ -78,6 +78,8 @@ func registerSPAAPIV2(root gin.IRouter) {
 	admin.GET("/probes/paths", v2ProbePaths)
 	admin.GET("/probes/samples", v2ProbeSamples)
 	admin.GET("/probes/trace", v2ProbeTrace)
+	admin.GET("/probes/route", v2ProbeRoute)
+	admin.POST("/probes/route", v2CreateProbeRoute)
 	admin.GET("/servers", v2AdminServers)
 	admin.POST("/servers", v2CreateServer)
 	admin.GET("/servers/export", v2ExportServers)
@@ -1985,6 +1987,11 @@ func applyCollectorProbeRequest(collector *model.Collector, request collectorReq
 	if request.MTRIntervalSeconds > 0 {
 		collector.MTRIntervalSec = request.MTRIntervalSeconds
 	}
+	if request.MTRProbes > 0 {
+		collector.MTRProbes = request.MTRProbes
+	} else if created {
+		collector.MTRProbes = model.DefaultMTRProbes
+	}
 	if strings.TrimSpace(request.TCPPorts) != "" {
 		collector.TCPPorts = strings.TrimSpace(request.TCPPorts)
 	}
@@ -2024,6 +2031,16 @@ func applyCollectorProbeRequest(collector *model.Collector, request collectorReq
 	if request.FailThreshold > 0 {
 		collector.FailThreshold = request.FailThreshold
 	}
+	if request.RouteIntervalSeconds > 0 {
+		collector.RouteIntervalSec = request.RouteIntervalSeconds
+	} else if created {
+		collector.RouteIntervalSec = model.DefaultRouteIntervalSec
+	}
+	if request.RouteKeep > 0 {
+		collector.RouteKeep = request.RouteKeep
+	} else if created {
+		collector.RouteKeep = model.DefaultRouteKeep
+	}
 	return nil
 }
 
@@ -2039,11 +2056,12 @@ func collectorDTO(collector model.Collector) gin.H {
 	return gin.H{
 		"id": collector.CollectorUUID, "name": collector.Name, "address": collector.Address, "listen_port": collector.ListenPort, "tls": collector.TLS,
 		"insecure_tls": collector.InsecureTLS, "location": collector.Location, "kind": model.NormalizeCollectorKind(collector.Kind),
-		"probe_interval_seconds": collector.ProbeIntervalSec, "mtr_interval_seconds": collector.MTRIntervalSec, "tcp_ports": collector.TCPPorts,
+		"probe_interval_seconds": collector.ProbeIntervalSec, "mtr_interval_seconds": collector.MTRIntervalSec, "mtr_probes": collector.MTRProbes, "tcp_ports": collector.TCPPorts,
 		"enable_icmp": collector.EnableICMP, "enable_tcp": collector.EnableTCP, "enable_mtr": collector.EnableMTR,
 		"enable_ipv4": model.BoolOrTrue(collector.EnableIPv4), "enable_ipv6": model.BoolOrTrue(collector.EnableIPv6),
 		"notify": collector.ProbeNotify, "notification_tag": collector.NotificationTag, "latency_notify": collector.LatencyNotify,
 		"min_latency_ms": collector.MinLatencyMs, "max_latency_ms": collector.MaxLatencyMs, "fail_threshold": collector.FailThreshold,
+		"route_interval_seconds": collector.RouteIntervalSec, "route_keep": collector.RouteKeep,
 		"generation": collector.Generation, "config_version": collector.ConfigVersion,
 		"revoked": collector.Revoked, "status": telemetry.CollectorStatus(runtime.LastSeen, time.Now()),
 		"last_seen": optionalRFC3339Nano(runtime.LastSeen), "last_sync": optionalRFC3339Nano(runtime.LastSync),
@@ -2432,6 +2450,7 @@ func v2ProbePaths(c *gin.Context) {
 			"collector_id": path.CollectorID, "collector_name": path.CollectorName,
 			"target":    gin.H{"source": path.TargetSource, "hostname": path.Hostname, "ipv4": path.IPv4, "ipv6": path.IPv6},
 			"reachable": path.Reachable, "has_trace": path.HasTrace, "last_error": path.LastError,
+			"enable_icmp": path.EnableICMP, "enable_tcp": path.EnableTCP,
 			"tcp": tcp,
 		}
 		if path.HasICMP {
@@ -2540,6 +2559,136 @@ func v2ProbeTrace(c *gin.Context) {
 		payload["tcp"] = tcp
 	}
 	writeV2Data(c, http.StatusOK, payload)
+}
+
+func v2ProbeRoute(c *gin.Context) {
+	collectorID := strings.TrimSpace(c.Query("collector_id"))
+	raw := strings.TrimSpace(c.Query("server_id"))
+	if collectorID == "" || raw == "" {
+		writeV2Problem(c, http.StatusBadRequest, "invalid_probe_route", "collector_id 与 server_id 必填")
+		return
+	}
+	serverID, err := strconv.ParseUint(raw, 10, 64)
+	if err != nil || serverID == 0 {
+		writeV2Problem(c, http.StatusBadRequest, "invalid_server_id", "server_id 无效")
+		return
+	}
+	history, err := telemetry.ListProbeRoutes(singleton.DB, collectorID, serverID)
+	if err != nil {
+		writeV2Problem(c, http.StatusInternalServerError, "database_error", err.Error())
+		return
+	}
+	if history == nil {
+		writeV2Data(c, http.StatusOK, nil)
+		return
+	}
+	writeV2Data(c, http.StatusOK, probeRouteHistoryDTO(history))
+}
+
+func v2CreateProbeRoute(c *gin.Context) {
+	var request struct {
+		CollectorID string `json:"collector_id"`
+		ServerID    uint64 `json:"server_id"`
+		Protocol    string `json:"protocol"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		writeV2Problem(c, http.StatusBadRequest, "invalid_probe_route", "请求无效")
+		return
+	}
+	job, err := telemetry.EnqueueProbeRouteJob(singleton.DB, strings.TrimSpace(request.CollectorID), request.ServerID, request.Protocol, time.Now())
+	if err != nil {
+		switch {
+		case errors.Is(err, telemetry.ErrInvalidRouteProtocol):
+			writeV2Problem(c, http.StatusBadRequest, "invalid_probe_route", "协议须为 icmp 或 tcp")
+		case errors.Is(err, telemetry.ErrRouteProtocolDisabled):
+			writeV2Problem(c, http.StatusBadRequest, "probe_route_disabled", "该主机未开启此协议")
+		case errors.Is(err, telemetry.ErrRouteCollectorKind):
+			writeV2Problem(c, http.StatusBadRequest, "invalid_probe_route", "仅探测型从端可追踪路由")
+		case errors.Is(err, gorm.ErrRecordNotFound):
+			writeV2Problem(c, http.StatusNotFound, "not_found", "从端或主机不存在")
+		default:
+			writeV2Problem(c, http.StatusInternalServerError, "database_error", err.Error())
+		}
+		return
+	}
+	writeV2Data(c, http.StatusAccepted, probeRouteJobDTO(job))
+}
+
+func probeRouteHistoryDTO(history *telemetry.ProbeRouteHistoryView) gin.H {
+	payload := gin.H{
+		"collector_id": history.CollectorID, "server_id": history.ServerID,
+		"enable_icmp": history.EnableICMP, "enable_tcp": history.EnableTCP,
+		"icmp": probeRouteRecordItems(history.ICMP), "tcp": probeRouteRecordItems(history.TCP),
+	}
+	if history.Job != nil {
+		payload["job"] = probeRouteJobDTO(history.Job)
+	}
+	return payload
+}
+
+func probeRouteRecordItems(rows []telemetry.ProbeRouteRecordView) []gin.H {
+	items := make([]gin.H, 0, len(rows))
+	for _, row := range rows {
+		item := gin.H{
+			"id": row.ID, "sampled_at": optionalRFC3339Nano(row.SampledAt),
+			"destination": row.Destination, "error": row.Error, "hops": routeHopItems(row.Hops),
+		}
+		if row.Port > 0 {
+			item["port"] = row.Port
+		}
+		if row.JobID > 0 {
+			item["job_id"] = row.JobID
+		}
+		items = append(items, item)
+	}
+	return items
+}
+
+func probeRouteJobDTO(job *telemetry.ProbeRouteJobView) gin.H {
+	item := gin.H{
+		"id": job.ID, "protocol": job.Protocol, "status": job.Status,
+		"requested_at": optionalRFC3339Nano(job.RequestedAt),
+	}
+	if job.Port > 0 {
+		item["port"] = job.Port
+	}
+	if job.Error != "" {
+		item["error"] = job.Error
+	}
+	return item
+}
+
+func routeHopItems(hops []telemetry.ProbeRouteHopView) []gin.H {
+	items := make([]gin.H, 0, len(hops))
+	for _, hop := range hops {
+		item := gin.H{
+			"ttl": hop.TTL, "address": hop.Address, "hostname": hop.Hostname,
+			"rtt_ms": hop.RttMs, "loss": hop.Loss, "sent": hop.Sent,
+		}
+		if hop.ASN != "" {
+			item["asn"] = hop.ASN
+		}
+		if hop.Country != "" {
+			item["country"] = hop.Country
+		}
+		if hop.Province != "" {
+			item["province"] = hop.Province
+		}
+		if hop.City != "" {
+			item["city"] = hop.City
+		}
+		if hop.Owner != "" {
+			item["owner"] = hop.Owner
+		}
+		if hop.Geo != "" {
+			item["geo"] = hop.Geo
+		}
+		if hop.Private {
+			item["private"] = true
+		}
+		items = append(items, item)
+	}
+	return items
 }
 
 func hopItems(hops []telemetry.ProbeHopView) []gin.H {

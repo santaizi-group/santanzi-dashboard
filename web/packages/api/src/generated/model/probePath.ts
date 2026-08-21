@@ -28,4 +28,6 @@ export interface ProbePath {
   tcp?: ProbeTCP[];
   mtr?: ProbeMTR;
   has_trace: boolean;
+  enable_icmp?: boolean;
+  enable_tcp?: boolean;
 }

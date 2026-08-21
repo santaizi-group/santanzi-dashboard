@@ -330,11 +330,33 @@ func migrateDatabase(db *gorm.DB) error {
 		current = 14
 	}
 	if current < 15 {
-		return db.Transaction(func(tx *gorm.DB) error {
+		if err := db.Transaction(func(tx *gorm.DB) error {
 			if err := tx.AutoMigrate(&model.ProbeTrace{}); err != nil {
 				return err
 			}
 			return tx.Create(&model.SchemaMigration{Version: 15, AppliedAt: time.Now().UTC()}).Error
+		}); err != nil {
+			return err
+		}
+		current = 15
+	}
+	if current < 16 {
+		if err := db.Transaction(func(tx *gorm.DB) error {
+			if err := tx.AutoMigrate(&model.Collector{}, &model.ProbeRoute{}, &model.ProbeRouteJob{}); err != nil {
+				return err
+			}
+			return tx.Create(&model.SchemaMigration{Version: 16, AppliedAt: time.Now().UTC()}).Error
+		}); err != nil {
+			return err
+		}
+		current = 16
+	}
+	if current < 17 {
+		return db.Transaction(func(tx *gorm.DB) error {
+			if err := tx.AutoMigrate(&model.Collector{}); err != nil {
+				return err
+			}
+			return tx.Create(&model.SchemaMigration{Version: 17, AppliedAt: time.Now().UTC()}).Error
 		})
 	}
 	return nil

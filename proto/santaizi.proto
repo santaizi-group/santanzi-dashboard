@@ -557,6 +557,8 @@ message ProbeTarget {
     bool enable_mtr = 9;
     uint32 interval_seconds = 10;
     uint32 mtr_interval_seconds = 11;
+    uint32 route_interval_seconds = 12;
+    uint32 mtr_probes = 13;
 }
 
 enum ProbeIPFamily {
@@ -580,6 +582,9 @@ message ProbeConfig {
     double max_latency_ms = 12;
     uint32 fail_threshold = 13;
     repeated ProbeIPFamily ip_families = 14;
+    uint32 route_interval_seconds = 15;
+    uint32 route_keep = 16;
+    uint32 mtr_probes = 17;
 }
 
 message ProbeICMPSample {
@@ -614,6 +619,30 @@ message ProbeMTRTrace {
     uint32 port = 5;
 }
 
+message ProbeRouteHop {
+    uint32 ttl = 1;
+    string address = 2;
+    string hostname = 3;
+    double rtt_ms = 4;
+    double loss = 5;
+    uint32 sent = 6;
+    string asn = 7;
+    string country = 8;
+    string province = 9;
+    string city = 10;
+    string owner = 11;
+}
+
+message ProbeRouteTrace {
+    int64 sampled_at_unix_nano = 1;
+    string destination = 2;
+    string protocol = 3;
+    uint32 port = 4;
+    repeated ProbeRouteHop hops = 5;
+    string error = 6;
+    uint64 job_id = 7;
+}
+
 message ProbeSample {
     uint64 server_id = 1;
     int64 sampled_at_unix_nano = 2;
@@ -622,6 +651,8 @@ message ProbeSample {
     ProbeMTRTrace mtr = 5;
     string last_error = 6;
     ProbeMTRTrace mtr_tcp = 7;
+    ProbeRouteTrace route_icmp = 8;
+    ProbeRouteTrace route_tcp = 9;
 }
 
 message ProbeSampleBatch {
@@ -648,10 +679,22 @@ message CollectorSyncRequest {
     }
 }
 
+message ProbeRouteJob {
+    uint64 job_id = 1;
+    uint64 server_id = 2;
+    string protocol = 3;
+    uint32 port = 4;
+}
+
+message ProbeRouteJobBatch {
+    repeated ProbeRouteJob jobs = 1;
+}
+
 message CollectorSyncResponse {
     oneof body {
         CollectorAuthorizationConfig config = 1;
         bool accepted = 2;
+        ProbeRouteJobBatch route_jobs = 3;
     }
 }
 

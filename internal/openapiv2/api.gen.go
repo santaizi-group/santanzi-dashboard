@@ -253,6 +253,27 @@ func (e CollectorKind) Valid() bool {
 	}
 }
 
+// Defines values for CollectorRouteIntervalSeconds.
+const (
+	CollectorRouteIntervalSecondsN3600   CollectorRouteIntervalSeconds = 3600
+	CollectorRouteIntervalSecondsN604800 CollectorRouteIntervalSeconds = 604800
+	CollectorRouteIntervalSecondsN86400  CollectorRouteIntervalSeconds = 86400
+)
+
+// Valid indicates whether the value is a known member of the CollectorRouteIntervalSeconds enum.
+func (e CollectorRouteIntervalSeconds) Valid() bool {
+	switch e {
+	case CollectorRouteIntervalSecondsN3600:
+		return true
+	case CollectorRouteIntervalSecondsN604800:
+		return true
+	case CollectorRouteIntervalSecondsN86400:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CollectorStatus.
 const (
 	CollectorStatusOffline CollectorStatus = "offline"
@@ -310,6 +331,27 @@ func (e CollectorWriteKind) Valid() bool {
 	case CollectorWriteKindObserver:
 		return true
 	case CollectorWriteKindProbe:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CollectorWriteRouteIntervalSeconds.
+const (
+	CollectorWriteRouteIntervalSecondsN3600   CollectorWriteRouteIntervalSeconds = 3600
+	CollectorWriteRouteIntervalSecondsN604800 CollectorWriteRouteIntervalSeconds = 604800
+	CollectorWriteRouteIntervalSecondsN86400  CollectorWriteRouteIntervalSeconds = 86400
+)
+
+// Valid indicates whether the value is a known member of the CollectorWriteRouteIntervalSeconds enum.
+func (e CollectorWriteRouteIntervalSeconds) Valid() bool {
+	switch e {
+	case CollectorWriteRouteIntervalSecondsN3600:
+		return true
+	case CollectorWriteRouteIntervalSecondsN604800:
+		return true
+	case CollectorWriteRouteIntervalSecondsN86400:
 		return true
 	default:
 		return false
@@ -652,6 +694,63 @@ func (e ProbeMTRProtocol) Valid() bool {
 	case ProbeMTRProtocolIcmp:
 		return true
 	case ProbeMTRProtocolTcp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProbeRouteJobProtocol.
+const (
+	ProbeRouteJobProtocolIcmp ProbeRouteJobProtocol = "icmp"
+	ProbeRouteJobProtocolTcp  ProbeRouteJobProtocol = "tcp"
+)
+
+// Valid indicates whether the value is a known member of the ProbeRouteJobProtocol enum.
+func (e ProbeRouteJobProtocol) Valid() bool {
+	switch e {
+	case ProbeRouteJobProtocolIcmp:
+		return true
+	case ProbeRouteJobProtocolTcp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProbeRouteJobStatus.
+const (
+	Done    ProbeRouteJobStatus = "done"
+	Failed  ProbeRouteJobStatus = "failed"
+	Pending ProbeRouteJobStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the ProbeRouteJobStatus enum.
+func (e ProbeRouteJobStatus) Valid() bool {
+	switch e {
+	case Done:
+		return true
+	case Failed:
+		return true
+	case Pending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProbeRouteWriteProtocol.
+const (
+	ProbeRouteWriteProtocolIcmp ProbeRouteWriteProtocol = "icmp"
+	ProbeRouteWriteProtocolTcp  ProbeRouteWriteProtocol = "tcp"
+)
+
+// Valid indicates whether the value is a known member of the ProbeRouteWriteProtocol enum.
+func (e ProbeRouteWriteProtocol) Valid() bool {
+	switch e {
+	case ProbeRouteWriteProtocolIcmp:
+		return true
+	case ProbeRouteWriteProtocolTcp:
 		return true
 	default:
 		return false
@@ -1681,22 +1780,25 @@ type Collector struct {
 	ListenPort *int `json:"listen_port,omitempty"`
 
 	// Location 从端在地球上的位置，ISO 国家/地区码或 `lat,lon`
-	Location                *string           `json:"location,omitempty"`
-	MaxLatencyMs            *float64          `json:"max_latency_ms,omitempty"`
-	MinLatencyMs            *float64          `json:"min_latency_ms,omitempty"`
-	MtrIntervalSeconds      *int              `json:"mtr_interval_seconds,omitempty"`
-	Name                    string            `json:"name"`
-	NotificationTag         *string           `json:"notification_tag,omitempty"`
-	Notify                  *bool             `json:"notify,omitempty"`
-	OldestPending           *time.Time        `json:"oldest_pending,omitempty"`
-	PendingRecords          *int64            `json:"pending_records,omitempty"`
-	ProbeIntervalSeconds    *int              `json:"probe_interval_seconds,omitempty"`
-	ProtocolVersion         *string           `json:"protocol_version,omitempty"`
-	ReplicationCursor       *int64            `json:"replication_cursor,omitempty"`
-	ReplicationRttMs        *float64          `json:"replication_rtt_ms,omitempty"`
-	ReplicationRttSampledAt *time.Time        `json:"replication_rtt_sampled_at,omitempty"`
-	Revoked                 bool              `json:"revoked"`
-	Scopes                  *[]CollectorScope `json:"scopes,omitempty"`
+	Location                *string                        `json:"location,omitempty"`
+	MaxLatencyMs            *float64                       `json:"max_latency_ms,omitempty"`
+	MinLatencyMs            *float64                       `json:"min_latency_ms,omitempty"`
+	MtrIntervalSeconds      *int                           `json:"mtr_interval_seconds,omitempty"`
+	MtrProbes               *int                           `json:"mtr_probes,omitempty"`
+	Name                    string                         `json:"name"`
+	NotificationTag         *string                        `json:"notification_tag,omitempty"`
+	Notify                  *bool                          `json:"notify,omitempty"`
+	OldestPending           *time.Time                     `json:"oldest_pending,omitempty"`
+	PendingRecords          *int64                         `json:"pending_records,omitempty"`
+	ProbeIntervalSeconds    *int                           `json:"probe_interval_seconds,omitempty"`
+	ProtocolVersion         *string                        `json:"protocol_version,omitempty"`
+	ReplicationCursor       *int64                         `json:"replication_cursor,omitempty"`
+	ReplicationRttMs        *float64                       `json:"replication_rtt_ms,omitempty"`
+	ReplicationRttSampledAt *time.Time                     `json:"replication_rtt_sampled_at,omitempty"`
+	Revoked                 bool                           `json:"revoked"`
+	RouteIntervalSeconds    *CollectorRouteIntervalSeconds `json:"route_interval_seconds,omitempty"`
+	RouteKeep               *int                           `json:"route_keep,omitempty"`
+	Scopes                  *[]CollectorScope              `json:"scopes,omitempty"`
 
 	// SoftwareVersion 从端二进制版本
 	SoftwareVersion *string          `json:"software_version,omitempty"`
@@ -1710,6 +1812,9 @@ type Collector struct {
 
 // CollectorKind 从端类型。创建后不可改。缺省 observer。
 type CollectorKind string
+
+// CollectorRouteIntervalSeconds defines model for Collector.RouteIntervalSeconds.
+type CollectorRouteIntervalSeconds int
 
 // CollectorStatus defines model for Collector.Status.
 type CollectorStatus string
@@ -1782,22 +1887,28 @@ type CollectorWrite struct {
 	LatencyNotify *bool               `json:"latency_notify,omitempty"`
 
 	// ListenPort 从端进程监听端口。0 表示与 address 中的访问端口相同。
-	ListenPort           *int             `json:"listen_port,omitempty"`
-	Location             *string          `json:"location,omitempty"`
-	MaxLatencyMs         *float64         `json:"max_latency_ms,omitempty"`
-	MinLatencyMs         *float64         `json:"min_latency_ms,omitempty"`
-	MtrIntervalSeconds   *int             `json:"mtr_interval_seconds,omitempty"`
-	Name                 string           `json:"name"`
-	NotificationTag      *string          `json:"notification_tag,omitempty"`
-	Notify               *bool            `json:"notify,omitempty"`
-	ProbeIntervalSeconds *int             `json:"probe_interval_seconds,omitempty"`
-	Scopes               []CollectorScope `json:"scopes"`
-	TcpPorts             *string          `json:"tcp_ports,omitempty"`
-	Tls                  *bool            `json:"tls,omitempty"`
+	ListenPort           *int                                `json:"listen_port,omitempty"`
+	Location             *string                             `json:"location,omitempty"`
+	MaxLatencyMs         *float64                            `json:"max_latency_ms,omitempty"`
+	MinLatencyMs         *float64                            `json:"min_latency_ms,omitempty"`
+	MtrIntervalSeconds   *int                                `json:"mtr_interval_seconds,omitempty"`
+	MtrProbes            *int                                `json:"mtr_probes,omitempty"`
+	Name                 string                              `json:"name"`
+	NotificationTag      *string                             `json:"notification_tag,omitempty"`
+	Notify               *bool                               `json:"notify,omitempty"`
+	ProbeIntervalSeconds *int                                `json:"probe_interval_seconds,omitempty"`
+	RouteIntervalSeconds *CollectorWriteRouteIntervalSeconds `json:"route_interval_seconds,omitempty"`
+	RouteKeep            *int                                `json:"route_keep,omitempty"`
+	Scopes               []CollectorScope                    `json:"scopes"`
+	TcpPorts             *string                             `json:"tcp_ports,omitempty"`
+	Tls                  *bool                               `json:"tls,omitempty"`
 }
 
 // CollectorWriteKind 仅创建时生效；更新忽略。
 type CollectorWriteKind string
+
+// CollectorWriteRouteIntervalSeconds defines model for CollectorWrite.RouteIntervalSeconds.
+type CollectorWriteRouteIntervalSeconds int
 
 // ConnectionLatencyBucket defines model for ConnectionLatencyBucket.
 type ConnectionLatencyBucket struct {
@@ -2266,6 +2377,8 @@ type ProbePath struct {
 	CollectorName string      `json:"collector_name"`
 	DisplayIndex  int         `json:"display_index"`
 	DisplayRttMs  *float64    `json:"display_rtt_ms,omitempty"`
+	EnableIcmp    *bool       `json:"enable_icmp,omitempty"`
+	EnableTcp     *bool       `json:"enable_tcp,omitempty"`
 	HasTrace      bool        `json:"has_trace"`
 	Icmp          *ProbeICMP  `json:"icmp,omitempty"`
 	LastError     *string     `json:"last_error,omitempty"`
@@ -2278,6 +2391,71 @@ type ProbePath struct {
 	Target        ProbeTarget `json:"target"`
 	Tcp           *[]ProbeTCP `json:"tcp,omitempty"`
 }
+
+// ProbeRouteHistory defines model for ProbeRouteHistory.
+type ProbeRouteHistory struct {
+	CollectorId string             `json:"collector_id"`
+	EnableIcmp  bool               `json:"enable_icmp"`
+	EnableTcp   bool               `json:"enable_tcp"`
+	Icmp        []ProbeRouteRecord `json:"icmp"`
+	Job         *ProbeRouteJob     `json:"job,omitempty"`
+	ServerId    int64              `json:"server_id"`
+	Tcp         []ProbeRouteRecord `json:"tcp"`
+}
+
+// ProbeRouteHop defines model for ProbeRouteHop.
+type ProbeRouteHop struct {
+	Address  *string  `json:"address,omitempty"`
+	Asn      *string  `json:"asn,omitempty"`
+	City     *string  `json:"city,omitempty"`
+	Country  *string  `json:"country,omitempty"`
+	Geo      *string  `json:"geo,omitempty"`
+	Hostname *string  `json:"hostname,omitempty"`
+	Loss     *float64 `json:"loss,omitempty"`
+	Owner    *string  `json:"owner,omitempty"`
+	Private  *bool    `json:"private,omitempty"`
+	Province *string  `json:"province,omitempty"`
+	RttMs    *float64 `json:"rtt_ms,omitempty"`
+	Sent     *int     `json:"sent,omitempty"`
+	Ttl      int      `json:"ttl"`
+}
+
+// ProbeRouteJob defines model for ProbeRouteJob.
+type ProbeRouteJob struct {
+	Error       *string               `json:"error,omitempty"`
+	Id          int64                 `json:"id"`
+	Port        *int                  `json:"port,omitempty"`
+	Protocol    ProbeRouteJobProtocol `json:"protocol"`
+	RequestedAt *time.Time            `json:"requested_at,omitempty"`
+	Status      ProbeRouteJobStatus   `json:"status"`
+}
+
+// ProbeRouteJobProtocol defines model for ProbeRouteJob.Protocol.
+type ProbeRouteJobProtocol string
+
+// ProbeRouteJobStatus defines model for ProbeRouteJob.Status.
+type ProbeRouteJobStatus string
+
+// ProbeRouteRecord defines model for ProbeRouteRecord.
+type ProbeRouteRecord struct {
+	Destination *string         `json:"destination,omitempty"`
+	Error       *string         `json:"error,omitempty"`
+	Hops        []ProbeRouteHop `json:"hops"`
+	Id          int64           `json:"id"`
+	JobId       *int64          `json:"job_id,omitempty"`
+	Port        *int            `json:"port,omitempty"`
+	SampledAt   time.Time       `json:"sampled_at"`
+}
+
+// ProbeRouteWrite defines model for ProbeRouteWrite.
+type ProbeRouteWrite struct {
+	CollectorId string                  `json:"collector_id"`
+	Protocol    ProbeRouteWriteProtocol `json:"protocol"`
+	ServerId    int64                   `json:"server_id"`
+}
+
+// ProbeRouteWriteProtocol defines model for ProbeRouteWrite.Protocol.
+type ProbeRouteWriteProtocol string
 
 // ProbeSampleBucket defines model for ProbeSampleBucket.
 type ProbeSampleBucket struct {
@@ -3150,6 +3328,16 @@ type ProbePathListResponse struct {
 	Meta Meta        `json:"meta"`
 }
 
+// ProbeRouteJobResponse defines model for ProbeRouteJobResponse.
+type ProbeRouteJobResponse struct {
+	Data ProbeRouteJob `json:"data"`
+}
+
+// ProbeRouteResponse defines model for ProbeRouteResponse.
+type ProbeRouteResponse struct {
+	Data *ProbeRouteHistory `json:"data"`
+}
+
 // ProbeSampleListResponse defines model for ProbeSampleListResponse.
 type ProbeSampleListResponse struct {
 	Data []ProbeSampleBucket `json:"data"`
@@ -3500,6 +3688,18 @@ type ListProbePathsParams struct {
 	CollectorId *string `form:"collector_id,omitempty" json:"collector_id,omitempty"`
 }
 
+// GetProbeRouteParams defines parameters for GetProbeRoute.
+type GetProbeRouteParams struct {
+	CollectorId string `form:"collector_id" json:"collector_id"`
+	ServerId    int64  `form:"server_id" json:"server_id"`
+}
+
+// CreateProbeRouteParams defines parameters for CreateProbeRoute.
+type CreateProbeRouteParams struct {
+	// XCSRFToken Cookie 会话写操作时必填；Bearer Token 调用可省略
+	XCSRFToken *CsrfToken `json:"X-CSRF-Token,omitempty"`
+}
+
 // ListProbeSamplesParams defines parameters for ListProbeSamples.
 type ListProbeSamplesParams struct {
 	CollectorId *string                     `form:"collector_id,omitempty" json:"collector_id,omitempty"`
@@ -3800,6 +4000,9 @@ type UpdateNotificationJSONRequestBody = NotificationChannelWrite
 
 // CleanupOfflineHistoryJSONRequestBody defines body for CleanupOfflineHistory for application/json ContentType.
 type CleanupOfflineHistoryJSONRequestBody = GenericObject
+
+// CreateProbeRouteJSONRequestBody defines body for CreateProbeRoute for application/json ContentType.
+type CreateProbeRouteJSONRequestBody = ProbeRouteWrite
 
 // RenameServerGroupJSONRequestBody defines body for RenameServerGroup for application/json ContentType.
 type RenameServerGroupJSONRequestBody = ServerGroupRenameWrite
@@ -4573,6 +4776,12 @@ type ServerInterface interface {
 	// ListProbePaths 探测路径
 	// (GET /api/v2/admin/probes/paths)
 	ListProbePaths(c *gin.Context, params ListProbePathsParams)
+	// GetProbeRoute 最近 N 次路由
+	// (GET /api/v2/admin/probes/route)
+	GetProbeRoute(c *gin.Context, params GetProbeRouteParams)
+	// CreateProbeRoute 按需跑一次路由
+	// (POST /api/v2/admin/probes/route)
+	CreateProbeRoute(c *gin.Context, params CreateProbeRouteParams)
 	// ListProbeSamples 探测样本历史
 	// (GET /api/v2/admin/probes/samples)
 	ListProbeSamples(c *gin.Context, params ListProbeSamplesParams)
@@ -6521,6 +6730,81 @@ func (siw *ServerInterfaceWrapper) ListProbePaths(c *gin.Context) {
 	}
 
 	siw.Handler.ListProbePaths(c, params)
+}
+
+// GetProbeRoute operation middleware
+func (siw *ServerInterfaceWrapper) GetProbeRoute(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProbeRouteParams
+
+	// ------------- Required query parameter "collector_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "collector_id", c.Request.URL.Query(), &params.CollectorId, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter collector_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Required query parameter "server_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "server_id", c.Request.URL.Query(), &params.ServerId, runtime.BindQueryParameterOptions{Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter server_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetProbeRoute(c, params)
+}
+
+// CreateProbeRoute operation middleware
+func (siw *ServerInterfaceWrapper) CreateProbeRoute(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateProbeRouteParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CsrfToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateProbeRoute(c, params)
 }
 
 // ListProbeSamples operation middleware
@@ -8802,6 +9086,8 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v2/admin/probes/paths", wrapper.ListProbePaths)
 	router.GET(options.BaseURL+"/api/v2/admin/probes/samples", wrapper.ListProbeSamples)
 	router.GET(options.BaseURL+"/api/v2/admin/probes/trace", wrapper.GetProbeTrace)
+	router.GET(options.BaseURL+"/api/v2/admin/probes/route", wrapper.GetProbeRoute)
+	router.POST(options.BaseURL+"/api/v2/admin/probes/route", wrapper.CreateProbeRoute)
 	router.GET(options.BaseURL+"/api/v2/admin/telemetry/collectors", wrapper.ListCollectors)
 	router.POST(options.BaseURL+"/api/v2/admin/telemetry/collectors", wrapper.CreateCollector)
 	router.DELETE(options.BaseURL+"/api/v2/admin/telemetry/collectors/:collectorId", wrapper.DeleteCollector)

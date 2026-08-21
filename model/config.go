@@ -134,6 +134,7 @@ type CollectorModeConfig struct {
 	SpoolMaxBytes       uint64 `koanf:"spool_max_bytes" yaml:"spool_max_bytes"`
 	SpoolMaxAgeDays     uint64 `koanf:"spool_max_age_days" yaml:"spool_max_age_days"`
 	StatusAuthorization string `koanf:"status_authorization" yaml:"status_authorization"`
+	NexttracePath       string `koanf:"nexttrace_path" yaml:"nexttrace_path"`
 }
 
 type GRPCTLSConfig struct {

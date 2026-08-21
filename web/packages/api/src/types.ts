@@ -97,6 +97,7 @@ export interface CollectorRecord {
   kind?: 'observer' | 'probe'
   probe_interval_seconds?: number
   mtr_interval_seconds?: number
+  mtr_probes?: number
   tcp_ports?: string
   enable_icmp?: boolean
   enable_tcp?: boolean
@@ -109,6 +110,8 @@ export interface CollectorRecord {
   min_latency_ms?: number
   max_latency_ms?: number
   fail_threshold?: number
+  route_interval_seconds?: number
+  route_keep?: number
   generation: number
   config_version: number
   revoked: boolean

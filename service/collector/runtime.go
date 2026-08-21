@@ -70,6 +70,8 @@ type Runtime struct {
 	kind               string
 	probeMu            sync.Mutex
 	pendingSamples     []*pb.ProbeSample
+	routeCh            chan routeWork
+	routeInflight      map[string]struct{}
 }
 
 func NewRuntime(parent context.Context, store *Store, config model.CollectorModeConfig, grace time.Duration) (*Runtime, error) {
@@ -88,7 +90,7 @@ func NewRuntime(parent context.Context, store *Store, config model.CollectorMode
 	runtime := &Runtime{
 		store: store, config: config, grace: grace, ctx: ctx, cancel: cancel,
 		processSession: hex.EncodeToString(processID), replicationSession: replicationID, nextBatchSequence: 1,
-		replicateWake: make(chan struct{}, 1),
+		replicateWake: make(chan struct{}, 1), routeCh: make(chan routeWork, 32),
 	}
 	pkiDir := filepath.Join(filepath.Dir(config.DatabasePath), "pki")
 	clientStore, err := pki.NewClientStore(pkiDir)
@@ -129,11 +131,12 @@ func (r *Runtime) AgentCAPool() *x509.CertPool {
 }
 
 func (r *Runtime) Start() {
-	r.wg.Add(4)
+	r.wg.Add(5)
 	go r.syncLoop()
 	go r.replicationLoop()
 	go r.healthLoop()
 	go r.probeLoop()
+	go r.routeWorker()
 }
 
 func (r *Runtime) Close() {
@@ -236,6 +239,8 @@ func (r *Runtime) syncOnce() error {
 				if pem := config.GetAgentCaCertificatePem(); pem != "" {
 					_ = r.clientStore.SaveAgentCA([]byte(pem))
 				}
+			} else if jobs := response.GetRouteJobs(); jobs != nil {
+				r.enqueueRouteJobs(jobs)
 			} else if response.GetAccepted() {
 				if err := r.store.TouchPrimarySeen(r.ctx, time.Now()); err != nil {
 					return err

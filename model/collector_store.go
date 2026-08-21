@@ -82,20 +82,22 @@ type CollectorAuthorizationCache struct {
 }
 
 type CollectorCachedProbeTarget struct {
-	ServerID       uint64 `gorm:"primaryKey"`
-	ServerName     string
-	IPv4           string
-	IPv6           string
-	Hostname       string
-	TCPPorts       string
-	EnableICMP     bool
-	EnableTCP      bool
-	EnableMTR      bool
-	EnableIPv4     bool
-	EnableIPv6     bool
-	IntervalSec    uint
-	MTRIntervalSec uint
-	UpdatedAt      time.Time
+	ServerID         uint64 `gorm:"primaryKey"`
+	ServerName       string
+	IPv4             string
+	IPv6             string
+	Hostname         string
+	TCPPorts         string
+	EnableICMP       bool
+	EnableTCP        bool
+	EnableMTR        bool
+	EnableIPv4       bool
+	EnableIPv6       bool
+	IntervalSec      uint
+	MTRIntervalSec   uint
+	MTRProbes        uint
+	RouteIntervalSec uint
+	UpdatedAt        time.Time
 }
 
 type CollectorCachedAssignment struct {

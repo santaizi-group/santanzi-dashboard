@@ -421,6 +421,17 @@ func DrainRetention(ctx context.Context, db *gorm.DB, policy RetentionPolicy, no
 		return err
 	}
 
+	if sqliteTableExists(db, "probe_route_jobs") {
+		if err := expireStaleProbeRouteJobs(db, now); err != nil {
+			return deleted, err
+		}
+	}
+	if sqliteTableExists(db, "probe_routes") {
+		if err := PruneAllProbeRoutes(db); err != nil {
+			return deleted, err
+		}
+	}
+
 	completedMinute := now.Truncate(time.Minute).UnixNano()
 	if sqliteTableExists(db, "telemetry_events") {
 		if err := add(drainUntil(ctx, db, deadline, batch, "telemetry_observations",

@@ -60,6 +60,8 @@ type ProbePath struct {
 	TCP           []ProbeTCPView
 	HasICMP       bool
 	HasTrace      bool
+	EnableICMP    bool
+	EnableTCP     bool
 	MTR           ProbeMTRView
 }
 
@@ -263,6 +265,9 @@ func loadProbePaths(db *gorm.DB, filter ProbePathFilter, now time.Time) ([]Probe
 			path.Hostname = target.Hostname
 			path.IPv4 = target.IPv4
 			path.IPv6 = target.IPv6
+			enableICMP, enableTCP, _ := EffectiveProbeTypes(server, &collector)
+			path.EnableICMP = enableICMP
+			path.EnableTCP = enableTCP
 			if !HasActiveProbe(server, &collector, target) {
 				path.TargetSource = "none"
 				path.Hostname, path.IPv4, path.IPv6 = "", "", ""
@@ -478,6 +483,21 @@ func ingestProbeSample(db *gorm.DB, collector *model.Collector, sample *pb.Probe
 	if sampledAt == 0 {
 		sampledAt = now.UnixNano()
 	}
+	if err := ingestProbeRoutes(db, collector, sample, now); err != nil {
+		return err
+	}
+	icmpTrace := sample.GetMtr()
+	tcpTrace := sample.GetMtrTcp()
+	hasICMPTrace := icmpTrace != nil && len(icmpTrace.GetHops()) > 0
+	hasTCPTrace := tcpTrace != nil && len(tcpTrace.GetHops()) > 0
+	if hasICMPTrace || hasTCPTrace {
+		if err := upsertProbeTrace(db, collector.CollectorUUID, sample.GetServerId(), icmpTrace, tcpTrace, now); err != nil {
+			return err
+		}
+	}
+	if sample.GetIcmp() == nil && len(sample.GetTcp()) == 0 {
+		return nil
+	}
 	icmp := sample.GetIcmp()
 	tcpViews := make([]ProbeTCPView, 0, len(sample.GetTcp()))
 	anyTCP := false
@@ -518,10 +538,6 @@ func ingestProbeSample(db *gorm.DB, collector *model.Collector, sample *pb.Probe
 		}
 	}
 	tcpJSON, _ := json.Marshal(tcpViews)
-	icmpTrace := sample.GetMtr()
-	tcpTrace := sample.GetMtrTcp()
-	hasICMPTrace := icmpTrace != nil && len(icmpTrace.GetHops()) > 0
-	hasTCPTrace := tcpTrace != nil && len(tcpTrace.GetHops()) > 0
 	latest := model.ProbeLatest{
 		CollectorUUID: collector.CollectorUUID, ServerID: sample.GetServerId(), SampledAt: sampledAt,
 		Reachable: reachable, DisplayRttMs: display, LastError: sample.GetLastError(),
@@ -534,11 +550,6 @@ func ingestProbeSample(db *gorm.DB, collector *model.Collector, sample *pb.Probe
 	}
 	if err := db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&latest).Error; err != nil {
 		return err
-	}
-	if hasICMPTrace || hasTCPTrace {
-		if err := upsertProbeTrace(db, collector.CollectorUUID, sample.GetServerId(), icmpTrace, tcpTrace, now); err != nil {
-			return err
-		}
 	}
 	return evaluateProbeAlert(db, collector, sample.GetServerId(), reachable, hasConnectivity, display, sample.GetLastError(), now)
 }
@@ -816,6 +827,7 @@ func BuildProbeTargets(db *gorm.DB, collector *model.Collector) ([]*pb.ProbeTarg
 			ServerId: server.ID, ServerName: server.Name, Ipv4: resolved.IPv4, Ipv6: resolved.IPv6, Hostname: resolved.Hostname,
 			TcpPorts: ResolveProbeTCPPorts(server, collector), EnableIcmp: icmp, EnableTcp: tcp, EnableMtr: mtr,
 			IntervalSeconds: uint32(collector.ProbeIntervalSec), MtrIntervalSeconds: uint32(collector.MTRIntervalSec),
+			MtrProbes: uint32(collector.MTRProbes), RouteIntervalSeconds: uint32(collector.RouteIntervalSec),
 		})
 	}
 	return targets, nil
@@ -840,7 +852,9 @@ func ProbeConfigFromCollector(collector *model.Collector) *pb.ProbeConfig {
 		TcpPorts: pbPorts, EnableIcmp: collector.EnableICMP, EnableTcp: collector.EnableTCP, EnableMtr: collector.EnableMTR,
 		Notify: collector.ProbeNotify, NotificationTag: collector.NotificationTag, LatencyNotify: collector.LatencyNotify,
 		MinLatencyMs: collector.MinLatencyMs, MaxLatencyMs: collector.MaxLatencyMs, FailThreshold: uint32(collector.FailThreshold),
-		IpFamilies: IPFamiliesProto(collector),
+		IpFamilies:           IPFamiliesProto(collector),
+		RouteIntervalSeconds: uint32(collector.RouteIntervalSec), RouteKeep: uint32(collector.RouteKeep),
+		MtrProbes: uint32(collector.MTRProbes),
 	}
 }
 

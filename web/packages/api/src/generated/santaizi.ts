@@ -38,6 +38,7 @@ import type {
   DDNSProviderListResponseResponse,
   DatabaseStatusResponseResponse,
   GenericObjectBody,
+  GetProbeRouteParams,
   GetProbeTraceParams,
   GetPublicMetricsParams,
   GetPublicServerAvailabilityParams,
@@ -81,6 +82,9 @@ import type {
   ObserverAssignmentListResponseResponse,
   ProbeCapabilitiesResponseResponse,
   ProbePathListResponseResponse,
+  ProbeRouteJobResponseResponse,
+  ProbeRouteResponseResponse,
+  ProbeRouteWrite,
   ProbeSampleListResponseResponse,
   ProbeSummaryResponseResponse,
   ProbeTraceResponseResponse,
@@ -1301,6 +1305,33 @@ const getProbeTrace = (
     }
 
 /**
+ * @summary 最近 N 次路由
+ */
+const getProbeRoute = (
+    params: GetProbeRouteParams,
+ ) => {
+      return santaiziRequest<ProbeRouteResponseResponse>(
+      {url: `/api/v2/admin/probes/route`, method: 'GET',
+        params
+    },
+      );
+    }
+
+/**
+ * @summary 按需跑一次路由
+ */
+const createProbeRoute = (
+    probeRouteWrite: ProbeRouteWrite,
+ ) => {
+      return santaiziRequest<ProbeRouteJobResponseResponse>(
+      {url: `/api/v2/admin/probes/route`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: probeRouteWrite
+    },
+      );
+    }
+
+/**
  * @summary 从端列表
  */
 const listCollectors = (
@@ -1509,7 +1540,7 @@ const listTelemetryAlerts = (
       );
     }
 
-return {getSession,logout,getPublicBootstrap,createViewPasswordSession,listPublicServers,getPublicServer,listPublicServices,getPublicNetworkHistory,listPublicCycleTransfer,getPublicServerAvailability,getPublicMetrics,getAdminSummary,listServers,createServer,exportServers,previewServerImport,importServers,getServer,updateServer,deleteServer,listServerAvailability,updateServerDisplayIndex,listServerGroups,renameServerGroup,resetServerSecret,resetServerAvailability,getServerCredential,getServerInstallPreview,getServerUpgradePreview,getProbeCapabilities,listTrafficPolicies,createTrafficPolicy,getTrafficPolicy,updateTrafficPolicy,deleteTrafficPolicy,getServerTrafficHistory,getTrafficPolicyUsage,batchUpdateServerGroup,batchDeleteServers,listMonitors,createMonitor,getMonitor,updateMonitor,deleteMonitor,listMonitorHistory,listNotifications,createNotification,getNotification,updateNotification,deleteNotification,testNotification,listAlertRules,createAlertRule,getAlertRule,updateAlertRule,deleteAlertRule,listDDNSProviders,listDDNSProfiles,createDDNSProfile,getDDNSProfile,updateDDNSProfile,deleteDDNSProfile,listNATTunnels,createNATTunnel,getNATTunnel,updateNATTunnel,deleteNATTunnel,getSettings,updateSettings,getDatabase,optimizeDatabase,listScriptCommands,listApiTokens,createApiToken,getApiToken,patchApiToken,deleteApiToken,listOfflineHistory,deleteOfflineHistory,cleanupOfflineHistory,getTelemetryOverview,getConnectionSummary,listConnectionPaths,listConnectionLatency,getProbeSummary,listProbePaths,listProbeSamples,getProbeTrace,listCollectors,createCollector,getCollector,updateCollector,deleteCollector,rotateCollectorToken,getCollectorToken,revokeCollector,updateCollectorScope,getCollectorInstallPreview,listObserverAssignments,listAgentReliability,listIncidents,listIncidentRevisions,listTelemetryDataLoss,listTelemetryAlerts}};
+return {getSession,logout,getPublicBootstrap,createViewPasswordSession,listPublicServers,getPublicServer,listPublicServices,getPublicNetworkHistory,listPublicCycleTransfer,getPublicServerAvailability,getPublicMetrics,getAdminSummary,listServers,createServer,exportServers,previewServerImport,importServers,getServer,updateServer,deleteServer,listServerAvailability,updateServerDisplayIndex,listServerGroups,renameServerGroup,resetServerSecret,resetServerAvailability,getServerCredential,getServerInstallPreview,getServerUpgradePreview,getProbeCapabilities,listTrafficPolicies,createTrafficPolicy,getTrafficPolicy,updateTrafficPolicy,deleteTrafficPolicy,getServerTrafficHistory,getTrafficPolicyUsage,batchUpdateServerGroup,batchDeleteServers,listMonitors,createMonitor,getMonitor,updateMonitor,deleteMonitor,listMonitorHistory,listNotifications,createNotification,getNotification,updateNotification,deleteNotification,testNotification,listAlertRules,createAlertRule,getAlertRule,updateAlertRule,deleteAlertRule,listDDNSProviders,listDDNSProfiles,createDDNSProfile,getDDNSProfile,updateDDNSProfile,deleteDDNSProfile,listNATTunnels,createNATTunnel,getNATTunnel,updateNATTunnel,deleteNATTunnel,getSettings,updateSettings,getDatabase,optimizeDatabase,listScriptCommands,listApiTokens,createApiToken,getApiToken,patchApiToken,deleteApiToken,listOfflineHistory,deleteOfflineHistory,cleanupOfflineHistory,getTelemetryOverview,getConnectionSummary,listConnectionPaths,listConnectionLatency,getProbeSummary,listProbePaths,listProbeSamples,getProbeTrace,getProbeRoute,createProbeRoute,listCollectors,createCollector,getCollector,updateCollector,deleteCollector,rotateCollectorToken,getCollectorToken,revokeCollector,updateCollectorScope,getCollectorInstallPreview,listObserverAssignments,listAgentReliability,listIncidents,listIncidentRevisions,listTelemetryDataLoss,listTelemetryAlerts}};
 export type GetSessionResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['getSession']>>>
 export type LogoutResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['logout']>>>
 export type GetPublicBootstrapResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['getPublicBootstrap']>>>
@@ -1598,6 +1629,8 @@ export type GetProbeSummaryResult = NonNullable<Awaited<ReturnType<ReturnType<ty
 export type ListProbePathsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['listProbePaths']>>>
 export type ListProbeSamplesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['listProbeSamples']>>>
 export type GetProbeTraceResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['getProbeTrace']>>>
+export type GetProbeRouteResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['getProbeRoute']>>>
+export type CreateProbeRouteResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['createProbeRoute']>>>
 export type ListCollectorsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['listCollectors']>>>
 export type CreateCollectorResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['createCollector']>>>
 export type GetCollectorResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['getCollector']>>>

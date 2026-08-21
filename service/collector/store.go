@@ -167,11 +167,33 @@ func migrate(db *gorm.DB) error {
 		current = 4
 	}
 	if current < 5 {
-		return db.Transaction(func(tx *gorm.DB) error {
+		if err := db.Transaction(func(tx *gorm.DB) error {
 			if err := tx.AutoMigrate(&model.CollectorCachedProbeTarget{}); err != nil {
 				return err
 			}
 			return tx.Create(&model.CollectorSchemaMigration{Version: 5, AppliedAt: time.Now().UTC()}).Error
+		}); err != nil {
+			return err
+		}
+		current = 5
+	}
+	if current < 6 {
+		if err := db.Transaction(func(tx *gorm.DB) error {
+			if err := tx.AutoMigrate(&model.CollectorCachedProbeTarget{}); err != nil {
+				return err
+			}
+			return tx.Create(&model.CollectorSchemaMigration{Version: 6, AppliedAt: time.Now().UTC()}).Error
+		}); err != nil {
+			return err
+		}
+		current = 6
+	}
+	if current < 7 {
+		return db.Transaction(func(tx *gorm.DB) error {
+			if err := tx.AutoMigrate(&model.CollectorCachedProbeTarget{}); err != nil {
+				return err
+			}
+			return tx.Create(&model.CollectorSchemaMigration{Version: 7, AppliedAt: time.Now().UTC()}).Error
 		})
 	}
 	return nil
@@ -513,16 +535,31 @@ func (s *Store) SaveAuthorization(ctx context.Context, collectorUUID string, con
 			return err
 		}
 		enable4, enable6 := telemetry.ProbeConfigIPFamilies(config.GetProbe())
+		routeInterval := uint(0)
+		mtrProbesFallback := uint(0)
+		if probe := config.GetProbe(); probe != nil {
+			routeInterval = uint(probe.GetRouteIntervalSeconds())
+			mtrProbesFallback = uint(probe.GetMtrProbes())
+		}
 		for _, target := range config.GetTargets() {
 			ports := make([]string, 0, len(target.GetTcpPorts()))
 			for _, port := range target.GetTcpPorts() {
 				ports = append(ports, fmt.Sprintf("%d", port))
+			}
+			interval := uint(target.GetRouteIntervalSeconds())
+			if interval == 0 {
+				interval = routeInterval
+			}
+			mtrProbes := uint(target.GetMtrProbes())
+			if mtrProbes == 0 {
+				mtrProbes = mtrProbesFallback
 			}
 			if err := tx.Create(&model.CollectorCachedProbeTarget{
 				ServerID: target.GetServerId(), ServerName: target.GetServerName(), IPv4: target.GetIpv4(), IPv6: target.GetIpv6(),
 				Hostname: target.GetHostname(), TCPPorts: strings.Join(ports, ","), EnableICMP: target.GetEnableIcmp(),
 				EnableTCP: target.GetEnableTcp(), EnableMTR: target.GetEnableMtr(), EnableIPv4: enable4, EnableIPv6: enable6,
 				IntervalSec: uint(target.GetIntervalSeconds()), MTRIntervalSec: uint(target.GetMtrIntervalSeconds()),
+				MTRProbes: model.NormalizeMTRProbes(mtrProbes), RouteIntervalSec: interval,
 			}).Error; err != nil {
 				return err
 			}

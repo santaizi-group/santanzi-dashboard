@@ -118,7 +118,7 @@ function onQuotaUnitChange(index: number, unit: QuotaUnit) {
         <el-form-item :label="t('notificationGroup')"><el-select v-model="policy.notification_tag" filterable allow-create class="field-full"><el-option v-for="group in notificationGroups" :key="group" :label="group" :value="group" /></el-select></el-form-item>
         <el-form-item :label="t('trafficDirection')"><el-select v-model="policy.direction" class="field-full"><el-option :label="t('inbound')" value="inbound"/><el-option :label="t('outbound')" value="outbound"/><el-option :label="t('totalDirection')" value="total"/></el-select></el-form-item>
         <el-form-item :label="t('trafficMode')"><el-segmented v-model="policy.mode" :options="[{ label: t('cumulative'), value: 'cumulative' }, { label: t('recurring'), value: 'recurring' }]" /></el-form-item>
-        <el-form-item class="span-2" :label="t('warningPercent')"><div class="compound-field"><el-slider v-model="policy.warning_percent" :min="1" :max="99" /><el-input v-model.number="policy.warning_percent" inputmode="numeric" @blur="policy.warning_percent = clampNumber(policy.warning_percent, 1, 99, 80)" /></div></el-form-item>
+        <el-form-item :label="t('warningPercent')"><el-input v-model.number="policy.warning_percent" inputmode="numeric" class="field-full" @blur="policy.warning_percent = clampNumber(policy.warning_percent, 1, 99, 80)"><template #suffix>%</template></el-input></el-form-item>
         <el-form-item :label="t('quotaBytes')">
           <div class="compound-field">
             <el-input

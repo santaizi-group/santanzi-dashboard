@@ -1645,6 +1645,55 @@ paths:
           $ref: '#/components/responses/ProbeTraceResponse'
         default:
           $ref: '#/components/responses/Problem'
+  /api/v2/admin/probes/route:
+    get:
+      tags:
+      - Probes
+      summary: 最近 N 次路由
+      operationId: getProbeRoute
+      x-ui-route: /admin/probes
+      parameters:
+      - name: collector_id
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+      - name: server_id
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+      responses:
+        '200':
+          $ref: '#/components/responses/ProbeRouteResponse'
+        default:
+          $ref: '#/components/responses/Problem'
+    post:
+      tags:
+      - Probes
+      summary: 按需跑一次路由
+      operationId: createProbeRoute
+      x-ui-route: /admin/probes
+      security:
+      - cookieAuth: []
+        csrfHeader: []
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProbeRouteWrite'
+      responses:
+        '202':
+          $ref: '#/components/responses/ProbeRouteJobResponse'
+        default:
+          $ref: '#/components/responses/Problem'
   /api/v2/admin/telemetry/collectors:
     get:
       tags:
@@ -3808,6 +3857,10 @@ components:
         mtr_interval_seconds:
           type: integer
           minimum: 1
+        mtr_probes:
+          type: integer
+          minimum: 1
+          maximum: 10
         tcp_ports:
           type: string
           description: 逗号分隔 TCP 端口，如 22,443
@@ -3825,6 +3878,16 @@ components:
           type: boolean
           default: true
           description: 探测 IPv6。与 enable_ipv4 至少开一项。
+        route_interval_seconds:
+          type: integer
+          enum:
+          - 3600
+          - 86400
+          - 604800
+        route_keep:
+          type: integer
+          minimum: 1
+          maximum: 50
         notify:
           type: boolean
         notification_tag:
@@ -4230,6 +4293,10 @@ components:
           $ref: '#/components/schemas/ProbeMTR'
         has_trace:
           type: boolean
+        enable_icmp:
+          type: boolean
+        enable_tcp:
+          type: boolean
     ProbeMTR:
       type: object
       properties:
@@ -4368,6 +4435,142 @@ components:
           $ref: '#/components/schemas/ProbeTraceLeg'
         tcp:
           $ref: '#/components/schemas/ProbeTraceLeg'
+    ProbeRouteHop:
+      type: object
+      required:
+      - ttl
+      properties:
+        ttl:
+          type: integer
+          minimum: 1
+        address:
+          type: string
+        hostname:
+          type: string
+        rtt_ms:
+          type: number
+          format: double
+        loss:
+          type: number
+          format: double
+        sent:
+          type: integer
+        asn:
+          type: string
+        country:
+          type: string
+        province:
+          type: string
+        city:
+          type: string
+        owner:
+          type: string
+        geo:
+          type: string
+        private:
+          type: boolean
+    ProbeRouteRecord:
+      type: object
+      required:
+      - id
+      - sampled_at
+      - hops
+      properties:
+        id:
+          type: integer
+          format: int64
+        sampled_at:
+          type: string
+          format: date-time
+        destination:
+          type: string
+        port:
+          type: integer
+        error:
+          type: string
+        job_id:
+          type: integer
+          format: int64
+        hops:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProbeRouteHop'
+    ProbeRouteJob:
+      type: object
+      required:
+      - id
+      - protocol
+      - status
+      properties:
+        id:
+          type: integer
+          format: int64
+        protocol:
+          type: string
+          enum:
+          - icmp
+          - tcp
+        port:
+          type: integer
+        status:
+          type: string
+          enum:
+          - pending
+          - done
+          - failed
+        requested_at:
+          type: string
+          format: date-time
+        error:
+          type: string
+    ProbeRouteHistory:
+      type: object
+      required:
+      - collector_id
+      - server_id
+      - enable_icmp
+      - enable_tcp
+      - icmp
+      - tcp
+      properties:
+        collector_id:
+          type: string
+        server_id:
+          type: integer
+          format: int64
+        enable_icmp:
+          type: boolean
+        enable_tcp:
+          type: boolean
+        icmp:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProbeRouteRecord'
+        tcp:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProbeRouteRecord'
+        job:
+          $ref: '#/components/schemas/ProbeRouteJob'
+    ProbeRouteWrite:
+      type: object
+      required:
+      - collector_id
+      - server_id
+      - protocol
+      properties:
+        collector_id:
+          type: string
+          minLength: 1
+        server_id:
+          type: integer
+          format: int64
+          minimum: 1
+        protocol:
+          type: string
+          enum:
+          - icmp
+          - tcp
     ObserverEvidenceItem:
       type: object
       required:
@@ -4677,6 +4880,10 @@ components:
         mtr_interval_seconds:
           type: integer
           minimum: 1
+        mtr_probes:
+          type: integer
+          minimum: 1
+          maximum: 10
         tcp_ports:
           type: string
         enable_icmp:
@@ -4693,6 +4900,16 @@ components:
           type: boolean
           default: true
           description: 探测 IPv6。与 enable_ipv4 至少开一项。
+        route_interval_seconds:
+          type: integer
+          enum:
+          - 3600
+          - 86400
+          - 604800
+        route_keep:
+          type: integer
+          minimum: 1
+          maximum: 50
         notify:
           type: boolean
         notification_tag:
@@ -5517,6 +5734,31 @@ components:
                 nullable: true
                 allOf:
                 - $ref: '#/components/schemas/ProbeTrace'
+    ProbeRouteResponse:
+      description: Recent nexttrace routes; data is null when collector or server is missing
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+            - data
+            properties:
+              data:
+                type: object
+                nullable: true
+                allOf:
+                - $ref: '#/components/schemas/ProbeRouteHistory'
+    ProbeRouteJobResponse:
+      description: On-demand route job
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+            - data
+            properties:
+              data:
+                $ref: '#/components/schemas/ProbeRouteJob'
     ObserverAssignmentListResponse:
       description: Observer assignments
       content:

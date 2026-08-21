@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { ProbeMTRHop, ProbePath, ProbeSampleBucket, ProbeTrace } from '@santaizi/api'
+import type { ProbeMTRHop, ProbePath, ProbeRouteHistory, ProbeRouteHop, ProbeRouteRecord, ProbeSampleBucket, ProbeTrace } from '@santaizi/api'
 import { AppDialog, AppEmpty } from '@santaizi/ui'
 import ProbeRttBars from '@/components/ProbeRttBars.vue'
-import { getProbeTrace, listProbeSamples } from '@/api/adminApi'
+import { createProbeRoute, getProbeRoute, getProbeTrace, listProbeSamples } from '@/api/adminApi'
 import { formatAdminValue } from '@/composables/format'
 import { notifyAPIError } from '@/composables/notify'
 import {
@@ -28,13 +28,18 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:modelValue': [boolean] }>()
 const { t, te, locale } = useI18n()
 const loading = ref(false)
+const tracing = ref(false)
 const tab = ref('latency')
 const routeProtocol = ref<ProbeRouteProtocol>('icmp')
+const nexttraceProtocol = ref<ProbeRouteProtocol>('icmp')
+const selectedRouteId = ref<number | undefined>()
 const samples = ref<ProbeSampleBucket[]>([])
 const icmpBuckets = ref<ProbeSampleBucket[]>([])
 const tcpBuckets = ref<ProbeSampleBucket[]>([])
 const trace = ref<ProbeTrace | null>(null)
+const routeHistory = ref<ProbeRouteHistory | null>(null)
 const meta = reactive({ page: 1, page_size: 20, total: 0 })
+let pollTimer: ReturnType<typeof setTimeout> | undefined
 
 const icmpMetric = computed(() => props.path ? probeICMPMetric(props.path, locale.value, t('probeTimeout')) : { text: '—', tone: '' as const })
 const tcpMetric = computed(() => props.path ? probeTCPMetric(props.path, locale.value, t('probeTimeout')) : { text: '—', tone: '' as const })
@@ -68,13 +73,43 @@ const tcpRouteLabel = computed(() => {
   const port = trace.value?.tcp?.port || trace.value?.port
   return port ? `${t('tcp')} :${port}` : t('tcp')
 })
+const icmpNexttraceOn = computed(() => props.path?.enable_icmp !== false && routeHistory.value?.enable_icmp !== false)
+const tcpNexttraceOn = computed(() => props.path?.enable_tcp !== false && routeHistory.value?.enable_tcp !== false)
+const nexttraceOptions = computed(() => [
+  { label: t('icmp'), value: 'icmp', disabled: !icmpNexttraceOn.value },
+  { label: t('tcp'), value: 'tcp', disabled: !tcpNexttraceOn.value },
+])
+const routeRecords = computed<ProbeRouteRecord[]>(() => {
+  if (!routeHistory.value) return []
+  return nexttraceProtocol.value === 'tcp' ? routeHistory.value.tcp || [] : routeHistory.value.icmp || []
+})
+const selectedRoute = computed(() => routeRecords.value.find(row => row.id === selectedRouteId.value) || routeRecords.value[0])
+const nexttraceHops = computed<ProbeRouteHop[]>(() => selectedRoute.value?.hops || [])
+const nexttracePending = computed(() => routeHistory.value?.job?.status === 'pending' && routeHistory.value.job.protocol === nexttraceProtocol.value)
+const canTrace = computed(() => nexttraceProtocol.value === 'tcp' ? tcpNexttraceOn.value : icmpNexttraceOn.value)
 
 function pretty(value: unknown, key = '') {
   return formatAdminValue(value, key, locale.value, t as never, te)
 }
 
-function hopLabel(hop: ProbeMTRHop) {
+function hopLabel(hop: ProbeMTRHop | ProbeRouteHop) {
   return hopGeoText(hop, t('hopPrivate'))
+}
+
+function stopPoll() {
+  if (pollTimer) {
+    clearTimeout(pollTimer)
+    pollTimer = undefined
+  }
+}
+
+async function loadRoute() {
+  const path = props.path
+  if (!path) return
+  routeHistory.value = await getProbeRoute({ collector_id: path.collector_id, server_id: path.server_id })
+  if (!routeRecords.value.some(row => row.id === selectedRouteId.value)) {
+    selectedRouteId.value = routeRecords.value[0]?.id
+  }
 }
 
 async function load() {
@@ -97,6 +132,8 @@ async function load() {
     meta.total = sampleList.meta.total || sampleList.data.length
     trace.value = nextTrace
     routeProtocol.value = defaultProbeRouteProtocol(nextTrace)
+    await loadRoute()
+    if (!icmpNexttraceOn.value && tcpNexttraceOn.value) nexttraceProtocol.value = 'tcp'
   } catch (error) {
     notifyAPIError(error, t as never, te)
   } finally {
@@ -104,16 +141,59 @@ async function load() {
   }
 }
 
+async function runTrace() {
+  const path = props.path
+  if (!path || !canTrace.value) return
+  tracing.value = true
+  try {
+    await createProbeRoute({ collector_id: path.collector_id, server_id: path.server_id, protocol: nexttraceProtocol.value })
+    await pollRoute(0)
+  } catch (error) {
+    notifyAPIError(error, t as never, te)
+    tracing.value = false
+  }
+}
+
+async function pollRoute(attempt: number) {
+  if (!props.modelValue) {
+    tracing.value = false
+    return
+  }
+  try {
+    await loadRoute()
+  } catch (error) {
+    notifyAPIError(error, t as never, te)
+    tracing.value = false
+    return
+  }
+  if (!nexttracePending.value || attempt >= 30) {
+    tracing.value = false
+    return
+  }
+  pollTimer = setTimeout(() => { void pollRoute(attempt + 1) }, 2000)
+}
+
 watch(() => [props.modelValue, props.path?.collector_id, props.path?.server_id], () => {
+  stopPoll()
+  tracing.value = false
   if (!props.modelValue || !props.path) return
   meta.page = 1
   tab.value = 'latency'
   routeProtocol.value = 'icmp'
+  nexttraceProtocol.value = 'icmp'
+  selectedRouteId.value = undefined
   trace.value = null
+  routeHistory.value = null
   icmpBuckets.value = []
   tcpBuckets.value = []
   void load()
 })
+
+watch(nexttraceProtocol, () => {
+  selectedRouteId.value = routeRecords.value[0]?.id
+})
+
+onUnmounted(stopPoll)
 </script>
 
 <template>
@@ -171,6 +251,39 @@ watch(() => [props.modelValue, props.path?.collector_id, props.path?.server_id],
             </li>
           </ol>
           <AppEmpty v-else icon="ri-route-line" :description="t('noData')" />
+        </el-tab-pane>
+        <el-tab-pane :label="t('probeRouteTrace')" name="nexttrace">
+          <div class="probe-route-toolbar">
+            <el-segmented v-model="nexttraceProtocol" :options="nexttraceOptions" />
+            <el-button type="primary" :disabled="!canTrace || tracing" :loading="tracing" @click="runTrace">
+              <i class="ri-route-line"></i>{{ t('probeRouteRun') }}
+            </el-button>
+          </div>
+          <div v-if="routeRecords.length" class="probe-route-runs">
+            <el-button
+              v-for="row in routeRecords"
+              :key="row.id"
+              size="small"
+              :class="{ 'is-current': selectedRoute?.id === row.id }"
+              class="probe-route-run"
+              @click="selectedRouteId = row.id"
+            >{{ pretty(row.sampled_at, 'sampled_at') }}</el-button>
+          </div>
+          <p v-if="selectedRoute?.error" class="probe-route-error">{{ selectedRoute.error }}</p>
+          <ol v-if="nexttraceHops.length" class="probe-hops">
+            <li v-for="(hop, index) in nexttraceHops" :key="`${hop.ttl}-${hop.address || ''}-${index}`" class="probe-hop">
+              <span class="probe-hop__ttl">{{ hop.ttl }}</span>
+              <span class="probe-hop__addr" :title="[hop.address, hop.hostname, hopLabel(hop)].filter(Boolean).join(' · ')">
+                <span class="probe-hop__ip">{{ hop.address || '—' }}</span>
+                <span v-if="hop.hostname" class="probe-hop__geo">{{ hop.hostname }}</span>
+                <span v-if="hopLabel(hop)" class="probe-hop__geo">{{ hopLabel(hop) }}</span>
+              </span>
+              <span class="probe-hop__rtt">{{ pretty(hop.rtt_ms, 'rtt_ms') }}</span>
+              <span class="probe-hop__track" aria-hidden="true"><span class="probe-hop__fill" :style="{ width: `${probeLossPercent(hop.loss)}%` }"></span></span>
+              <span class="probe-hop__loss">{{ formatProbeLoss(hop.loss, locale) }}</span>
+            </li>
+          </ol>
+          <AppEmpty v-else-if="!selectedRoute?.error" icon="ri-route-line" :description="t('probeRouteEmpty')" />
         </el-tab-pane>
         <el-tab-pane :label="t('probeRecords')" name="records">
           <el-table :data="samples" class="dataset-table">

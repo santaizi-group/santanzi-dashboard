@@ -93,6 +93,20 @@ const (
 	DefaultMTRIntervalSec     = 300
 	DefaultProbeTCPPorts      = "22,443"
 	DefaultProbeFailThreshold = 3
+	DefaultRouteIntervalSec   = 86400
+	RouteIntervalHour         = 3600
+	RouteIntervalDay          = 86400
+	RouteIntervalWeek         = 604800
+	DefaultRouteKeep          = 10
+	MinRouteKeep              = 1
+	MaxRouteKeep              = 50
+	DefaultMTRProbes          = 10
+	MinMTRProbes              = 1
+	MaxMTRProbes              = 10
+
+	ProbeRouteJobPending = "pending"
+	ProbeRouteJobDone    = "done"
+	ProbeRouteJobFailed  = "failed"
 )
 
 type Collector struct {
@@ -111,7 +125,8 @@ type Collector struct {
 	Kind              string `gorm:"size:16;not null;default:observer;index"`
 	ProbeIntervalSec  uint   `gorm:"not null;default:30"`
 	MTRIntervalSec    uint   `gorm:"not null;default:300"`
-	TCPPorts          string `gorm:"size:64;not null;default:'22,443'"`
+	MTRProbes         uint   `gorm:"not null;default:10"`
+	TCPPorts          string `gorm:"size:64;not null"`
 	EnableICMP        bool   `gorm:"not null;default:1"`
 	EnableTCP         bool   `gorm:"not null;default:1"`
 	EnableMTR         bool   `gorm:"not null;default:1"`
@@ -123,6 +138,8 @@ type Collector struct {
 	MinLatencyMs      float64
 	MaxLatencyMs      float64
 	FailThreshold     uint `gorm:"not null;default:3"`
+	RouteIntervalSec  uint `gorm:"not null;default:86400"`
+	RouteKeep         uint `gorm:"not null;default:10"`
 	Revoked           bool `gorm:"not null;index"`
 	Deleted           bool `gorm:"not null;index"`
 	CreatedAt         time.Time
@@ -156,6 +173,7 @@ func (c *Collector) ApplyProbeDefaults() {
 	if c.MTRIntervalSec == 0 {
 		c.MTRIntervalSec = DefaultMTRIntervalSec
 	}
+	c.MTRProbes = NormalizeMTRProbes(c.MTRProbes)
 	if c.TCPPorts == "" {
 		c.TCPPorts = DefaultProbeTCPPorts
 	}
@@ -169,6 +187,43 @@ func (c *Collector) ApplyProbeDefaults() {
 		c.EnableIPv4 = BoolPtr(true)
 		c.EnableIPv6 = BoolPtr(true)
 	}
+	c.RouteIntervalSec = NormalizeRouteIntervalSec(c.RouteIntervalSec)
+	c.RouteKeep = NormalizeRouteKeep(c.RouteKeep)
+}
+
+func NormalizeRouteIntervalSec(value uint) uint {
+	switch value {
+	case RouteIntervalHour, RouteIntervalDay, RouteIntervalWeek:
+		return value
+	default:
+		return DefaultRouteIntervalSec
+	}
+}
+
+func NormalizeRouteKeep(value uint) uint {
+	if value == 0 {
+		return DefaultRouteKeep
+	}
+	if value < MinRouteKeep {
+		return MinRouteKeep
+	}
+	if value > MaxRouteKeep {
+		return MaxRouteKeep
+	}
+	return value
+}
+
+func NormalizeMTRProbes(value uint) uint {
+	if value == 0 {
+		return DefaultMTRProbes
+	}
+	if value < MinMTRProbes {
+		return MinMTRProbes
+	}
+	if value > MaxMTRProbes {
+		return MaxMTRProbes
+	}
+	return value
 }
 
 func BoolOrTrue(value *bool) bool {
@@ -430,6 +485,33 @@ type ProbeTrace struct {
 	TCPHopsJSON    []byte `gorm:"type:BLOB"`
 	TCPPort        uint
 	UpdatedAt      time.Time
+}
+
+type ProbeRoute struct {
+	ID            uint64 `gorm:"primaryKey;autoIncrement"`
+	CollectorUUID string `gorm:"size:64;not null;index:idx_probe_route_hist,priority:1"`
+	ServerID      uint64 `gorm:"not null;index:idx_probe_route_hist,priority:2"`
+	Protocol      string `gorm:"size:8;not null;index:idx_probe_route_hist,priority:3"`
+	SampledAt     int64  `gorm:"not null;index:idx_probe_route_hist,priority:4"`
+	Destination   string
+	Port          uint
+	HopsJSON      []byte `gorm:"type:BLOB"`
+	Error         string `gorm:"size:512"`
+	JobID         uint64
+	UpdatedAt     time.Time
+}
+
+type ProbeRouteJob struct {
+	ID            uint64 `gorm:"primaryKey;autoIncrement"`
+	CollectorUUID string `gorm:"size:64;not null;index:idx_probe_route_job_pending,priority:1"`
+	ServerID      uint64 `gorm:"not null;index:idx_probe_route_job_pending,priority:2"`
+	Protocol      string `gorm:"size:8;not null;index:idx_probe_route_job_pending,priority:3"`
+	Port          uint
+	Status        string `gorm:"size:16;not null;index"`
+	RequestedAt   int64  `gorm:"not null"`
+	FinishedAt    int64
+	Error         string `gorm:"size:512"`
+	UpdatedAt     time.Time
 }
 
 type ProbeAlertState struct {

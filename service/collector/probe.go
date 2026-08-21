@@ -9,9 +9,18 @@ import (
 	pb "github.com/hi2shark/santaizi-dashboard/proto"
 )
 
+var (
+	icmpOn   = netprobe.ICMPOn
+	tcpOn    = netprobe.TCPOn
+	mtrOn    = netprobe.MTROn
+	mtrTCPOn = netprobe.MTRTCPOn
+)
+
 type probeState struct {
 	lastCycle     time.Time
 	lastMTR       time.Time
+	lastRouteICMP time.Time
+	lastRouteTCP  time.Time
 	lastReachable *bool
 }
 
@@ -67,6 +76,7 @@ func (r *Runtime) probeLoop() {
 			if len(batch) > 0 {
 				r.queueProbeSamples(batch)
 			}
+			r.scheduleRoutes(now, targets, states)
 		}
 	}
 }
@@ -81,7 +91,7 @@ func (r *Runtime) runProbeTarget(ctx context.Context, target model.CollectorCach
 	if target.EnableICMP {
 		var results []netprobe.ICMPResult
 		for _, dest := range dests {
-			results = append(results, netprobe.ICMPOn(ctx, dest.Host, dest.ICMPNet, 5, 2*time.Second))
+			results = append(results, icmpOn(ctx, dest.Host, dest.ICMPNet, 5, 2*time.Second))
 		}
 		icmp = netprobe.MergeICMP(results)
 		sample.Icmp = &pb.ProbeICMPSample{
@@ -93,7 +103,7 @@ func (r *Runtime) runProbeTarget(ctx context.Context, target model.CollectorCach
 	if target.EnableTCP {
 		for _, dest := range dests {
 			for _, port := range netprobe.ParsePorts(target.TCPPorts) {
-				tcpResults = append(tcpResults, netprobe.TCPOn(ctx, dest.Host, dest.TCPNet, port, 3*time.Second))
+				tcpResults = append(tcpResults, tcpOn(ctx, dest.Host, dest.TCPNet, port, 3*time.Second))
 			}
 		}
 		tcpResults = netprobe.MergeTCPByPort(tcpResults)
@@ -134,13 +144,14 @@ func (r *Runtime) runProbeTarget(ctx context.Context, target model.CollectorCach
 			}
 		}
 		sampledAt := now.UnixNano()
+		probes := int(model.NormalizeMTRProbes(target.MTRProbes))
 		if target.EnableICMP {
-			sample.Mtr = probeTraceToProto(netprobe.MTROn(ctx, mtrHost, mtrFamily, 30, 3, time.Second), "icmp", 0, sampledAt)
+			sample.Mtr = probeTraceToProto(mtrOn(ctx, mtrHost, mtrFamily, 30, probes, time.Second), "icmp", 0, sampledAt)
 		}
 		if target.EnableTCP {
 			port := netprobe.TCPMTRPort(tcpResults, netprobe.ParsePorts(target.TCPPorts))
 			if port > 0 {
-				sample.MtrTcp = probeTraceToProto(netprobe.MTRTCPOn(ctx, mtrHost, mtrFamily, port, 30, 3, time.Second), "tcp", port, sampledAt)
+				sample.MtrTcp = probeTraceToProto(mtrTCPOn(ctx, mtrHost, mtrFamily, port, 30, probes, time.Second), "tcp", port, sampledAt)
 			}
 		}
 		state.lastMTR = now

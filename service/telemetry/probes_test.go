@@ -20,7 +20,7 @@ func probeTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&model.Collector{}, &model.CollectorScope{}, &model.Server{}, &model.ServerRuntime{}, &model.ProbeSampleBucket{}, &model.ProbeLatest{}, &model.ProbeTrace{}, &model.ProbeAlertState{}, &model.CollectorRuntime{}); err != nil {
+	if err := db.AutoMigrate(&model.Collector{}, &model.CollectorScope{}, &model.Server{}, &model.ServerRuntime{}, &model.ProbeSampleBucket{}, &model.ProbeLatest{}, &model.ProbeTrace{}, &model.ProbeAlertState{}, &model.CollectorRuntime{}, &model.ProbeRoute{}, &model.ProbeRouteJob{}); err != nil {
 		t.Fatal(err)
 	}
 	return db
@@ -337,6 +337,9 @@ func TestBuildProbeTargetsFiltersIPFamily(t *testing.T) {
 	empty := ProbeConfigFromCollector(&model.Collector{Kind: model.CollectorKindProbe, EnableIPv4: model.BoolPtr(true), EnableIPv6: model.BoolPtr(true)})
 	if len(empty.GetIpFamilies()) != 0 {
 		t.Fatalf("both families should encode as empty: %+v", empty.GetIpFamilies())
+	}
+	if empty.GetMtrProbes() != 10 {
+		t.Fatalf("default mtr probes: %d", empty.GetMtrProbes())
 	}
 	v4, v6 := ProbeConfigIPFamilies(&pb.ProbeConfig{})
 	if !v4 || !v6 {

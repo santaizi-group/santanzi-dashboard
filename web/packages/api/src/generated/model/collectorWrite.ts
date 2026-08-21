@@ -9,6 +9,7 @@
  */
 import type { CollectorScope } from './collectorScope';
 import type { CollectorWriteKind } from './collectorWriteKind';
+import type { CollectorWriteRouteIntervalSeconds } from './collectorWriteRouteIntervalSeconds';
 
 export interface CollectorWrite {
   /**
@@ -37,6 +38,11 @@ export interface CollectorWrite {
   probe_interval_seconds?: number;
   /** @minimum 1 */
   mtr_interval_seconds?: number;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  mtr_probes?: number;
   tcp_ports?: string;
   enable_icmp?: boolean;
   enable_tcp?: boolean;
@@ -45,6 +51,12 @@ export interface CollectorWrite {
   enable_ipv4?: boolean;
   /** 探测 IPv6。与 enable_ipv4 至少开一项。 */
   enable_ipv6?: boolean;
+  route_interval_seconds?: CollectorWriteRouteIntervalSeconds;
+  /**
+     * @minimum 1
+     * @maximum 50
+     */
+  route_keep?: number;
   notify?: boolean;
   notification_tag?: string;
   latency_notify?: boolean;

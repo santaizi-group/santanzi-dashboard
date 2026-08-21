@@ -98,7 +98,7 @@ watch(() => props.modelValue, value => { if (value) void reset(props.value) })
               <el-form-item :label="t('probeTarget')"><el-input v-model="form.probe_target" /></el-form-item>
               <el-form-item :label="t('tcpPorts')"><el-input v-model="form.probe_tcp_ports" :disabled="!form.probe_enable_tcp" /></el-form-item>
               <el-form-item class="span-2">
-                <div class="switch-grid">
+                <div class="switch-grid switch-grid-3">
                   <label><span>{{ t('enableICMP') }}</span><el-switch v-model="form.probe_enable_icmp" /></label>
                   <label><span>{{ t('enableTCP') }}</span><el-switch v-model="form.probe_enable_tcp" /></label>
                   <label><span>{{ t('enableMTR') }}</span><el-switch v-model="form.probe_enable_mtr" /></label>

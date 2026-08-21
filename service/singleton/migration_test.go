@@ -56,6 +56,15 @@ func TestOpenDBFromPathCreatesVersionedSchema(t *testing.T) {
 	if !db.Migrator().HasColumn(&model.ProbeTrace{}, "tcp_hops_json") || !db.Migrator().HasColumn(&model.ProbeTrace{}, "tcp_port") {
 		t.Fatal("probe_traces tcp columns were not created")
 	}
+	if !db.Migrator().HasTable(&model.ProbeRoute{}) || !db.Migrator().HasTable(&model.ProbeRouteJob{}) {
+		t.Fatal("probe route tables were not created")
+	}
+	if !db.Migrator().HasColumn(&model.Collector{}, "route_interval_sec") || !db.Migrator().HasColumn(&model.Collector{}, "route_keep") {
+		t.Fatal("collector route columns were not created")
+	}
+	if !db.Migrator().HasColumn(&model.Collector{}, "mtr_probes") {
+		t.Fatal("collector mtr_probes column was not created")
+	}
 	var autoVacuum int
 	if err := db.Raw("PRAGMA auto_vacuum").Scan(&autoVacuum).Error; err != nil {
 		t.Fatal(err)
@@ -128,7 +137,7 @@ func TestMigrateV12AddsCollectorRuntimeSoftwareVersion(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
 		t.Fatal(err)
 	}
-	if current != 15 {
+	if current != 17 {
 		t.Fatalf("version = %d", current)
 	}
 	if err := db.Create(&model.CollectorRuntime{CollectorUUID: "c1", Status: "online", SoftwareVersion: "1.2.3"}).Error; err != nil {
@@ -182,7 +191,7 @@ func TestMigrateV13AddsServerProbeOverrides(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
 		t.Fatal(err)
 	}
-	if current != 15 {
+	if current != 17 {
 		t.Fatalf("version = %d", current)
 	}
 }
@@ -226,7 +235,7 @@ func TestMigrateV14AddsAvailabilityWindow(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
 		t.Fatal(err)
 	}
-	if current != 15 {
+	if current != 17 {
 		t.Fatalf("version = %d", current)
 	}
 }
@@ -272,7 +281,116 @@ func TestMigrateV15AddsProbeTraceTCP(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
 		t.Fatal(err)
 	}
-	if current != 15 {
+	if current != 17 {
 		t.Fatalf("version = %d", current)
+	}
+}
+
+func TestMigrateV16AddsProbeRoutes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v15.db")
+	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := CloseDB(db); err != nil {
+			t.Errorf("close db: %v", err)
+		}
+	})
+	if err := db.AutoMigrate(&model.SchemaMigration{}, &model.Collector{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.SchemaMigration{Version: 15, AppliedAt: time.Now().UTC()}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if db.Migrator().HasTable(&model.ProbeRoute{}) {
+		t.Fatal("fixture should omit probe_routes")
+	}
+	if err := migrateDatabase(db); err != nil {
+		t.Fatal(err)
+	}
+	if !db.Migrator().HasTable(&model.ProbeRoute{}) || !db.Migrator().HasTable(&model.ProbeRouteJob{}) {
+		t.Fatal("v16 should add probe route tables")
+	}
+	if !db.Migrator().HasColumn(&model.Collector{}, "route_interval_sec") {
+		t.Fatal("v16 should add collector route_interval_sec")
+	}
+	var version uint64
+	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&version).Error; err != nil {
+		t.Fatal(err)
+	}
+	if version != 17 {
+		t.Fatalf("version = %d", version)
+	}
+}
+
+func TestMigrateV17AddsMTRProbes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v16.db")
+	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := CloseDB(db); err != nil {
+			t.Errorf("close db: %v", err)
+		}
+	})
+	if err := db.AutoMigrate(&model.SchemaMigration{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE TABLE collectors (
+		collector_uuid TEXT PRIMARY KEY,
+		name TEXT NOT NULL,
+		address TEXT NOT NULL,
+		listen_port INTEGER NOT NULL DEFAULT 0,
+		token_hash BLOB NOT NULL,
+		token_ciphertext BLOB NOT NULL,
+		generation INTEGER NOT NULL DEFAULT 1,
+		config_version INTEGER NOT NULL DEFAULT 1,
+		tls INTEGER,
+		insecure_tls INTEGER,
+		location TEXT,
+		kind TEXT NOT NULL DEFAULT 'observer',
+		probe_interval_sec INTEGER NOT NULL DEFAULT 30,
+		mtr_interval_sec INTEGER NOT NULL DEFAULT 300,
+		tcp_ports TEXT NOT NULL DEFAULT '',
+		enable_icmp INTEGER NOT NULL DEFAULT 1,
+		enable_tcp INTEGER NOT NULL DEFAULT 1,
+		enable_mtr INTEGER NOT NULL DEFAULT 1,
+		enable_ipv4 INTEGER NOT NULL DEFAULT 1,
+		enable_ipv6 INTEGER NOT NULL DEFAULT 1,
+		probe_notify INTEGER,
+		notification_tag TEXT,
+		latency_notify INTEGER,
+		min_latency_ms REAL,
+		max_latency_ms REAL,
+		fail_threshold INTEGER NOT NULL DEFAULT 3,
+		route_interval_sec INTEGER NOT NULL DEFAULT 86400,
+		route_keep INTEGER NOT NULL DEFAULT 10,
+		revoked INTEGER NOT NULL DEFAULT 0,
+		deleted INTEGER NOT NULL DEFAULT 0,
+		created_at DATETIME,
+		updated_at DATETIME
+	)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.SchemaMigration{Version: 16, AppliedAt: time.Now().UTC()}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if db.Migrator().HasColumn(&model.Collector{}, "mtr_probes") {
+		t.Fatal("fixture should omit mtr_probes")
+	}
+	if err := migrateDatabase(db); err != nil {
+		t.Fatal(err)
+	}
+	if !db.Migrator().HasColumn(&model.Collector{}, "mtr_probes") {
+		t.Fatal("v17 should add collector mtr_probes")
+	}
+	var version uint64
+	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&version).Error; err != nil {
+		t.Fatal(err)
+	}
+	if version != 17 {
+		t.Fatalf("version = %d", version)
 	}
 }

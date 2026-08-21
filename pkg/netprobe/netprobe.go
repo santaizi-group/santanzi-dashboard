@@ -143,7 +143,7 @@ func MTROn(ctx context.Context, host, family string, maxTTL, probesPerHop int, t
 		maxTTL = 30
 	}
 	if probesPerHop <= 0 {
-		probesPerHop = 3
+		probesPerHop = 10
 	}
 	if timeout <= 0 {
 		timeout = time.Second

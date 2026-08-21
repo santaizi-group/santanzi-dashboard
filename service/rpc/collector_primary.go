@@ -150,6 +150,17 @@ func (h *PrimaryCollectorHandler) Sync(stream grpc.BidiStreamingServer[pb.Collec
 			} else if err := stream.Send(&pb.CollectorSyncResponse{Body: &pb.CollectorSyncResponse_Accepted{Accepted: true}}); err != nil {
 				return err
 			}
+			if collector.IsProbe() {
+				jobs, jobErr := telemetryservice.ListPendingProbeRouteJobs(singleton.DB.WithContext(stream.Context()), collector.CollectorUUID, time.Now())
+				if jobErr != nil {
+					return jobErr
+				}
+				if batch := telemetryservice.PendingJobsToProto(jobs); batch != nil {
+					if err := stream.Send(&pb.CollectorSyncResponse{Body: &pb.CollectorSyncResponse_RouteJobs{RouteJobs: batch}}); err != nil {
+						return err
+					}
+				}
+			}
 		}
 	}
 }
