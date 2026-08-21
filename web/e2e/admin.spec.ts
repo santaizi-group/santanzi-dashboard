@@ -493,7 +493,7 @@ test('collector and API token credentials can be viewed again by stable identifi
   await expect(page.getByRole('dialog', { name: 'Token' }).locator('input')).toHaveValue('reusable-api-token')
 })
 
-test('probe collector hides observer replication stats', async ({ page }) => {
+test('probe collector hides observer replication stats', async ({ page }, testInfo) => {
   await page.route('**/api/v2/admin/telemetry/collectors**', route => fulfillJSON(route, list([
     {
       id: 'collector-1', name: 'Tokyo edge', address: 'observer.example.com:5555', listen_port: 5556, tls: true,
@@ -507,13 +507,15 @@ test('probe collector hides observer replication stats', async ({ page }) => {
     },
   ])))
   await page.goto('/admin/telemetry')
-  const table = page.locator('.el-table').filter({ visible: true })
-  await expect(table.getByText('观测型')).toBeVisible()
-  await expect(table.getByText('探测型')).toBeVisible()
-  await expect(table.getByText('31', { exact: true })).toBeVisible()
-  await expect(table.getByText('6', { exact: true })).toBeVisible()
-  await expect(table).not.toContainText('8072')
-  await expect(table).not.toContainText('709.5')
+  const collectorView = testInfo.project.name === 'admin-mobile'
+    ? page.locator('.mobile-card-list').filter({ visible: true })
+    : page.locator('.el-table').filter({ visible: true })
+  await expect(collectorView.getByText('观测型')).toBeVisible()
+  await expect(collectorView.getByText('探测型')).toBeVisible()
+  await expect(collectorView.getByText('31', { exact: true })).toBeVisible()
+  await expect(collectorView.getByText('6', { exact: true })).toBeVisible()
+  await expect(collectorView).not.toContainText('8072')
+  await expect(collectorView).not.toContainText('709.5')
 })
 
 test('admin sidebar shows panel version', async ({ page }) => {
