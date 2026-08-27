@@ -84,7 +84,21 @@ func TestLookupHopPrivateAndFormat(t *testing.T) {
 	if got := FormatHopGeo(HopInfo{CountryName: "United States", ASName: "Google LLC"}); got != "United States · Google LLC" {
 		t.Fatal(got)
 	}
+	if got := FormatHopGeo(HopInfo{CountryName: "United States", ASName: "Google LLC", ASN: "15169"}); got != "United States · Google LLC · AS15169" {
+		t.Fatal(got)
+	}
 	if got := FormatHopGeo(HopInfo{CountryCode: "us"}); got != "US" {
 		t.Fatal(got)
+	}
+	if FormatASN("4134") != "AS4134" || FormatASN("as4134") != "AS4134" || FormatASN("") != "" {
+		t.Fatal("FormatASN")
+	}
+	legacy := &IPInfo{Country: "US", CountryName: "United States"}
+	if legacy.isoCountry() != "us" || legacy.displayCountry() != "United States" {
+		t.Fatalf("%+v", legacy)
+	}
+	lite := &IPInfo{CountryCode: "us", Country: "United States", ASN: "AS15169"}
+	if lite.isoCountry() != "us" || lite.displayCountry() != "United States" {
+		t.Fatalf("%+v", lite)
 	}
 }

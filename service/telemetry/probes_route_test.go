@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/hi2shark/santaizi-dashboard/model"
+	"github.com/hi2shark/santaizi-dashboard/pkg/geoip"
 	pb "github.com/hi2shark/santaizi-dashboard/proto"
 )
 
@@ -133,5 +134,22 @@ func TestIngestRouteOnlyDoesNotClobberLatest(t *testing.T) {
 	}
 	if routes != 1 {
 		t.Fatalf("failed route should still insert, got %d", routes)
+	}
+}
+
+func TestFormatRouteHopGeoFillsMissingASN(t *testing.T) {
+	got := formatRouteHopGeo(
+		ProbeRouteHopView{Country: "中国", Province: "上海", Owner: "电信"},
+		geoip.HopInfo{ASN: "4809", ASName: "CHINANET-BACKBONE"},
+	)
+	if got != "中国 · 上海 · 电信 · AS4809" {
+		t.Fatal(got)
+	}
+	kept := formatRouteHopGeo(
+		ProbeRouteHopView{Country: "中国", ASN: "4134"},
+		geoip.HopInfo{ASN: "4809"},
+	)
+	if kept != "中国 · AS4134" {
+		t.Fatal(kept)
 	}
 }

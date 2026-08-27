@@ -100,6 +100,17 @@ func OnDeleteAlert(id uint64) {
 	}
 }
 
+func OnDeleteServer(serverID uint64) {
+	AlertsLock.Lock()
+	defer AlertsLock.Unlock()
+	for _, byServer := range alertsStore {
+		delete(byServer, serverID)
+	}
+	for _, byServer := range alertsPrevState {
+		delete(byServer, serverID)
+	}
+}
+
 // checkStatus 检查报警规则并发送报警
 func checkStatus() {
 	AlertsLock.RLock()

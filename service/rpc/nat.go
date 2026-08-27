@@ -233,7 +233,7 @@ func relayPrimaryNAT(ctx context.Context, tunnel *natTunnel, stream grpc.BidiStr
 			}
 		}
 	}()
-	recv := make(chan *pb.NATFrame)
+	recv := make(chan *pb.NATFrame, 1)
 	recvErr := make(chan error, 1)
 	go func() {
 		for {

@@ -154,10 +154,8 @@ func (r *Runtime) syncLoop() {
 		if err := r.syncOnce(); err != nil && !errors.Is(err, context.Canceled) {
 			fmt.Printf("SANTAIZI>> collector sync disconnected: %v\n", err)
 		}
-		select {
-		case <-r.ctx.Done():
+		if !waitContext(r.ctx, 10*time.Second) {
 			return
-		case <-time.After(10 * time.Second):
 		}
 	}
 }
@@ -202,18 +200,23 @@ func (r *Runtime) syncOnce() error {
 		return err
 	}
 	r.markSyncSent(sent)
-	recv := make(chan *pb.CollectorSyncResponse)
+	syncCtx, syncCancel := context.WithCancel(r.ctx)
+	defer syncCancel()
+	recv := make(chan *pb.CollectorSyncResponse, 1)
 	recvErr := make(chan error, 1)
 	go func() {
 		for {
 			response, err := stream.Recv()
 			if err != nil {
-				recvErr <- err
+				select {
+				case recvErr <- err:
+				case <-syncCtx.Done():
+				}
 				return
 			}
 			select {
 			case recv <- response:
-			case <-r.ctx.Done():
+			case <-syncCtx.Done():
 				return
 			}
 		}
@@ -271,10 +274,8 @@ func (r *Runtime) replicationLoop() {
 			return
 		}
 		if r.isProbe() {
-			select {
-			case <-r.ctx.Done():
+			if !waitContext(r.ctx, 15*time.Second) {
 				return
-			case <-time.After(15 * time.Second):
 			}
 			continue
 		}
@@ -282,13 +283,8 @@ func (r *Runtime) replicationLoop() {
 		if err != nil && !errors.Is(err, context.Canceled) {
 			fmt.Printf("SANTAIZI>> collector replication disconnected: %v\n", err)
 		}
-		if r.ctx.Err() != nil {
+		if !waitContext(r.ctx, retry) {
 			return
-		}
-		select {
-		case <-r.ctx.Done():
-			return
-		case <-time.After(retry):
 		}
 		retry = nextReplicationRetry(retry)
 		if err == nil {
@@ -318,6 +314,8 @@ func (r *Runtime) replicationOnce() error {
 	if err != nil {
 		return err
 	}
+	idle := time.NewTimer(replicationIdleWait)
+	defer idle.Stop()
 	for {
 		if err := r.ctx.Err(); err != nil {
 			return err
@@ -329,11 +327,18 @@ func (r *Runtime) replicationOnce() error {
 		if flushed > 0 {
 			continue
 		}
+		if !idle.Stop() {
+			select {
+			case <-idle.C:
+			default:
+			}
+		}
+		idle.Reset(replicationIdleWait)
 		if r.replicateWake == nil {
 			select {
 			case <-r.ctx.Done():
 				return r.ctx.Err()
-			case <-time.After(replicationIdleWait):
+			case <-idle.C:
 			}
 			continue
 		}
@@ -341,7 +346,7 @@ func (r *Runtime) replicationOnce() error {
 		case <-r.ctx.Done():
 			return r.ctx.Err()
 		case <-r.replicateWake:
-		case <-time.After(replicationIdleWait):
+		case <-idle.C:
 		}
 	}
 }
@@ -611,6 +616,23 @@ func durationMilliseconds(d time.Duration) float64 {
 		return 0
 	}
 	return float64(d) / float64(time.Millisecond)
+}
+
+func waitContext(ctx context.Context, d time.Duration) bool {
+	if ctx == nil {
+		return false
+	}
+	if d <= 0 {
+		return ctx.Err() == nil
+	}
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
+	}
 }
 
 func (r *Runtime) dialOptions() []grpc.DialOption {

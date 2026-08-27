@@ -907,15 +907,8 @@ html.dark .topology-globe__canvas { filter: none; }
   margin-bottom: 10px;
 }
 .probe-route-runs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-.probe-route-run.is-current {
-  background: var(--sz-primary-soft);
-  color: var(--sz-primary);
-  font-weight: 650;
+  flex: 1 1 220px;
+  min-width: 180px;
 }
 .probe-route-error {
   margin: 0 0 10px;
@@ -1028,61 +1021,168 @@ html.dark .topology-globe__canvas { filter: none; }
 .probe-latency-chart > .app-empty {
   min-height: 160px;
 }
+.probe-hop-route {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.probe-hop-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.probe-hop-chip,
+.probe-hop__mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--icon-text-gap);
+  min-height: 28px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  background: var(--sz-muted);
+  color: var(--sz-text-secondary);
+  font-size: var(--font-size-caption);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.probe-hop-chip i,
+.probe-hop__mark i {
+  font-size: var(--icon-size-inline);
+  line-height: 1;
+  position: relative;
+  top: var(--icon-text-offset-y);
+}
+.probe-hop-chip.is-ok,
+.probe-hop__loss.is-ok { color: var(--sz-success); }
+.probe-hop-chip.is-warn,
+.probe-hop__loss.is-warn { color: var(--sz-warning); }
+.probe-hop-chip.is-fail,
+.probe-hop__loss.is-fail { color: var(--sz-danger); }
+.probe-hop-chip.is-ok,
+.probe-hop-chip.is-warn,
+.probe-hop-chip.is-fail {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
 .probe-hops {
   display: grid;
-  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 .probe-hop {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1.4fr) 72px minmax(72px, 1fr) 52px;
+  grid-template-columns: 32px minmax(0, 1.6fr) minmax(180px, 1fr);
   align-items: center;
-  gap: 8px;
-  min-height: 32px;
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-  background: var(--sz-muted);
+  gap: 8px 10px;
+  min-height: 40px;
+  padding: 6px 8px 6px 0;
   font-size: var(--font-size-secondary);
   font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+.probe-hop + .probe-hop { border-top: 1px solid var(--sz-border-subtle); }
+.probe-hop__spine {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+}
+.probe-hop__spine::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--sz-border);
+  transform: translateX(-50%);
+}
+.probe-hop:first-child .probe-hop__spine::before { top: 50%; }
+.probe-hop:last-child .probe-hop__spine::before { bottom: 50%; }
+.probe-hop__ttl {
+  position: relative;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--sz-muted);
+  color: var(--sz-text-secondary);
+  font-size: var(--font-size-caption);
+  font-weight: 650;
   line-height: 1;
 }
-.probe-hop__ttl { font-weight: 650; }
+.probe-hop.is-timeout { color: var(--sz-text-muted); }
+.probe-hop.is-timeout .probe-hop__ttl {
+  background: var(--sz-surface);
+  box-shadow: inset 0 0 0 1px var(--sz-border);
+}
+.probe-hop.is-destination .probe-hop__ttl {
+  background: color-mix(in srgb, var(--sz-primary) 12%, var(--sz-surface));
+  color: var(--sz-primary);
+}
 .probe-hop__addr {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
   overflow: hidden;
 }
-.probe-hop__ip,
-.probe-hop__geo {
+.probe-hop__ip {
   overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.probe-hop__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.probe-hop__host,
 .probe-hop__geo {
+  overflow: hidden;
   color: var(--sz-text-muted);
   font-size: var(--font-size-caption);
   font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+.probe-hop__mark { min-height: 22px; padding: 0 6px; }
 .probe-route-switch {
   margin-bottom: 10px;
 }
-.probe-hop__rtt { text-align: right; }
-.probe-hop__track {
-  height: 8px;
-  overflow: hidden;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--sz-danger) 14%, var(--sz-surface));
+.probe-hop__metrics {
+  display: grid;
+  grid-template-columns: 72px minmax(48px, 1fr) 56px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
-.probe-hop__fill {
+.probe-hop__rtt { text-align: right; }
+.probe-hop__rtt-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--sz-muted);
+}
+.probe-hop__rtt-fill {
   display: block;
   height: 100%;
-  background: var(--sz-danger);
+  border-radius: inherit;
+  background: var(--sz-primary);
 }
-.probe-hop__loss { text-align: right; font-weight: 650; }
+.probe-hop__loss {
+  text-align: right;
+  font-weight: 650;
+}
 .table-card .el-table { --el-table-header-bg-color: color-mix(in srgb,var(--sz-bg) 76%,var(--sz-surface)); --el-table-row-hover-bg-color: var(--sz-primary-soft); }
 .table-card .el-table th.el-table__cell { height: 48px; font-weight: 650; }
 .table-card .el-table td.el-table__cell { padding: 13px 0; }
@@ -1804,16 +1904,19 @@ html.dark .topology-globe__canvas { filter: none; }
   .probe-latency-chart__stats { width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .probe-latency-chart__canvas { height: 200px; }
   .probe-hop {
-    grid-template-columns: 36px minmax(0, 1fr) 52px;
+    grid-template-columns: 32px minmax(0, 1fr);
     grid-template-areas:
-      "ttl addr loss"
-      "ttl rtt track";
+      "spine addr"
+      "spine metrics";
+    min-height: var(--touch-min-mobile);
   }
-  .probe-hop__ttl { grid-area: ttl; }
+  .probe-hop__spine { grid-area: spine; }
   .probe-hop__addr { grid-area: addr; }
-  .probe-hop__rtt { grid-area: rtt; text-align: left; }
-  .probe-hop__track { grid-area: track; }
-  .probe-hop__loss { grid-area: loss; }
+  .probe-hop__metrics {
+    grid-area: metrics;
+    grid-template-columns: 64px minmax(48px, 1fr) 48px;
+  }
+  .probe-hop__rtt { text-align: left; }
   .connections-nodes .node-card-grid-wrap { padding: 4px 0 8px; }
   .node-end-chip {
     min-height: var(--touch-min-mobile);

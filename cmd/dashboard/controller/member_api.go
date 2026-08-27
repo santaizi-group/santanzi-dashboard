@@ -945,6 +945,7 @@ func onServerDelete(id uint64) {
 	if err := singleton.EndServerNodeBinding(id, time.Now()); err != nil {
 		log.Printf("SANTAIZI>> end observer assignments for deleted server %d: %v", id, err)
 	}
+	singleton.OnDeleteServer(id)
 	tag := singleton.ServerList[id].Tag
 	delete(singleton.SecretToID, singleton.ServerList[id].Secret)
 	delete(singleton.ServerList, id)

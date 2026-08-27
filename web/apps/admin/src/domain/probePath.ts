@@ -112,6 +112,115 @@ export function hopGeoText(hop: { private?: boolean; geo?: string }, privateLabe
   return hop.geo || ''
 }
 
+export function formatHopASN(asn?: string | null) {
+  const raw = (asn || '').trim()
+  if (!raw) return ''
+  const number = raw.replace(/^as/i, '').trim()
+  return number ? `AS${number.toUpperCase()}` : ''
+}
+
+export function hopGeoLine(hop: { private?: boolean; geo?: string; asn?: string }, privateLabel: string) {
+  const geo = hopGeoText(hop, privateLabel)
+  const asn = formatHopASN(hop.asn)
+  if (!asn || hop.private) return geo
+  if (geo.toUpperCase().includes(asn.toUpperCase())) return geo
+  return geo ? `${geo} · ${asn}` : asn
+}
+
+export type ProbeHopSource = {
+  ttl: number
+  address?: string
+  hostname?: string
+  geo?: string
+  asn?: string
+  private?: boolean
+  avg_ms?: number
+  rtt_ms?: number
+  loss?: number
+}
+
+export type ProbeHopView = {
+  ttl: number
+  address: string
+  hostname: string
+  geo: string
+  asn: string
+  private: boolean
+  rttMs?: number
+  loss?: number
+}
+
+export type ProbeHopTone = '' | 'is-ok' | 'is-warn' | 'is-fail'
+
+export type ProbeHopRouteStats = {
+  hopCount: number
+  maxRttMs?: number
+  lastIndex: number
+  lastRttMs?: number
+  lastLoss?: number
+  reached: boolean
+}
+
+function finiteRtt(value: unknown): number | undefined {
+  const ms = Number(value)
+  if (!Number.isFinite(ms) || ms < 0) return undefined
+  return ms
+}
+
+export function normalizeProbeHops(hops?: ProbeHopSource[] | null): ProbeHopView[] {
+  return (hops || []).map((hop) => ({
+    ttl: hop.ttl,
+    address: (hop.address || '').trim(),
+    hostname: (hop.hostname || '').trim(),
+    geo: hop.geo || '',
+    asn: (hop.asn || '').trim(),
+    private: Boolean(hop.private),
+    rttMs: finiteRtt(hop.rtt_ms ?? hop.avg_ms),
+    loss: hop.loss,
+  }))
+}
+
+export function probeHopRouteStats(hops: ProbeHopView[]): ProbeHopRouteStats {
+  let maxRttMs: number | undefined
+  for (const hop of hops) {
+    if (hop.rttMs == null) continue
+    maxRttMs = maxRttMs == null ? hop.rttMs : Math.max(maxRttMs, hop.rttMs)
+  }
+
+  const lastIndex = hops.length - 1
+  const last = lastIndex >= 0 ? hops[lastIndex] : undefined
+  return {
+    hopCount: hops.length,
+    maxRttMs,
+    lastIndex,
+    lastRttMs: last?.rttMs,
+    lastLoss: last?.loss,
+    reached: Boolean(last?.address),
+  }
+}
+
+export function probeHopRttShare(rttMs: number | undefined, maxRttMs: number | undefined) {
+  if (rttMs == null || maxRttMs == null || maxRttMs <= 0) return 0
+  return Math.min(100, Math.max(0, (rttMs / maxRttMs) * 100))
+}
+
+export function probeHopLossTone(loss: number | null | undefined): ProbeHopTone {
+  if (loss == null || !Number.isFinite(loss)) return ''
+  const percent = probeLossPercent(loss)
+  if (percent <= 0) return 'is-ok'
+  if (percent >= 50) return 'is-fail'
+  return 'is-warn'
+}
+
+export function probeRouteChanged(
+  current: Array<{ address?: string }>,
+  previous?: Array<{ address?: string }> | null,
+) {
+  if (!previous?.length || !current.length) return false
+  if (current.length !== previous.length) return true
+  return current.some((hop, index) => (hop.address || '') !== (previous[index]?.address || ''))
+}
+
 export type ProbeRouteProtocol = 'icmp' | 'tcp'
 
 export function defaultProbeRouteProtocol(trace?: { icmp?: { hops?: { loss?: number }[] }; tcp?: { hops?: unknown[] } } | null): ProbeRouteProtocol {

@@ -3,18 +3,20 @@ import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ProbeMTRHop, ProbePath, ProbeRouteHistory, ProbeRouteHop, ProbeRouteRecord, ProbeSampleBucket, ProbeTrace } from '@santaizi/api'
 import { AppDialog, AppEmpty } from '@santaizi/ui'
+import ProbeHopRoute from '@/components/ProbeHopRoute.vue'
 import ProbeLatencyChart from '@/components/ProbeLatencyChart.vue'
 import { createProbeRoute, getProbeRoute, getProbeTrace, listProbeSamples } from '@/api/adminApi'
-import { formatAdminValue } from '@/composables/format'
+import { formatAdminValue, formatLatencyMs } from '@/composables/format'
 import { notifyAPIError } from '@/composables/notify'
 import {
   defaultProbeRouteProtocol,
   formatProbeLoss,
-  hopGeoText,
+  normalizeProbeHops,
   probeBestTCP,
+  probeHopRouteStats,
   probeICMPMetric,
-  probeLossPercent,
   probeMTRMetric,
+  probeRouteChanged,
   probeTCPMetric,
   probeTargetText,
   type ProbeMetricTone,
@@ -85,6 +87,17 @@ const routeRecords = computed<ProbeRouteRecord[]>(() => {
 })
 const selectedRoute = computed(() => routeRecords.value.find(row => row.id === selectedRouteId.value) || routeRecords.value[0])
 const nexttraceHops = computed<ProbeRouteHop[]>(() => selectedRoute.value?.hops || [])
+const mtrHopViews = computed(() => normalizeProbeHops(activeHops.value))
+const nexttraceHopViews = computed(() => normalizeProbeHops(nexttraceHops.value))
+const previousRoute = computed(() => {
+  const list = routeRecords.value
+  const index = list.findIndex(row => row.id === selectedRoute.value?.id)
+  return index >= 0 ? list[index + 1] : undefined
+})
+const nexttraceChanged = computed(() => probeRouteChanged(
+  nexttraceHopViews.value,
+  previousRoute.value ? normalizeProbeHops(previousRoute.value.hops) : [],
+))
 const nexttracePending = computed(() => routeHistory.value?.job?.status === 'pending' && routeHistory.value.job.protocol === nexttraceProtocol.value)
 const canTrace = computed(() => nexttraceProtocol.value === 'tcp' ? tcpNexttraceOn.value : icmpNexttraceOn.value)
 
@@ -92,8 +105,9 @@ function pretty(value: unknown, key = '') {
   return formatAdminValue(value, key, locale.value, t as never, te)
 }
 
-function hopLabel(hop: ProbeMTRHop | ProbeRouteHop) {
-  return hopGeoText(hop, t('hopPrivate'))
+function routeRunLabel(row: ProbeRouteRecord) {
+  const stats = probeHopRouteStats(normalizeProbeHops(row.hops))
+  return `${pretty(row.sampled_at, 'sampled_at')} · ${t('hopCount', { n: stats.hopCount })} · ${formatLatencyMs(stats.lastRttMs, locale.value)} · ${formatProbeLoss(stats.lastLoss, locale.value)}`
 }
 
 function stopPoll() {
@@ -232,18 +246,7 @@ onUnmounted(stopPoll)
         </el-tab-pane>
         <el-tab-pane :label="t('probeRoute')" name="route">
           <el-segmented v-if="trace?.icmp || trace?.tcp" v-model="routeProtocol" :options="routeOptions" class="probe-route-switch" />
-          <ol v-if="activeHops.length" class="probe-hops">
-            <li v-for="(hop, index) in activeHops" :key="`${hop.ttl}-${hop.address || ''}-${index}`" class="probe-hop">
-              <span class="probe-hop__ttl">{{ hop.ttl }}</span>
-              <span class="probe-hop__addr" :title="[hop.address, hopLabel(hop)].filter(Boolean).join(' · ')">
-                <span class="probe-hop__ip">{{ hop.address || '—' }}</span>
-                <span v-if="hopLabel(hop)" class="probe-hop__geo">{{ hopLabel(hop) }}</span>
-              </span>
-              <span class="probe-hop__rtt">{{ pretty(hop.avg_ms, 'avg_ms') }}</span>
-              <span class="probe-hop__track" aria-hidden="true"><span class="probe-hop__fill" :style="{ width: `${probeLossPercent(hop.loss)}%` }"></span></span>
-              <span class="probe-hop__loss">{{ formatProbeLoss(hop.loss, locale) }}</span>
-            </li>
-          </ol>
+          <ProbeHopRoute v-if="mtrHopViews.length" :hops="mtrHopViews" />
           <AppEmpty v-else icon="ri-route-line" :description="t('noData')" />
         </el-tab-pane>
         <el-tab-pane :label="t('probeRouteTrace')" name="nexttrace">
@@ -252,31 +255,12 @@ onUnmounted(stopPoll)
             <el-button type="primary" :disabled="!canTrace || tracing" :loading="tracing" @click="runTrace">
               <i class="ri-route-line"></i>{{ t('probeRouteRun') }}
             </el-button>
-          </div>
-          <div v-if="routeRecords.length" class="probe-route-runs">
-            <el-button
-              v-for="row in routeRecords"
-              :key="row.id"
-              size="small"
-              :class="{ 'is-current': selectedRoute?.id === row.id }"
-              class="probe-route-run"
-              @click="selectedRouteId = row.id"
-            >{{ pretty(row.sampled_at, 'sampled_at') }}</el-button>
+            <el-select v-if="routeRecords.length" v-model="selectedRouteId" class="probe-route-runs">
+              <el-option v-for="row in routeRecords" :key="row.id" :label="routeRunLabel(row)" :value="row.id" />
+            </el-select>
           </div>
           <p v-if="selectedRoute?.error" class="probe-route-error">{{ selectedRoute.error }}</p>
-          <ol v-if="nexttraceHops.length" class="probe-hops">
-            <li v-for="(hop, index) in nexttraceHops" :key="`${hop.ttl}-${hop.address || ''}-${index}`" class="probe-hop">
-              <span class="probe-hop__ttl">{{ hop.ttl }}</span>
-              <span class="probe-hop__addr" :title="[hop.address, hop.hostname, hopLabel(hop)].filter(Boolean).join(' · ')">
-                <span class="probe-hop__ip">{{ hop.address || '—' }}</span>
-                <span v-if="hop.hostname" class="probe-hop__geo">{{ hop.hostname }}</span>
-                <span v-if="hopLabel(hop)" class="probe-hop__geo">{{ hopLabel(hop) }}</span>
-              </span>
-              <span class="probe-hop__rtt">{{ pretty(hop.rtt_ms, 'rtt_ms') }}</span>
-              <span class="probe-hop__track" aria-hidden="true"><span class="probe-hop__fill" :style="{ width: `${probeLossPercent(hop.loss)}%` }"></span></span>
-              <span class="probe-hop__loss">{{ formatProbeLoss(hop.loss, locale) }}</span>
-            </li>
-          </ol>
+          <ProbeHopRoute v-if="nexttraceHopViews.length" :hops="nexttraceHopViews" :changed="nexttraceChanged" />
           <AppEmpty v-else-if="!selectedRoute?.error" icon="ri-route-line" :description="t('probeRouteEmpty')" />
         </el-tab-pane>
         <el-tab-pane :label="t('probeRecords')" name="records">

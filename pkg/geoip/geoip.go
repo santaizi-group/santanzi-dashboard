@@ -24,17 +24,20 @@ var (
 )
 
 type IPInfo struct {
-	Country       string `maxminddb:"country"`
-	CountryName   string `maxminddb:"country_name"`
-	Continent     string `maxminddb:"continent"`
-	ContinentName string `maxminddb:"continent_name"`
-	ASN           string `maxminddb:"asn"`
-	ASName        string `maxminddb:"as_name"`
+	Country         string `maxminddb:"country"`
+	CountryCode     string `maxminddb:"country_code"`
+	CountryName     string `maxminddb:"country_name"`
+	Continent       string `maxminddb:"continent"`
+	ContinentCode   string `maxminddb:"continent_code"`
+	ContinentName   string `maxminddb:"continent_name"`
+	ASN             string `maxminddb:"asn"`
+	ASName          string `maxminddb:"as_name"`
 }
 
 type HopInfo struct {
 	CountryCode string
 	CountryName string
+	ASN         string
 	ASName      string
 	Private     bool
 }
@@ -70,7 +73,7 @@ func loadDatabase() {
 	}
 	opened, err := maxminddb.FromBytes(data)
 	if err != nil {
-		log.Printf("SANTAIZI>> 内嵌 GeoIP 库不可用（源码构建是占位；Release 会拉取 country.mmdb）: %v", err)
+		log.Printf("SANTAIZI>> 内嵌 GeoIP 库不可用（源码构建是占位；Release 会拉取 ipinfo_lite.mmdb）: %v", err)
 		return
 	}
 	db = opened
@@ -92,11 +95,11 @@ func Lookup(ip net.IP, record *IPInfo) (string, error) {
 	if err := db.Lookup(ip, record); err != nil {
 		return "", err
 	}
-	if record.Country != "" {
-		return strings.ToLower(record.Country), nil
+	if code := record.isoCountry(); code != "" {
+		return code, nil
 	}
-	if record.Continent != "" {
-		return strings.ToLower(record.Continent), nil
+	if code := record.isoContinent(); code != "" {
+		return code, nil
 	}
 	return "", fmt.Errorf("IP not found")
 }
@@ -130,28 +133,87 @@ func LookupHop(addr string) HopInfo {
 	}
 	return HopInfo{
 		CountryCode: code,
-		CountryName: strings.TrimSpace(record.CountryName),
+		CountryName: record.displayCountry(),
+		ASN:         strings.TrimSpace(record.ASN),
 		ASName:      strings.TrimSpace(record.ASName),
 	}
+}
+
+func FormatASN(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	upper := strings.ToUpper(value)
+	upper = strings.TrimSpace(strings.TrimPrefix(upper, "AS"))
+	if upper == "" {
+		return ""
+	}
+	return "AS" + upper
 }
 
 func FormatHopGeo(info HopInfo) string {
 	if info.Private {
 		return ""
 	}
+	parts := make([]string, 0, 3)
 	country := strings.TrimSpace(info.CountryName)
 	if country == "" {
 		country = strings.ToUpper(strings.TrimSpace(info.CountryCode))
 	}
-	asName := strings.TrimSpace(info.ASName)
-	switch {
-	case country != "" && asName != "":
-		return country + " · " + asName
-	case asName != "":
-		return asName
-	default:
-		return country
+	if country != "" {
+		parts = append(parts, country)
 	}
+	if name := strings.TrimSpace(info.ASName); name != "" {
+		parts = append(parts, name)
+	}
+	if asn := FormatASN(info.ASN); asn != "" {
+		if len(parts) == 0 || !strings.EqualFold(parts[len(parts)-1], asn) {
+			parts = append(parts, asn)
+		}
+	}
+	return strings.Join(parts, " · ")
+}
+
+func (r *IPInfo) isoCountry() string {
+	if r == nil {
+		return ""
+	}
+	if code := twoLetter(r.CountryCode); code != "" {
+		return code
+	}
+	return twoLetter(r.Country)
+}
+
+func (r *IPInfo) isoContinent() string {
+	if r == nil {
+		return ""
+	}
+	if code := twoLetter(r.ContinentCode); code != "" {
+		return code
+	}
+	return twoLetter(r.Continent)
+}
+
+func (r *IPInfo) displayCountry() string {
+	if r == nil {
+		return ""
+	}
+	if name := strings.TrimSpace(r.CountryName); name != "" {
+		return name
+	}
+	if name := strings.TrimSpace(r.Country); len(name) > 2 {
+		return name
+	}
+	return ""
+}
+
+func twoLetter(value string) string {
+	code := strings.ToLower(strings.TrimSpace(value))
+	if len(code) != 2 {
+		return ""
+	}
+	return code
 }
 
 func queryIPFromBundle(v4v6Bundle string) net.IP {

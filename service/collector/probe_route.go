@@ -216,7 +216,7 @@ func fillHopGeo(hop *nexttrace.Hop) {
 	if hop.Country == "" && info.CountryName != "" {
 		hop.Country = info.CountryName
 	}
-	if hop.ASN == "" && info.ASName != "" {
-		hop.ASN = info.ASName
+	if hop.ASN == "" && info.ASN != "" {
+		hop.ASN = info.ASN
 	}
 }

@@ -50,7 +50,19 @@ func (r *Runtime) probeLoop() {
 				continue
 			}
 			targets, err := r.store.ProbeTargets(r.ctx)
-			if err != nil || len(targets) == 0 {
+			if err != nil {
+				continue
+			}
+			live := make(map[uint64]struct{}, len(targets))
+			for _, target := range targets {
+				live[target.ServerID] = struct{}{}
+			}
+			for id := range states {
+				if _, ok := live[id]; !ok {
+					delete(states, id)
+				}
+			}
+			if len(targets) == 0 {
 				continue
 			}
 			var batch []*pb.ProbeSample

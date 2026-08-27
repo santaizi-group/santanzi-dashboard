@@ -38,6 +38,21 @@ func TestParseJSONCLIHops(t *testing.T) {
 	}
 }
 
+func TestParseJSONNumericASN(t *testing.T) {
+	raw := []byte(`{
+	  "Hops": [[
+	    {"Success": true, "Address": "59.43.46.49", "TTL": 7, "RTT": 1000000, "Geo": {"country": "中国", "prov": "上海", "asnumber": 4809, "owner": "电信"}}
+	  ]]
+	}`)
+	result, err := ParseJSON(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Hops) != 1 || result.Hops[0].ASN != "4809" || result.Hops[0].Province != "上海" {
+		t.Fatalf("%+v", result.Hops)
+	}
+}
+
 func TestParseJSONAttempts(t *testing.T) {
 	raw := []byte(`{
 	  "target": "example.com",

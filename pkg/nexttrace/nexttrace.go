@@ -146,6 +146,7 @@ func compactError(msg string) string {
 
 func runCommand(ctx context.Context, bin string, args []string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, bin, args...) // #nosec G204 -- bin resolved via ResolveBinary, args built internally
+	cmd.WaitDelay = 2 * time.Second
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -215,14 +216,15 @@ type cliHop struct {
 }
 
 type cliGeo struct {
-	Asnumber string  `json:"asnumber"`
-	Country  string  `json:"country"`
-	Prov     string  `json:"prov"`
-	City     string  `json:"city"`
-	Owner    string  `json:"owner"`
-	Isp      string  `json:"isp"`
-	Lat      float64 `json:"lat"`
-	Lng      float64 `json:"lng"`
+	Asnumber json.RawMessage `json:"asnumber"`
+	Asn      json.RawMessage `json:"asn"`
+	Country  string          `json:"country"`
+	Prov     string          `json:"prov"`
+	City     string          `json:"city"`
+	Owner    string          `json:"owner"`
+	Isp      string          `json:"isp"`
+	Lat      float64         `json:"lat"`
+	Lng      float64         `json:"lng"`
 }
 
 func mergeCLIGroup(ttl int, group []cliHop) Hop {
@@ -342,7 +344,7 @@ func applyGeo(hop *Hop, geo *cliGeo) {
 		return
 	}
 	if hop.ASN == "" {
-		hop.ASN = strings.TrimSpace(geo.Asnumber)
+		hop.ASN = firstNonEmpty(jsonScalar(geo.Asnumber), jsonScalar(geo.Asn))
 	}
 	if hop.Country == "" {
 		hop.Country = strings.TrimSpace(geo.Country)
@@ -417,6 +419,24 @@ func jsonString(raw json.RawMessage) string {
 	var value string
 	if err := json.Unmarshal(raw, &value); err == nil {
 		return value
+	}
+	return ""
+}
+
+func jsonScalar(raw json.RawMessage) string {
+	if text := strings.TrimSpace(jsonString(raw)); text != "" {
+		return text
+	}
+	if len(raw) == 0 || string(raw) == "null" {
+		return ""
+	}
+	var asNumber json.Number
+	if err := json.Unmarshal(raw, &asNumber); err == nil {
+		return strings.TrimSpace(asNumber.String())
+	}
+	var asInt int64
+	if err := json.Unmarshal(raw, &asInt); err == nil && asInt != 0 {
+		return strconv.FormatInt(asInt, 10)
 	}
 	return ""
 }

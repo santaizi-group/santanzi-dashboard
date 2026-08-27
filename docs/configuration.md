@@ -89,17 +89,17 @@ grpc_tls:
 
 ## GeoIP 数据库
 
-公开站地区码由探针上报，或由面板用 GeoIP 库回填。库文件是 MaxMind / IPInfo 格式的 `country.mmdb`。
+公开站地区码由探针上报，或由面板用 GeoIP 库回填。Release 内嵌 IPinfo Lite（国家 + ASN）；运行时也可挂 MaxMind / IPinfo 的 `country.mmdb` 或 `ipinfo_lite.mmdb`。
 
 | 来源 | 说明 |
 |------|------|
 | 环境变量 `SANTAIZI_GEOIP_DB` | 运行时外部库路径，优先使用。这不是 YAML 配置项，不会映射进 `dashboard.yaml`。 |
-| 内嵌 `pkg/geoip/geoip.db` | Release 构建会在发版时拉取真实库；源码树里是占位 stub，查不到地区。 |
+| 内嵌 `pkg/geoip/geoip.db` | Release 构建会在发版时拉取 IPinfo Lite；源码树里是占位 stub，查不到地区与 ASN。 |
 
-未设置 `SANTAIZI_GEOIP_DB` 且内嵌库不可用时，面板不查 GeoIP。国家码依赖探针 Cloudflare `loc=` 或手填 `--country-code`。
+未设置 `SANTAIZI_GEOIP_DB` 且内嵌库不可用时，面板不查 GeoIP。国家码依赖探针 Cloudflare `loc=` 或手填 `--country-code`。探测跳点的 AS 号同样来自该库（nexttrace 已带回的 asnumber 优先）。
 
 ```bash
-SANTAIZI_GEOIP_DB=/var/lib/santaizi-dashboard/country.mmdb
+SANTAIZI_GEOIP_DB=/var/lib/santaizi-dashboard/ipinfo_lite.mmdb
 ```
 
 ---

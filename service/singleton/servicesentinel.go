@@ -288,6 +288,7 @@ func (ss *ServiceSentinel) OnMonitorDelete(id uint64) {
 	delete(ss.serviceResponseDataStoreCurrentAvgDelay, id)
 	delete(ss.sslCertCache, id)
 	delete(ss.serviceStatusToday, id)
+	delete(ss.serviceResponsePing, id)
 
 	// 停掉定时任务
 	Cron.Remove(ss.monitors[id].CronJobID)

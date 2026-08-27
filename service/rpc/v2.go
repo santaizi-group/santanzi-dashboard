@@ -194,13 +194,16 @@ func (h *V2Handler) Control(stream grpc.BidiStreamingServer[pb.AgentControlReque
 		return err
 	}
 
-	requests := make(chan *pb.AgentControlRequest)
+	requests := make(chan *pb.AgentControlRequest, 1)
 	recvErr := make(chan error, 1)
 	go func() {
 		for {
 			request, err := stream.Recv()
 			if err != nil {
-				recvErr <- err
+				select {
+				case recvErr <- err:
+				case <-stream.Context().Done():
+				}
 				return
 			}
 			select {

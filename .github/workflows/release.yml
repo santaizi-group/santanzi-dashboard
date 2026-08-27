@@ -150,7 +150,7 @@ jobs:
           set -euo pipefail
           test -n "${IPINFO_TOKEN:-}"
           rm -f pkg/geoip/geoip.db
-          wget -qO pkg/geoip/geoip.db "https://ipinfo.io/data/free/country.mmdb?token=${IPINFO_TOKEN}"
+          wget -qO pkg/geoip/geoip.db "https://ipinfo.io/data/ipinfo_lite.mmdb?token=${IPINFO_TOKEN}"
           test -s pkg/geoip/geoip.db
 
       - name: Set up Go

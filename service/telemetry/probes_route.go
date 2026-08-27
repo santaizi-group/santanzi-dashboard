@@ -231,6 +231,9 @@ func decodeRouteHops(raw []byte) []ProbeRouteHopView {
 		if view.Country == "" && info.CountryName != "" {
 			view.Country = info.CountryName
 		}
+		if view.ASN == "" && info.ASN != "" {
+			view.ASN = info.ASN
+		}
 		view.Geo = formatRouteHopGeo(view, info)
 		out = append(out, view)
 	}
@@ -247,12 +250,12 @@ func formatRouteHopGeo(hop ProbeRouteHopView, info geoip.HopInfo) string {
 			parts = append(parts, strings.TrimSpace(part))
 		}
 	}
-	if hop.ASN != "" {
-		asn := hop.ASN
-		if !strings.HasPrefix(strings.ToUpper(asn), "AS") {
-			asn = "AS" + asn
-		}
-		parts = append(parts, asn)
+	asn := hop.ASN
+	if asn == "" {
+		asn = info.ASN
+	}
+	if formatted := geoip.FormatASN(asn); formatted != "" {
+		parts = append(parts, formatted)
 	}
 	if len(parts) > 0 {
 		return strings.Join(parts, " · ")

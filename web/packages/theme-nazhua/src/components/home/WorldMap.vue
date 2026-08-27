@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { findIntersectingGroups } from '../../utils/worldMap'
 import worldMapSvg from '../../assets/world-map.svg?url'
 
@@ -135,6 +135,8 @@ function hideTips() {
     tips.value = ''
   }, 120)
 }
+
+onBeforeUnmount(() => window.clearTimeout(tipsTimer))
 </script>
 
 <template>

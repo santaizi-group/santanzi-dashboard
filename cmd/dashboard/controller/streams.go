@@ -45,6 +45,21 @@ func (cp *commonPage) ws(c *gin.Context) {
 		return
 	}
 	defer conn.Close()
+	const pongWait = 60 * time.Second
+	const writeWait = 10 * time.Second
+	conn.SetReadLimit(512)
+	_ = conn.SetReadDeadline(time.Now().Add(pongWait))
+	conn.SetPongHandler(func(string) error {
+		return conn.SetReadDeadline(time.Now().Add(pongWait))
+	})
+	go func() {
+		defer conn.Close()
+		for {
+			if _, _, err := conn.NextReader(); err != nil {
+				return
+			}
+		}
+	}()
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	count := 0
@@ -54,11 +69,13 @@ func (cp *commonPage) ws(c *gin.Context) {
 			<-ticker.C
 			continue
 		}
+		_ = conn.SetWriteDeadline(time.Now().Add(writeWait))
 		if err := conn.WriteMessage(websocket.TextMessage, stat); err != nil {
 			return
 		}
 		count++
 		if count%4 == 0 {
+			_ = conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
