@@ -4,9 +4,10 @@ import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { AppDialog } from '@santaizi/ui'
 import { getProbeCapabilities, getServerCredential, getServerInstallPreview, type ServerRecord } from '@/api/adminApi'
+import type { InstallPreviewWrite } from '@santaizi/api'
 import { useEditorSnapshot } from '@/composables/editorSnapshot'
 import { notifyAPIError } from '@/composables/notify'
-import { DEFAULT_CLEAN_INSTALL, DEFAULT_INSTALL_PLATFORM, DEFAULT_INSTALL_PROFILE, INSTALL_PRESETS, type InstallProfile } from '@/domain/installAgent'
+import { DEFAULT_CLEAN_INSTALL, DEFAULT_INSTALL_IMPLEMENTATION, DEFAULT_INSTALL_PLATFORM, DEFAULT_INSTALL_PROFILE, INSTALL_PRESETS, type InstallProfile } from '@/domain/installAgent'
 import type { MonitoringOptions, ProbeCapabilitiesMetadata } from '@/types/admin'
 
 const props = defineProps<{ modelValue: boolean; server?: ServerRecord; secret?: string }>()
@@ -14,6 +15,7 @@ const emit = defineEmits<{ 'update:modelValue': [boolean] }>()
 const { t, te } = useI18n()
 const loading = ref(false)
 const platform = ref<'linux' | 'macos' | 'windows'>(DEFAULT_INSTALL_PLATFORM)
+const implementation = ref<NonNullable<InstallPreviewWrite['implementation']>>(DEFAULT_INSTALL_IMPLEMENTATION)
 const profile = ref<InstallProfile>(DEFAULT_INSTALL_PROFILE)
 const cleanInstall = ref(DEFAULT_CLEAN_INSTALL)
 const cleanConfirmed = ref(false)
@@ -24,6 +26,7 @@ const capabilities = reactive<MonitoringOptions>({ ...INSTALL_PRESETS[DEFAULT_IN
 const ipReportConfig = reactive({ interface: '', country_code: '', prefer_ipv6: false })
 const nicPresets = ['eth0', 'eth1', 'ens33', 'enp0s3', 'wlan0']
 const snapshotValue = computed(() => ({
+  implementation: implementation.value,
   profile: profile.value,
   cleanInstall: cleanInstall.value,
   capabilities: { ...capabilities },
@@ -42,6 +45,10 @@ const profileOptions = computed(() => [
   { label: t('presetLight'), value: 'light' },
   { label: t('presetHeartbeat'), value: 'alive' },
 ])
+const implOptions = computed(() => [
+  { label: t('agentImplGo'), value: 'go' },
+  { label: t('agentImplRust'), value: 'rust' },
+])
 function applyProfile(value: InstallProfile) {
   profile.value = value
   const preset = metadata.value.presets[value] || INSTALL_PRESETS[value]
@@ -52,6 +59,7 @@ async function refreshPreview() {
   const preview = await getServerInstallPreview(props.server.id, {
     platform: platform.value,
     clean_install: cleanInstall.value,
+    implementation: implementation.value,
     options: { ...capabilities },
     ip_report_config: capabilities.ip_report ? { ...ipReportConfig } : undefined,
   })
@@ -61,6 +69,7 @@ async function open() {
   if (!props.server) return
   loading.value = true
   platform.value = DEFAULT_INSTALL_PLATFORM
+  implementation.value = DEFAULT_INSTALL_IMPLEMENTATION
   profile.value = DEFAULT_INSTALL_PROFILE
   cleanInstall.value = DEFAULT_CLEAN_INSTALL
   cleanConfirmed.value = false
@@ -102,6 +111,10 @@ async function copySecret() {
 function selectProfile(value: string | number | boolean) {
   applyProfile(value as InstallProfile)
 }
+function selectImplementation(value: string | number | boolean) {
+  implementation.value = value === 'rust' ? 'rust' : 'go'
+  if (implementation.value === 'rust') platform.value = DEFAULT_INSTALL_PLATFORM
+}
 function selectIPFamily(value: string | number | boolean) {
   ipReportConfig.prefer_ipv6 = value === 'ipv6'
 }
@@ -123,6 +136,10 @@ watch([platform, snapshotValue], () => {
             </template>
           </el-input>
         </el-form-item>
+        <el-form-item>
+          <el-segmented :model-value="implementation" :options="implOptions" @change="selectImplementation" />
+        </el-form-item>
+        <template v-if="implementation === 'go'">
         <el-form-item :label="t('monitoringPreset')">
           <el-segmented :model-value="profile" :options="profileOptions" @change="selectProfile" />
         </el-form-item>
@@ -145,13 +162,14 @@ watch([platform, snapshotValue], () => {
             <el-segmented :model-value="ipReportConfig.prefer_ipv6 ? 'ipv6' : 'ipv4'" :options="[{ label: 'IPv4', value: 'ipv4' }, { label: 'IPv6', value: 'ipv6' }]" @change="selectIPFamily" />
           </el-form-item>
         </div>
+        </template>
         <div class="clean-install-box">
           <el-checkbox v-model="cleanInstall">{{ t('cleanInstall') }}</el-checkbox>
           <el-checkbox v-if="cleanInstall" v-model="cleanConfirmed">{{ t('confirmCleanInstall') }}</el-checkbox>
           <p v-if="cleanInstall" class="clean-install-note">{{ t('cleanInstallLegacyNote') }}</p>
         </div>
       </el-form>
-      <el-tabs v-model="platform" class="install-tabs">
+      <el-tabs v-if="implementation === 'go'" v-model="platform" class="install-tabs">
         <el-tab-pane :label="t('linux')" name="linux" />
         <el-tab-pane :label="t('macos')" name="macos" />
         <el-tab-pane :label="t('windows')" name="windows" />

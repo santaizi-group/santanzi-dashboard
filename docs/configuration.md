@@ -368,6 +368,7 @@ Primary 每 5 分钟限时清过期探测数据。心跳 / 原始状态 / 探针
 | 配置项 | 默认值 |
 |--------|--------|
 | `installscript.linux` | `https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_agent.sh` |
+| `installscript.linux_rust` | `https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_agent_rs.sh` |
 | `installscript.linuxen` | `https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_agent_en.sh` |
 | `installscript.windows` | `https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install.ps1` |
 | `installscript.macos` | `https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install.command` |

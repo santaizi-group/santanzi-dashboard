@@ -208,8 +208,39 @@ test('copies default agent install command from host management', async ({ page 
   await expect.poll(() => preview).toMatchObject({
     platform: 'linux',
     clean_install: true,
+    implementation: 'go',
     options: probeMetadata.presets.standard_cloud,
   })
+})
+
+test('install dialog can preview rust linux command', async ({ page }) => {
+  let preview: Record<string, unknown> | undefined
+  await page.route('**/api/v2/admin/servers**', route => {
+    const path = new URL(route.request().url()).pathname
+    if (path.endsWith('/credential')) {
+      return fulfillJSON(route, item({ server_id: 2, secret: 'reusable-secret', grpc_host: '127.0.0.1', grpc_port: 5555 }))
+    }
+    if (path.endsWith('/install-preview')) {
+      preview = route.request().postDataJSON() as Record<string, unknown>
+      const impl = preview.implementation === 'rust' ? 'rust' : 'go'
+      const command = impl === 'rust'
+        ? "curl -fsSL 'https://example.invalid/install_agent_rs.sh' | bash -s -- 'h' 5555 's' --clean-install --confirm-clean-install"
+        : 'install santaizi-agent --clean-install --disable-nat'
+      return fulfillJSON(route, item({ platform: 'linux', command, clean_install: true, options: preview.options || {}, implementation: impl }))
+    }
+    return fulfillJSON(route, list([{ id: 2, name: 'edge-b', tag: 'edge', online: true, public_note: {}, monitoring_options: {} }]))
+  })
+
+  await page.goto('/admin/servers')
+  await clickVisibleRowAction(page, '安装探针')
+  const dialog = page.getByRole('dialog', { name: /安装探针/ })
+  await expect(dialog.getByText('标准·云', { exact: true })).toBeVisible()
+  await dialog.getByRole('radio', { name: 'Rust' }).click()
+  await expect.poll(() => preview).toMatchObject({ implementation: 'rust', platform: 'linux' })
+  await expect(dialog.locator('textarea')).toHaveValue(/install_agent_rs\.sh/)
+  await expect(dialog.locator('textarea')).not.toHaveValue(/--disable-nat/)
+  await expect(dialog.getByText('标准·云', { exact: true })).toHaveCount(0)
+  await expect(dialog.getByRole('tab', { name: 'macOS' })).toHaveCount(0)
 })
 
 test('shows a copyable agent upgrade command from host management', async ({ page }) => {

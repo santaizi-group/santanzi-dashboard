@@ -469,6 +469,24 @@ func (e DDNSProfileWriteWebhookRequestType) Valid() bool {
 	}
 }
 
+// Defines values for InstallPreviewImplementation.
+const (
+	InstallPreviewImplementationGo   InstallPreviewImplementation = "go"
+	InstallPreviewImplementationRust InstallPreviewImplementation = "rust"
+)
+
+// Valid indicates whether the value is a known member of the InstallPreviewImplementation enum.
+func (e InstallPreviewImplementation) Valid() bool {
+	switch e {
+	case InstallPreviewImplementationGo:
+		return true
+	case InstallPreviewImplementationRust:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for InstallPreviewPlatform.
 const (
 	InstallPreviewPlatformLinux   InstallPreviewPlatform = "linux"
@@ -484,6 +502,24 @@ func (e InstallPreviewPlatform) Valid() bool {
 	case InstallPreviewPlatformMacos:
 		return true
 	case InstallPreviewPlatformWindows:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InstallPreviewWriteImplementation.
+const (
+	InstallPreviewWriteImplementationGo   InstallPreviewWriteImplementation = "go"
+	InstallPreviewWriteImplementationRust InstallPreviewWriteImplementation = "rust"
+)
+
+// Valid indicates whether the value is a known member of the InstallPreviewWriteImplementation enum.
+func (e InstallPreviewWriteImplementation) Valid() bool {
+	switch e {
+	case InstallPreviewWriteImplementationGo:
+		return true
+	case InstallPreviewWriteImplementationRust:
 		return true
 	default:
 		return false
@@ -2111,23 +2147,31 @@ type IncidentRevisionRecord struct {
 
 // InstallPreview defines model for InstallPreview.
 type InstallPreview struct {
-	CleanInstall   bool                   `json:"clean_install"`
-	Command        string                 `json:"command"`
-	IpReportConfig *IPReportConfig        `json:"ip_report_config,omitempty"`
-	Options        MonitoringOptions      `json:"options"`
-	Platform       InstallPreviewPlatform `json:"platform"`
+	CleanInstall   bool                          `json:"clean_install"`
+	Command        string                        `json:"command"`
+	Implementation *InstallPreviewImplementation `json:"implementation,omitempty"`
+	IpReportConfig *IPReportConfig               `json:"ip_report_config,omitempty"`
+	Options        MonitoringOptions             `json:"options"`
+	Platform       InstallPreviewPlatform        `json:"platform"`
 }
+
+// InstallPreviewImplementation defines model for InstallPreview.Implementation.
+type InstallPreviewImplementation string
 
 // InstallPreviewPlatform defines model for InstallPreview.Platform.
 type InstallPreviewPlatform string
 
 // InstallPreviewWrite defines model for InstallPreviewWrite.
 type InstallPreviewWrite struct {
-	CleanInstall   bool                        `json:"clean_install"`
-	IpReportConfig *IPReportConfig             `json:"ip_report_config,omitempty"`
-	Options        MonitoringOptions           `json:"options"`
-	Platform       InstallPreviewWritePlatform `json:"platform"`
+	CleanInstall   bool                               `json:"clean_install"`
+	Implementation *InstallPreviewWriteImplementation `json:"implementation,omitempty"`
+	IpReportConfig *IPReportConfig                    `json:"ip_report_config,omitempty"`
+	Options        MonitoringOptions                  `json:"options"`
+	Platform       InstallPreviewWritePlatform        `json:"platform"`
 }
+
+// InstallPreviewWriteImplementation defines model for InstallPreviewWrite.Implementation.
+type InstallPreviewWriteImplementation string
 
 // InstallPreviewWritePlatform defines model for InstallPreviewWrite.Platform.
 type InstallPreviewWritePlatform string

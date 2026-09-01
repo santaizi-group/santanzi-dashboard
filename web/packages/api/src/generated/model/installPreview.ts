@@ -7,6 +7,7 @@
  *
  * OpenAPI spec version: 2.0.0
  */
+import type { InstallPreviewImplementation } from './installPreviewImplementation';
 import type { InstallPreviewPlatform } from './installPreviewPlatform';
 import type { IPReportConfig } from './iPReportConfig';
 import type { MonitoringOptions } from './monitoringOptions';
@@ -17,4 +18,5 @@ export interface InstallPreview {
   clean_install: boolean;
   options: MonitoringOptions;
   ip_report_config?: IPReportConfig;
+  implementation?: InstallPreviewImplementation;
 }

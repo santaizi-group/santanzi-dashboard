@@ -95,6 +95,7 @@ type InstallScriptConfig struct {
 	MacOS            string // macOS 安装脚本 URL（探针）
 	Collector        string // Linux 从端（Collector）安装脚本 URL
 	Dashboard        string `koanf:"dashboard" yaml:"dashboard"`                 // 主面板安装脚本 URL
+	LinuxRust        string `koanf:"linux_rust" yaml:"linux_rust"`               // Linux Rust 探针安装脚本 URL
 	UpgradeCollector string `koanf:"upgrade_collector" yaml:"upgrade_collector"` // 从端升级脚本 URL
 	UpgradeLinux     string `koanf:"upgrade_linux" yaml:"upgrade_linux"`         // Linux 中文升级脚本 URL
 	UpgradeLinuxEn   string `koanf:"upgrade_linuxen" yaml:"upgrade_linuxen"`     // Linux 英文升级脚本 URL
@@ -419,6 +420,9 @@ func (c *Config) Read(path string) error {
 	// 默认使用本仓库 script/ 目录下的 Agent 专用安装脚本
 	if c.InstallScript.Linux == "" {
 		c.InstallScript.Linux = "https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_agent.sh"
+	}
+	if c.InstallScript.LinuxRust == "" {
+		c.InstallScript.LinuxRust = "https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_agent_rs.sh"
 	}
 	if c.InstallScript.LinuxEn == "" {
 		c.InstallScript.LinuxEn = "https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_agent_en.sh"

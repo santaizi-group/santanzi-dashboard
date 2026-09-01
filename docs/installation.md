@@ -116,6 +116,16 @@ curl -fSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/ma
 
 安装路径：`/opt/santaizi/agent`；默认配置 `/etc/santaizi/agent.yaml`；可靠探测数据 `/var/lib/santaizi-agent/`
 
+### Linux（Rust 探针）
+
+可选实现，仅 **amd64 / arm64**。需 [`santaizi-agent-rs`](https://github.com/santaizi-group/santaizi-agent-rs) 已发布 `v*` Release。安装会停掉同机 Go 探针，避免同一密钥双连。
+
+```bash
+curl -fSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_agent_rs.sh | bash -s -- install_agent <面板地址> <端口> <密钥> --clean-install --confirm-clean-install [--tls]
+```
+
+安装路径：`/opt/santaizi/agent-rs`；配置仍是 `/etc/santaizi/agent.yaml`；数据目录 `/var/lib/santaizi-agent/`。可用 `SANTAIZI_AGENT_RS_REPO` 覆盖仓库。
+
 ### Windows
 
 ```powershell

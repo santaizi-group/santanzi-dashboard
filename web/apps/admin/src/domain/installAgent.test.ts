@@ -6,6 +6,7 @@ describe('defaultInstallPreviewBody', () => {
     expect(defaultInstallPreviewBody()).toEqual({
       platform: DEFAULT_INSTALL_PLATFORM,
       clean_install: DEFAULT_CLEAN_INSTALL,
+      implementation: 'go',
       options: INSTALL_PRESETS[DEFAULT_INSTALL_PROFILE],
     })
     expect(DEFAULT_INSTALL_PLATFORM).toBe('linux')

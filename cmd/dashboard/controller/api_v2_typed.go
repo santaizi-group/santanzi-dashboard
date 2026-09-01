@@ -1079,6 +1079,7 @@ type installPreviewDTO struct {
 	CleanInstall   bool                 `json:"clean_install"`
 	Options        monitoringOptionsDTO `json:"options"`
 	IPReportConfig ipReportConfigDTO    `json:"ip_report_config"`
+	Implementation string               `json:"implementation"`
 }
 
 type ipReportConfigDTO struct {
@@ -1122,6 +1123,17 @@ func v2ServerCredential(c *gin.Context) {
 	}
 	writeV2Data(c, 200, gin.H{"server_id": row.ID, "secret": row.Secret, "grpc_host": singleton.Conf.GRPCHost, "grpc_port": publicGRPCPort()})
 }
+func normalizeInstallImplementation(value string) (string, error) {
+	impl := strings.ToLower(strings.TrimSpace(value))
+	if impl == "" {
+		return "go", nil
+	}
+	if impl == "go" || impl == "rust" {
+		return impl, nil
+	}
+	return "", errors.New("implementation must be go or rust")
+}
+
 func v2InstallPreview(c *gin.Context) {
 	id, ok := v2ID(c)
 	if !ok {
@@ -1137,23 +1149,34 @@ func v2InstallPreview(c *gin.Context) {
 		writeV2Problem(c, 400, "invalid_install_preview", err.Error())
 		return
 	}
+	implementation, err := normalizeInstallImplementation(request.Implementation)
+	if err != nil {
+		writeV2Problem(c, 400, "invalid_install_preview", err.Error())
+		return
+	}
 	platform := strings.ToLower(request.Platform)
 	host := singleton.Conf.GRPCHost
 	if host == "" {
 		host = "127.0.0.1"
 	}
 	script := singleton.Conf.InstallScript.Linux
-	if platform == "macos" {
+	if implementation == "rust" {
+		if platform != "linux" {
+			writeV2Problem(c, 400, "invalid_platform", "rust agent install is linux only")
+			return
+		}
+		script = singleton.Conf.InstallScript.LinuxRust
+	} else if platform == "macos" {
 		script = singleton.Conf.InstallScript.MacOS
 	} else if platform == "windows" {
 		script = singleton.Conf.InstallScript.Windows
 	}
-	command, err := buildInstallCommand(platform, script, host, publicGRPCPort(), row.Secret, request.CleanInstall, singleton.Conf.TLS, request.Options, request.IPReportConfig, resolveGRPCHintIPs(host))
+	command, err := buildInstallCommandWithImpl(platform, script, host, publicGRPCPort(), row.Secret, request.CleanInstall, singleton.Conf.TLS, request.Options, request.IPReportConfig, resolveGRPCHintIPs(host), implementation)
 	if err != nil {
 		writeV2Problem(c, 400, "invalid_platform", err.Error())
 		return
 	}
-	writeV2Data(c, 200, gin.H{"platform": platform, "command": command, "clean_install": request.CleanInstall, "options": request.Options, "ip_report_config": request.IPReportConfig})
+	writeV2Data(c, 200, gin.H{"platform": platform, "command": command, "clean_install": request.CleanInstall, "options": request.Options, "ip_report_config": request.IPReportConfig, "implementation": implementation})
 }
 
 type upgradePreviewDTO struct {
@@ -1248,6 +1271,27 @@ func appendServerIPFlags(parts []string, hintIPs []string, windows bool) []strin
 }
 
 func buildInstallCommand(platform, script, host string, port uint, secret string, clean, useTLS bool, options monitoringOptionsDTO, ipCfg ipReportConfigDTO, hintIPs []string) (string, error) {
+	return buildInstallCommandWithImpl(platform, script, host, port, secret, clean, useTLS, options, ipCfg, hintIPs, "go")
+}
+
+func buildInstallCommandWithImpl(platform, script, host string, port uint, secret string, clean, useTLS bool, options monitoringOptionsDTO, ipCfg ipReportConfigDTO, hintIPs []string, implementation string) (string, error) {
+	impl, err := normalizeInstallImplementation(implementation)
+	if err != nil {
+		return "", err
+	}
+	if impl == "rust" {
+		if platform != "linux" {
+			return "", errors.New("rust agent install is linux only")
+		}
+		parts := []string{"curl -fsSL", shellQuote(script), "| bash -s --", shellQuote(host), strconv.FormatUint(uint64(port), 10), shellQuote(secret)}
+		if clean {
+			parts = append(parts, "--clean-install", "--confirm-clean-install")
+		}
+		if useTLS {
+			parts = append(parts, "--tls")
+		}
+		return strings.Join(parts, " "), nil
+	}
 	flags := installFlags(options, platform == "windows", ipCfg)
 	switch platform {
 	case "linux", "macos":

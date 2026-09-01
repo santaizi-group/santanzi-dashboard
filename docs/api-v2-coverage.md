@@ -9,7 +9,7 @@
 | 服务器批量管理 | `batchUpdateServerGroup`, `batchDeleteServers` | 表格多选、批量分组和删除 | 批量请求与危险确认 |
 | 主机配置备份 | `exportServers`, `previewServerImport`, `importServers` | `/admin/servers` 工具栏导出 JSON、导入预览后按名称新建或覆盖 | 导出含明文密钥，下载前二次确认；新建复用未占用密钥，冲突则重新生成；覆盖流量策略去 id 全量替换且不改密钥 |
 | 服务器排序与分组管理 | `updateServerDisplayIndex`, `listServerGroups`, `renameServerGroup` | 列表行内改序、分组管理弹窗、编辑器分组下拉 | 单字段改序与派生 tag 重命名/合并 |
-| 凭据与安装 | `getServerCredential`, `resetServerSecret`, `getProbeCapabilities`, `getServerInstallPreview`, `getServerUpgradePreview` | 密钥查看/复制、分平台能力化安装弹窗、分平台升级命令复制 | 标准·云/标准·物理/轻量/仅存活、IP 位置子选项与清洁安装确认；升级命令不含密钥 |
+| 凭据与安装 | `getServerCredential`, `resetServerSecret`, `getProbeCapabilities`, `getServerInstallPreview`, `getServerUpgradePreview` | 密钥查看/复制、分平台能力化安装弹窗（Go / Rust）、分平台升级命令复制 | 标准·云/标准·物理/轻量/仅存活、IP 位置子选项与清洁安装确认；Rust 仅 Linux 且 `implementation=rust`；升级命令不含密钥 |
 | 流量策略 | `createServer`/`updateServer` 可选 `traffic_policies` 原子提交；`listTrafficPolicies`, `createTrafficPolicy`, `updateTrafficPolicy`, `deleteTrafficPolicy`, `getTrafficPolicyUsage`, `getServerTrafficHistory`；`listServers` 附 `traffic_summaries` | 服务器编辑器内多策略卡片，随服务器一次保存；主机列表流量列与历史抽屉流量页签（近 24 小时 / 按天） | 累计/周期策略与用量进度；缺名称不发写请求；后端 400 时服务器未创建；列表无策略不占位；历史按 `tz` 切日界 |
 | 可用性与离线历史 | `listServerAvailability`, `resetServerAvailability`, `deleteOfflineHistory`, `cleanupOfflineHistory` | 服务器历史抽屉与设置页清理 | 历史读取、重置和删除 |
 | 服务监控 | `createMonitor`, `updateMonitor`, `deleteMonitor` | `/admin/services` HTTP/ICMP/TCP 编辑弹窗和服务器穿梭框 | 完整 CRUD、范围和历史 |

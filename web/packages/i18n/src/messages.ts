@@ -406,7 +406,7 @@ const esES = {
 
 const editorZhCN = {
   additionalFeatures: '附加功能', notificationChannels: '通知渠道', alertRules: '告警配置', enabled: '启用', disabled: '停用', saved: '已保存', token: 'Token', viewToken: '查看 Token',
-  basicInformation: '基础信息', accessAndDisplay: '访问与展示', adminNote: '备注', ddnsAssociation: 'DDNS 关联', ddnsProfiles: 'DDNS 配置', installAgent: '安装探针', upgradeAgent: '升级探针', copyCommand: '复制安装命令', copyUpgradeCommand: '复制升级命令',
+  basicInformation: '基础信息', accessAndDisplay: '访问与展示', adminNote: '备注', ddnsAssociation: 'DDNS 关联', ddnsProfiles: 'DDNS 配置', installAgent: '安装探针', upgradeAgent: '升级探针', copyCommand: '复制安装命令', copyUpgradeCommand: '复制升级命令', agentImplGo: 'Go', agentImplRust: 'Rust',
   scriptCommands: '脚本命令', scriptGroupDashboard: '主面板', scriptGroupCollector: '从端', scriptGroupAgent: '探针',
   scriptCmdDashboardInstall: '安装主面板', scriptCmdDashboardUpgrade: '升级主面板', scriptCmdCollectorUpgrade: '升级从端', scriptCmdCollectorRemove: '下线从端',
   scriptCmdAgentUpgradeLinux: '升级探针（Linux）', scriptCmdAgentUpgradeMacos: '升级探针（macOS）', scriptCmdAgentUpgradeWindows: '升级探针（Windows）',
@@ -444,7 +444,7 @@ const editorZhCN = {
 
 const editorZhTW = {
   additionalFeatures: '附加功能', notificationChannels: '通知管道', alertRules: '告警配置', enabled: '啟用', disabled: '停用', saved: '已儲存', token: 'Token', viewToken: '查看 Token',
-  basicInformation: '基本資訊', accessAndDisplay: '存取與顯示', adminNote: '備註', ddnsAssociation: 'DDNS 關聯', ddnsProfiles: 'DDNS 設定', installAgent: '安裝探針', upgradeAgent: '升級探針', copyCommand: '複製安裝指令', copyUpgradeCommand: '複製升級指令',
+  basicInformation: '基本資訊', accessAndDisplay: '存取與顯示', adminNote: '備註', ddnsAssociation: 'DDNS 關聯', ddnsProfiles: 'DDNS 設定', installAgent: '安裝探針', upgradeAgent: '升級探針', copyCommand: '複製安裝指令', copyUpgradeCommand: '複製升級指令', agentImplGo: 'Go', agentImplRust: 'Rust',
   scriptCommands: '腳本命令', scriptGroupDashboard: '主面板', scriptGroupCollector: '從端', scriptGroupAgent: '探針',
   scriptCmdDashboardInstall: '安裝主面板', scriptCmdDashboardUpgrade: '升級主面板', scriptCmdCollectorUpgrade: '升級從端', scriptCmdCollectorRemove: '下線從端',
   scriptCmdAgentUpgradeLinux: '升級探針（Linux）', scriptCmdAgentUpgradeMacos: '升級探針（macOS）', scriptCmdAgentUpgradeWindows: '升級探針（Windows）',
@@ -476,7 +476,7 @@ const editorZhTW = {
 }
 
 const editorEnUS = {
-  additionalFeatures: 'Additional features', notificationChannels: 'Notification channels', alertRules: 'Alert config', enabled: 'Enabled', disabled: 'Disabled', saved: 'Saved', token: 'Token', viewToken: 'View token', basicInformation: 'Basic information', accessAndDisplay: 'Access and display', adminNote: 'Note', ddnsAssociation: 'DDNS association', ddnsProfiles: 'DDNS profiles', installAgent: 'Install agent', upgradeAgent: 'Upgrade agent', copyCommand: 'Copy install command', copyUpgradeCommand: 'Copy upgrade command',
+  additionalFeatures: 'Additional features', notificationChannels: 'Notification channels', alertRules: 'Alert config', enabled: 'Enabled', disabled: 'Disabled', saved: 'Saved', token: 'Token', viewToken: 'View token', basicInformation: 'Basic information', accessAndDisplay: 'Access and display', adminNote: 'Note', ddnsAssociation: 'DDNS association', ddnsProfiles: 'DDNS profiles', installAgent: 'Install agent', upgradeAgent: 'Upgrade agent', copyCommand: 'Copy install command', copyUpgradeCommand: 'Copy upgrade command', agentImplGo: 'Go', agentImplRust: 'Rust',
   scriptCommands: 'Script commands', scriptGroupDashboard: 'Dashboard', scriptGroupCollector: 'Collector', scriptGroupAgent: 'Agent',
   scriptCmdDashboardInstall: 'Install dashboard', scriptCmdDashboardUpgrade: 'Upgrade dashboard', scriptCmdCollectorUpgrade: 'Upgrade collector', scriptCmdCollectorRemove: 'Remove collector',
   scriptCmdAgentUpgradeLinux: 'Upgrade agent (Linux)', scriptCmdAgentUpgradeMacos: 'Upgrade agent (macOS)', scriptCmdAgentUpgradeWindows: 'Upgrade agent (Windows)',
@@ -507,7 +507,7 @@ const editorEnUS = {
 }
 
 const editorEsES = {
-  additionalFeatures: 'Funciones adicionales', notificationChannels: 'Canales de notificación', alertRules: 'Config. de alertas', enabled: 'Activado', disabled: 'Desactivado', saved: 'Guardado', token: 'Token', viewToken: 'Ver token', basicInformation: 'Información básica', accessAndDisplay: 'Acceso y visualización', adminNote: 'Nota', ddnsAssociation: 'Asociación DDNS', ddnsProfiles: 'Perfiles DDNS', installAgent: 'Instalar agente', upgradeAgent: 'Actualizar agente', copyCommand: 'Copiar comando de instalación', copyUpgradeCommand: 'Copiar comando de actualización',
+  additionalFeatures: 'Funciones adicionales', notificationChannels: 'Canales de notificación', alertRules: 'Config. de alertas', enabled: 'Activado', disabled: 'Desactivado', saved: 'Guardado', token: 'Token', viewToken: 'Ver token', basicInformation: 'Información básica', accessAndDisplay: 'Acceso y visualización', adminNote: 'Nota', ddnsAssociation: 'Asociación DDNS', ddnsProfiles: 'Perfiles DDNS', installAgent: 'Instalar agente', upgradeAgent: 'Actualizar agente', copyCommand: 'Copiar comando de instalación', copyUpgradeCommand: 'Copiar comando de actualización', agentImplGo: 'Go', agentImplRust: 'Rust',
   scriptCommands: 'Comandos de script', scriptGroupDashboard: 'Panel', scriptGroupCollector: 'Recolector', scriptGroupAgent: 'Agente',
   scriptCmdDashboardInstall: 'Instalar el panel', scriptCmdDashboardUpgrade: 'Actualizar el panel', scriptCmdCollectorUpgrade: 'Actualizar el recolector', scriptCmdCollectorRemove: 'Retirar el recolector',
   scriptCmdAgentUpgradeLinux: 'Actualizar agente (Linux)', scriptCmdAgentUpgradeMacos: 'Actualizar agente (macOS)', scriptCmdAgentUpgradeWindows: 'Actualizar agente (Windows)',
