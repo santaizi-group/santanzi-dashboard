@@ -26,7 +26,7 @@ func TestOptimizeSkipsVacuumBelowThreshold(t *testing.T) {
 func TestOptimizeCompactsWhenReclaimable(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "santaizi.db")
-	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(path+"?_journal_mode=WAL"), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,6 +78,9 @@ func TestOptimizeCompactsWhenReclaimable(t *testing.T) {
 	}
 	if after >= before {
 		t.Fatalf("page_count before=%d after=%d", before, after)
+	}
+	if info, statErr := os.Stat(path + "-wal"); statErr == nil && info.Size() > 0 {
+		t.Fatalf("wal not truncated after compact: %d", info.Size())
 	}
 }
 
@@ -159,5 +162,38 @@ func TestProbeSnapshotTableNamesMatchDrain(t *testing.T) {
 	}
 	if !sqliteTableExists(db, "probe_traces") {
 		t.Fatal("expected probe_traces")
+	}
+}
+
+func TestMaintenanceTruncatesOversizedWAL(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "santaizi.db")
+	db, err := gorm.Open(sqlite.Open(path+"?_journal_mode=WAL"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		sqlDB, _ := db.DB()
+		if sqlDB != nil {
+			_, _ = sqlDB.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
+			_ = sqlDB.Close()
+		}
+	})
+	if err := db.AutoMigrate(&model.TelemetryObservation{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.TelemetryObservation{
+		EventID: make([]byte, 16), ObserverID: "primary", NodeUUID: make([]byte, 16), ReceivedAt: time.Now().UnixNano(),
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if _, walBytes := databaseFileSizes(path); walBytes == 0 {
+		t.Fatal("expected non-empty WAL before maintenance")
+	}
+	maintainer := NewDatabaseMaintainer(db, path, nil)
+	maintainer.walTruncateBytes = 1
+	maintainer.truncateOversizedWAL()
+	if _, walBytes := databaseFileSizes(path); walBytes != 0 {
+		t.Fatalf("walBytes=%d", walBytes)
 	}
 }

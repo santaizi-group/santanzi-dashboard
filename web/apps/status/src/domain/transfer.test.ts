@@ -92,6 +92,11 @@ describe('usageTone / os / version', () => {
     expect(osLogoClass('Windows')).toBe('ri-microsoft-fill')
     expect(osLogoClass('unknown-os')).toBe('ri-computer-line')
     expect(osLabel('debian')).toBe('Debian')
+    expect(osLabel('centos')).toBe('CentOS')
+    expect(osLabel('opensuse')).toBe('openSUSE')
+    expect(osLabel('rocky')).toBe('Rocky')
+    expect(osLabel('linux mint')).toBe('Linux Mint')
+    expect(osLabel('')).toBe('')
   })
 
   it('normalizes product versions without doubling v', () => {

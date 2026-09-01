@@ -50,7 +50,7 @@ const conn = computed(() => formatConnPair(props.server.tcp, props.server.udp) |
       </span>
       <span class="ss-cell ss-cell--os" :data-label="t('platform')">
         <OsLogo :platform="server.platform" />
-        <span>{{ server.platformLabel || server.platform || '—' }}</span>
+        <span>{{ [server.platformLabel || server.platform, server.platformVersion].filter(Boolean).join(' ') || '—' }}</span>
       </span>
       <span v-if="columns.location" class="ss-cell ss-cell--loc" :data-label="t('location')">
         <span

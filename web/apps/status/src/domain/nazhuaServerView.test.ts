@@ -70,6 +70,9 @@ describe('Nazhua server view adapter', () => {
     expect(view.location?.code).toBeTruthy()
     expect(view.flagClass).toBe('fi fi-hk')
     expect(view.orderLink).toBe('https://example.com')
+    expect(view.platform).toBe('debian')
+    expect(view.platformLabel).toBe('Debian')
+    expect(view.platformVersion).toBe('')
   })
 
   it('takes capacity totals from host and usage from state', () => {

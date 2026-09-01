@@ -608,7 +608,7 @@
     "src": "../../packages/theme-nazhua/src/assets/world-map.svg"
   },
   "index.html": {
-    "file": "assets/index-BikFwS3a.js",
+    "file": "assets/index-DUF7kYK2.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -616,7 +616,7 @@
       "src/pages/ViewPasswordPage.vue"
     ],
     "css": [
-      "assets/index-BwZEbU8c.css"
+      "assets/index-CggZCkWP.css"
     ],
     "assets": [
       "assets/bg-DFFmeEMX.webp",
@@ -774,7 +774,7 @@
     ]
   },
   "src/pages/ViewPasswordPage.vue": {
-    "file": "assets/ViewPasswordPage-BQhGPMY7.js",
+    "file": "assets/ViewPasswordPage-D1aJDz8G.js",
     "name": "ViewPasswordPage",
     "src": "src/pages/ViewPasswordPage.vue",
     "isDynamicEntry": true,

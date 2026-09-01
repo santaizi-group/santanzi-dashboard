@@ -54,7 +54,7 @@ function tone(percent: number) {
         <span v-else class="nazhua-flag-fallback" aria-hidden="true"><i class="ri-global-line"></i></span>
         {{ server.flagCode.toUpperCase() || '—' }}
       </span>
-      <span role="cell" class="nazhua-status-table__os is-platform"><OsLogo :platform="server.platform" />{{ server.platform || '—' }}</span>
+      <span role="cell" class="nazhua-status-table__os is-platform"><OsLogo :platform="server.platform" />{{ [server.platformLabel, server.platformVersion].filter(Boolean).join(' ') || '—' }}</span>
       <span role="cell" class="is-spec">{{ server.spec || server.arch || '—' }}</span>
       <span role="cell">{{ server.uptime }}</span>
       <span role="cell" class="nazhua-status-table__metric">

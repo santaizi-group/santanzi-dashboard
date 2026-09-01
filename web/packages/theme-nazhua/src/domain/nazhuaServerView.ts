@@ -1,6 +1,6 @@
 import type { CycleTransfer, ResourceRecord, SensorTemperature, ServerRecord } from '@santaizi/api'
 import { isHostOnline } from '@santaizi/api'
-import { buildPublicNoteView, decodeOrderLink, formatTransfer, resolveFlagCode, type PublicNoteView } from '@santaizi/theme-server-status'
+import { buildPublicNoteView, decodeOrderLink, formatTransfer, osLabel, resolveFlagCode, type PublicNoteView } from '@santaizi/theme-server-status'
 import { formatDonutDisk, formatDonutMem, formatSpec } from '../utils/host'
 import { resolveServerLocation, type ServerLocation } from '../utils/worldMap'
 
@@ -32,6 +32,7 @@ export interface NazhuaServerView {
   group: string
   online: boolean
   platform: string
+  platformLabel: string
   platformVersion: string
   arch: string
   virtualization: string
@@ -265,6 +266,7 @@ export function toNazhuaServerView(
     group: server.tag || 'default',
     online: isHostOnline(server),
     platform: text(host?.Platform),
+    platformLabel: osLabel(host?.Platform),
     platformVersion: text(host?.PlatformVersion),
     arch: text(host?.Arch),
     virtualization: text(host?.Virtualization),

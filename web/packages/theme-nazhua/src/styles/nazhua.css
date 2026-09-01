@@ -553,6 +553,7 @@ html.dark .nazhua-card:hover,
 .nazhua-status-table__os,
 .nazhua-status-table__flag,
 .nazhua-info-box dd { display: inline-flex; align-items: center; gap: var(--icon-text-gap); line-height: 1; }
+.nazhua-status-table__os { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nazhua-offline-label { display: inline-flex; align-items: center; gap: var(--icon-text-gap); margin-left: auto; color: var(--nazhua-offline); font-size: 12px; font-weight: 700; line-height: 1; }
 .nazhua-flag.fi,
 .nazhua-flag { display: inline-block; width: var(--nazhua-flag-w); height: var(--nazhua-flag-h); flex: 0 0 auto; overflow: hidden; border-radius: 1px; font-size: var(--nazhua-flag-h); line-height: 1; background-size: cover; }

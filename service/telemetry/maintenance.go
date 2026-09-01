@@ -12,13 +12,14 @@ import (
 )
 
 const (
-	maintenanceInterval   = 5 * time.Minute
-	incrementalPages      = 4096
-	incrementalMaxRounds  = 32
-	vacuumBusyTimeoutMS   = 60000
-	defaultBusyTimeout    = 5000
-	compactCooldown       = 6 * time.Hour
-	autoCompactHugeFactor = int64(8)
+	maintenanceInterval       = 5 * time.Minute
+	incrementalPages          = 4096
+	incrementalMaxRounds      = 32
+	vacuumBusyTimeoutMS       = 60000
+	defaultBusyTimeout        = 5000
+	compactCooldown           = 6 * time.Hour
+	autoCompactHugeFactor     = int64(8)
+	walTruncateThresholdBytes = int64(256 << 20)
 )
 
 type DatabaseStatus struct {
@@ -44,6 +45,8 @@ type DatabaseMaintainer struct {
 	policyFn func() RetentionPolicy
 	rollup   *RollupWorker
 
+	walTruncateBytes int64
+
 	mu            sync.Mutex
 	running       bool
 	last          *DatabaseOptimizeRun
@@ -56,7 +59,8 @@ func NewDatabaseMaintainer(db *gorm.DB, path string, policyFn func() RetentionPo
 	}
 	return &DatabaseMaintainer{
 		db: db, path: path, policyFn: policyFn,
-		rollup: NewRollupWorker(db, RetentionPolicy{}),
+		rollup:           NewRollupWorker(db, RetentionPolicy{}),
+		walTruncateBytes: walTruncateThresholdBytes,
 	}
 }
 
@@ -151,8 +155,26 @@ func (m *DatabaseMaintainer) run(ctx context.Context, compact bool) DatabaseOpti
 	} else {
 		_ = incrementalVacuumBudget(m.db, incrementalPages, incrementalMaxRounds)
 	}
+	m.truncateOversizedWAL()
 	result.EndedAt = time.Now().UTC().Format(time.RFC3339)
 	return result
+}
+
+// truncateOversizedWAL shrinks the WAL once it exceeds the threshold. The
+// passive auto-checkpoint only recycles frames in place, so without an
+// explicit TRUNCATE the file sits at its historical high-water mark forever.
+func (m *DatabaseMaintainer) truncateOversizedWAL() {
+	if m.path == "" || m.walTruncateBytes <= 0 {
+		return
+	}
+	if _, walBytes := databaseFileSizes(m.path); walBytes < m.walTruncateBytes {
+		return
+	}
+	sqlDB, err := m.db.DB()
+	if err != nil {
+		return
+	}
+	_, _ = sqlDB.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
 }
 
 func (m *DatabaseMaintainer) compactIfPossible() (bool, string, error) {
@@ -245,8 +267,13 @@ func compactDatabase(db *gorm.DB) error {
 	if _, err := sqlDB.Exec("PRAGMA auto_vacuum=INCREMENTAL"); err != nil {
 		return err
 	}
-	_, err = sqlDB.Exec("VACUUM")
-	return err
+	if _, err := sqlDB.Exec("VACUUM"); err != nil {
+		return err
+	}
+	// VACUUM flows the whole database through the WAL; truncate right away so
+	// the -wal file does not sit at roughly the database size until shutdown.
+	_, _ = sqlDB.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
+	return nil
 }
 
 func pageCount(db *gorm.DB) (int64, error) {

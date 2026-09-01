@@ -447,10 +447,12 @@ func DrainRetention(ctx context.Context, db *gorm.DB, policy RetentionPolicy, no
 			"collected_at < ? AND event_type IN ("+highFrequencyEventTypesSQL()+")", completedMinute)); err != nil {
 			return deleted, err
 		}
+		// HOST payloads duplicate server_runtimes.host_payload and nothing reads
+		// them back; strip them together with STATE.
 		stripped, err := updateUntil(ctx, db, deadline, batch, `UPDATE telemetry_events SET payload = NULL, payload_retained = 0
 		WHERE rowid IN (SELECT rowid FROM telemetry_events
-		WHERE event_type = ? AND payload_retained = 1 AND collected_at < ? LIMIT ?)`,
-			pb.TelemetryEventType_TELEMETRY_EVENT_TYPE_STATE, completedMinute)
+		WHERE event_type IN (?, ?) AND payload_retained = 1 AND collected_at < ? LIMIT ?)`,
+			pb.TelemetryEventType_TELEMETRY_EVENT_TYPE_STATE, pb.TelemetryEventType_TELEMETRY_EVENT_TYPE_HOST, completedMinute)
 		if err != nil {
 			return deleted, err
 		}
@@ -481,6 +483,13 @@ func DrainRetention(ctx context.Context, db *gorm.DB, policy RetentionPolicy, no
 		return deleted, err
 	}
 	if err := add(drainUntil(ctx, db, deadline, batch, "collector_replication_receipts", "created_at < ?", now.Add(-policy.Receipt))); err != nil {
+		return deleted, err
+	}
+	if err := add(drainUntil(ctx, db, deadline, batch, "probe_route_jobs",
+		"status != ? AND requested_at < ?", model.ProbeRouteJobPending, observationBefore)); err != nil {
+		return deleted, err
+	}
+	if err := add(drainUntil(ctx, db, deadline, batch, "telemetry_ingest_cursors", "updated_at < ?", now.Add(-policy.Observation))); err != nil {
 		return deleted, err
 	}
 	compacted, err := compactAvailabilitySpans(ctx, db, deadline, batch, evidenceBefore)
@@ -599,7 +608,8 @@ func retentionTableAllowed(table string) bool {
 		"state_rollups", "connection_latency_buckets",
 		"observer_path_buckets", "observer_health_buckets",
 		"collector_replication_receipts", "telemetry_alerts", "telemetry_data_losses",
-		"probe_sample_buckets", "probe_latests", "probe_traces", "monitor_histories", "transfers", "availability_recompute_queues":
+		"probe_sample_buckets", "probe_latests", "probe_traces", "monitor_histories", "transfers", "availability_recompute_queues",
+		"probe_route_jobs", "telemetry_ingest_cursors":
 		return true
 	default:
 		return false

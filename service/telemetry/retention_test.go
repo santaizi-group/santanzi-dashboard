@@ -152,6 +152,9 @@ func TestDrainRetentionKeepsFreshRowsAndStripsOldStatePayload(t *testing.T) {
 	if err := db.First(&hostEvent, "event_id = ?", hostID).Error; err != nil {
 		t.Fatal(err)
 	}
+	if hostEvent.PayloadRetained || len(hostEvent.Payload) != 0 {
+		t.Fatal("8h-old HOST payload should be stripped")
+	}
 	var paths, health, receipts, observations int64
 	if err := db.Model(&model.ObserverPathBucket{}).Count(&paths).Error; err != nil {
 		t.Fatal(err)
@@ -374,5 +377,47 @@ func TestDrainRetentionCompactsOldAvailabilityRuns(t *testing.T) {
 	}
 	if rows[1].BucketStart != recent || rows[1].Resolution != model.AvailabilityResolutionRaw {
 		t.Fatalf("recent=%#v", rows[1])
+	}
+}
+
+func TestDrainRetentionPrunesRouteJobsAndIngestCursors(t *testing.T) {
+	db := newRetentionDB(t)
+	if err := db.AutoMigrate(&model.ProbeRouteJob{}, &model.TelemetryIngestCursor{}); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	old := now.Add(-40 * 24 * time.Hour)
+	jobs := []model.ProbeRouteJob{
+		{CollectorUUID: "c", ServerID: 1, Protocol: "icmp", Status: model.ProbeRouteJobDone, RequestedAt: old.UnixNano(), UpdatedAt: old},
+		{CollectorUUID: "c", ServerID: 1, Protocol: "tcp", Status: model.ProbeRouteJobFailed, RequestedAt: old.UnixNano(), UpdatedAt: old},
+		{CollectorUUID: "c", ServerID: 2, Protocol: "icmp", Status: model.ProbeRouteJobDone, RequestedAt: now.UnixNano(), UpdatedAt: now},
+		{CollectorUUID: "c", ServerID: 3, Protocol: "icmp", Status: model.ProbeRouteJobPending, RequestedAt: old.UnixNano(), UpdatedAt: old},
+	}
+	if err := db.Create(&jobs).Error; err != nil {
+		t.Fatal(err)
+	}
+	cursors := []model.TelemetryIngestCursor{
+		{ReceiverID: "primary", NodeUUID: bytes.Repeat([]byte{1}, 16), SessionID: bytes.Repeat([]byte{2}, 16), AckThrough: 9, UpdatedAt: old},
+		{ReceiverID: "primary", NodeUUID: bytes.Repeat([]byte{1}, 16), SessionID: bytes.Repeat([]byte{3}, 16), AckThrough: 9, UpdatedAt: now},
+	}
+	if err := db.Create(&cursors).Error; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := DrainRetention(context.Background(), db, RetentionPolicy{BatchSize: 100, MaxRuntime: time.Minute}, now); err != nil {
+		t.Fatal(err)
+	}
+	var remainingJobs []model.ProbeRouteJob
+	if err := db.Find(&remainingJobs).Error; err != nil {
+		t.Fatal(err)
+	}
+	if len(remainingJobs) != 1 || remainingJobs[0].ServerID != 2 {
+		t.Fatalf("jobs=%#v", remainingJobs)
+	}
+	var remainingCursors []model.TelemetryIngestCursor
+	if err := db.Find(&remainingCursors).Error; err != nil {
+		t.Fatal(err)
+	}
+	if len(remainingCursors) != 1 || !bytes.Equal(remainingCursors[0].SessionID, bytes.Repeat([]byte{3}, 16)) {
+		t.Fatalf("cursors=%#v", remainingCursors)
 	}
 }

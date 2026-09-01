@@ -20,7 +20,7 @@ function planTag(tag: string) {
 const rows = computed(() => {
   const item = view.value
   const note = item.publicNote
-  const platform = [item.platform, item.platformVersion].filter(Boolean).join(' ')
+  const platform = [item.platformLabel || item.platform, item.platformVersion].filter(Boolean).join(' ')
   const load = item.load1 || item.load5 || item.load15
     ? `${item.load1.toFixed(2)} / ${item.load5.toFixed(2)} / ${item.load15.toFixed(2)}`
     : ''
