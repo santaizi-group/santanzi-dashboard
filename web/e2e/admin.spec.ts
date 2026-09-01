@@ -49,6 +49,13 @@ async function clickVisibleRowAction(page: Page, name: string) {
   await page.getByRole('menuitem', { name: new RegExp(name) }).filter({ visible: true }).click()
 }
 
+/** el-segmented 的 radio input 是视觉隐藏的，getByRole('radio') 会点到不可见节点并超时。 */
+async function chooseSegmentedItem(root: Locator, label: string) {
+  const item = root.locator('.el-segmented__item').filter({ hasText: new RegExp(`^${label}$`) })
+  await item.scrollIntoViewIfNeeded()
+  await item.click()
+}
+
 async function mockEditorOptions(page: Page) {
   await page.route('**/api/v2/admin/servers?**', route => fulfillJSON(route, list([{ id: 7, name: 'edge-a', tag: 'edge', online: true, public_note: {}, monitoring_options: {} }])))
   await page.route('**/api/v2/admin/notifications?**', route => fulfillJSON(route, list([{ id: 3, name: 'Ops', tag: 'ops', url: 'https://example.test/hook', method: 'post', request_type: 'json', headers: [], body: '', verify_tls: true }])))
@@ -235,7 +242,7 @@ test('install dialog can preview rust linux command', async ({ page }) => {
   await clickVisibleRowAction(page, '安装探针')
   const dialog = page.getByRole('dialog', { name: /安装探针/ })
   await expect(dialog.getByText('标准·云', { exact: true })).toBeVisible()
-  await dialog.getByRole('radio', { name: 'Rust' }).click()
+  await chooseSegmentedItem(dialog.locator('.install-impl'), 'Rust')
   await expect.poll(() => preview).toMatchObject({ implementation: 'rust', platform: 'linux' })
   await expect(dialog.locator('textarea')).toHaveValue(/install_agent_rs\.sh/)
   await expect(dialog.locator('textarea')).not.toHaveValue(/--disable-nat/)

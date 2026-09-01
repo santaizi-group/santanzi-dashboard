@@ -137,7 +137,7 @@ watch([platform, snapshotValue], () => {
           </el-input>
         </el-form-item>
         <el-form-item>
-          <el-segmented :model-value="implementation" :options="implOptions" @change="selectImplementation" />
+          <el-segmented class="install-impl" :model-value="implementation" :options="implOptions" @change="selectImplementation" />
         </el-form-item>
         <template v-if="implementation === 'go'">
         <el-form-item :label="t('monitoringPreset')">
