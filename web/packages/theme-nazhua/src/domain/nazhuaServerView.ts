@@ -1,7 +1,9 @@
 import type { CycleTransfer, ResourceRecord, SensorTemperature, ServerRecord } from '@santaizi/api'
 import { isHostOnline } from '@santaizi/api'
+import { parseCpuCores } from '@santaizi/status-core'
+export { parseCpuCores }
 import { buildPublicNoteView, decodeOrderLink, formatTransfer, osLabel, resolveFlagCode, type PublicNoteView } from '@santaizi/theme-server-status'
-import { formatDonutDisk, formatDonutMem, formatSpec } from '../utils/host'
+import { formatDonutDisk, formatDonutMem, formatSpec, formatTableSpec } from '../utils/host'
 import { resolveServerLocation, type ServerLocation } from '../utils/worldMap'
 
 export interface NazhuaCycleTransferView {
@@ -47,6 +49,7 @@ export interface NazhuaServerView {
   publicNote: PublicNoteView
   slogan: string
   spec: string
+  tableSpec: string
   cpuPercent: number
   memoryPercent: number
   diskPercent: number
@@ -106,22 +109,6 @@ function textList(value: unknown) {
   return []
 }
 
-export function parseCpuCores(cpu: unknown) {
-  const texts = textList(cpu)
-  let cores = 0
-  for (const text of texts) {
-    const match = text.match(/(\d+)\s+(Virtual|Physics|Physical)\s+Core/i)
-    if (match) {
-      cores += Number(match[1])
-      continue
-    }
-    if (/^\d+(\.\d+)?$/.test(text)) cores += Number(text)
-  }
-  if (cores > 0) return cores
-  if (typeof cpu === 'number' && Number.isFinite(cpu) && cpu > 0) return cpu
-  return texts.length
-}
-
 export function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0))
 }
@@ -134,10 +121,10 @@ export function formatCompactBytes(value: number, _decimals = 0) {
   return formatTransfer(value)
 }
 
-export function formatUptime(seconds: number) {
+export function formatUptime(seconds: number, dayUnit = '天') {
   const safe = Math.max(0, Math.floor(seconds))
   const days = Math.floor(safe / 86_400)
-  if (days > 0) return `${days}`
+  if (days > 0) return `${days}${dayUnit}`
   const hours = Math.floor(safe / 3_600)
   if (hours > 0) return `${hours}h`
   const minutes = Math.floor(safe / 60)
@@ -225,6 +212,19 @@ function billingLabel(note: PublicNoteView) {
   return note.bill.amountValue
 }
 
+export function formatNazhuaBilling(
+  note: PublicNoteView,
+  t: (key: string, values?: Record<string, unknown>) => string,
+  te: (key: string) => boolean,
+) {
+  const bill = note.bill
+  if (bill.amountKind === 'free') return t('freeBilling')
+  if (bill.amountKind === 'metered') return t('meteredBilling')
+  if (!bill.amountValue) return ''
+  const cycle = bill.cycleLabel && te(bill.cycleLabel) ? t(bill.cycleLabel) : bill.cycleLabel
+  return cycle ? `${bill.amountValue}/${cycle}` : bill.amountValue
+}
+
 export function toNazhuaServerView(
   server: ServerRecord,
   cycles?: NazhuaCycleTransferMap,
@@ -281,6 +281,7 @@ export function toNazhuaServerView(
     publicNote,
     slogan: publicNote.presentation.slogan,
     spec,
+    tableSpec: formatTableSpec(cpuCores, memoryTotal),
     cpuPercent,
     memoryPercent,
     diskPercent,

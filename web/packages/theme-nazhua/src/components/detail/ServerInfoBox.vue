@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ServerRecord } from '@santaizi/api'
-import { formatCompactBytes, toNazhuaServerView } from '../../domain/nazhuaServerView'
+import { formatCompactBytes, formatNazhuaBilling, toNazhuaServerView } from '../../domain/nazhuaServerView'
 import { formatDateTime } from '../../utils/host'
 import OsLogo from '../common/OsLogo.vue'
 
@@ -27,13 +27,7 @@ const rows = computed(() => {
   const temps = item.temperatures
     .map(row => `${row.name} ${row.value.toFixed(1)}°C`)
     .join(' · ')
-  const billing = (() => {
-    if (note.bill.amountKind === 'free') return t('freeBilling')
-    if (note.bill.amountKind === 'metered') return t('meteredBilling')
-    if (!note.bill.amountValue) return ''
-    const cycle = note.bill.cycleLabel && te(note.bill.cycleLabel) ? t(note.bill.cycleLabel) : note.bill.cycleLabel
-    return cycle ? `${note.bill.amountValue}/${cycle}` : note.bill.amountValue
-  })()
+  const billing = formatNazhuaBilling(note, t, te)
   const remaining = note.bill.remainingKind === 'days' && note.bill.remainingDays !== null
     ? t('remainingDays', { n: note.bill.remainingDays })
     : note.bill.remainingKind === 'infinity'

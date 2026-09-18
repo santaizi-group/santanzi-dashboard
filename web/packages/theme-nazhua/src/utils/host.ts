@@ -40,7 +40,12 @@ export function formatSpec(cores: number, memTotal: number, diskTotal: number) {
     const disk = calcBinary(diskTotal)
     parts.push(disk.g > 900 ? `${Math.round(disk.t)}T` : `${Math.ceil(disk.g)}G`)
   }
-  return parts.join('')
+  return parts.join('/')
+}
+
+/** 表格规格列：核+内存。磁盘已有独立列，不塞进 80px。 */
+export function formatTableSpec(cores: number, memTotal: number) {
+  return formatSpec(cores, memTotal, 0)
 }
 
 export function formatDonutMem(used: number, total: number) {

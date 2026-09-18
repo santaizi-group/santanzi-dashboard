@@ -7,12 +7,18 @@ import { TooltipComponent, VisualMapComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { listPublicCycleTransfer, type CycleTransfer } from '@santaizi/api'
 import { AppEmpty } from '@santaizi/ui'
-import { useInjectedStatusStore } from '@santaizi/status-core'
+import {
+  SERVER_SORT_COLUMNS,
+  sortServers,
+  useInjectedStatusStore,
+  type ServerSortProp,
+} from '@santaizi/status-core'
 import { getPresentation } from '../domain/publicNoteView'
 import { choroplethIso2, regionDisplayName } from '../domain/regionDisplay'
 import { mapCycleTransfers, toServerStatusView } from '../domain/serverStatusView'
 import { resolveStatusNoteColumns, type StatusTableColumns } from '../domain/statusTableColumns'
 import { registerStatusPageActions } from '../composables/statusPageActions'
+import { useStatusSort } from '../composables/useStatusSort'
 import ServerDetailDrawer from '../components/ServerDetailDrawer.vue'
 import StatusTable from '../components/StatusTable.vue'
 
@@ -25,10 +31,16 @@ const selectedId = ref(0)
 const mapDialog = ref<HTMLDialogElement>()
 const mapNode = ref<HTMLElement>()
 const cycleRows = ref<CycleTransfer[]>([])
+const { sortProp, sortOrder, sortOption, setSortProp, toggleSort, toggleOrder } = useStatusSort()
 let chart: echarts.ECharts | undefined
 
 const cycles = computed(() => mapCycleTransfers(cycleRows.value))
-const all = computed(() => store.servers)
+const sortedAll = computed(() => sortServers(store.servers, sortProp.value, sortOrder.value))
+const sortedGroups = computed(() => store.groups.map((group) => ({
+  ...group,
+  items: sortServers(group.items, sortProp.value, sortOrder.value),
+})))
+const sortLabel = computed(() => t(sortOption.value?.labelKey || 'nazhua.sortWeight'))
 const showAvailability = computed(() => store.bootstrap?.show_availability !== false)
 const tableColumns = computed((): StatusTableColumns => ({
   availability: showAvailability.value,
@@ -164,6 +176,32 @@ registerStatusPageActions(() => [
         <i></i><span class="connection-state__label">{{ connectionLabel }}</span>
       </span>
       <span />
+      <el-dropdown trigger="click" popper-class="ss-sort-menu" @command="setSortProp($event as ServerSortProp)">
+        <button type="button" class="ss-sort" :aria-label="t('nazhua.sort')">
+          <span>{{ sortLabel }}</span>
+          <span
+            class="ss-sort__order"
+            role="button"
+            tabindex="0"
+            :aria-label="t('nazhua.sort')"
+            @click.stop="toggleOrder"
+            @keydown.enter.stop="toggleOrder"
+            @keydown.space.prevent.stop="toggleOrder"
+          ><i :class="sortOrder === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i></span>
+        </button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <div v-for="column in SERVER_SORT_COLUMNS" :key="column.group" class="ss-sort-menu__column" role="none">
+              <el-dropdown-item
+                v-for="option in column.options"
+                :key="option.prop"
+                :command="option.prop"
+                :class="{ 'is-current': option.prop === sortProp }"
+              >{{ t(option.labelKey) }}</el-dropdown-item>
+            </div>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
       <button v-if="store.loadError" type="button" @click="store.load">
         <i class="ri-refresh-line"></i>{{ t('refresh') }}
       </button>
@@ -179,21 +217,27 @@ registerStatusPageActions(() => [
     <template v-if="store.servers.length">
       <template v-if="grouped">
         <StatusTable
-          v-for="group in store.groups"
+          v-for="group in sortedGroups"
           :key="group.name"
           :title="group.name"
           :servers="group.items"
           :cycles="cycles"
           :columns="tableColumns"
+          :sort-prop="sortProp"
+          :sort-order="sortOrder"
           @select="selectRow"
+          @sort="toggleSort"
         />
       </template>
       <StatusTable
         v-else
-        :servers="all"
+        :servers="sortedAll"
         :cycles="cycles"
         :columns="tableColumns"
+        :sort-prop="sortProp"
+        :sort-order="sortOrder"
         @select="selectRow"
+        @sort="toggleSort"
       />
     </template>
     <div v-else class="empty-status status-page-empty">

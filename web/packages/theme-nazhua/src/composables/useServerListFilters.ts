@@ -1,83 +1,28 @@
 import { computed, ref, toValue, type MaybeRefOrGetter } from 'vue'
 import type { ServerRecord } from '@santaizi/api'
 import { isHostOnline } from '@santaizi/api'
-import { parseCpuCores } from '../domain/nazhuaServerView'
+import {
+  SERVER_SORT_COLUMNS,
+  SERVER_SORT_OPTIONS,
+  resolveServerSortProp,
+  sortServers,
+  type ServerSortColumn,
+  type ServerSortGroup,
+  type ServerSortOption,
+  type ServerSortOrder,
+  type ServerSortProp,
+} from '@santaizi/status-core'
 import { resolveServerLocation, count2size } from '../utils/worldMap'
 
 export type ListMode = 'card' | 'server-status'
-export type SortProp =
-  | 'display_index'
-  | 'name'
-  | 'online'
-  | 'country_code'
-  | 'platform'
-  | 'boot_time'
-  | 'net_in_speed'
-  | 'net_out_speed'
-  | 'net_in_transfer'
-  | 'net_out_transfer'
-  | 'total_transfer'
-  | 'tcp_conn_count'
-  | 'udp_conn_count'
-  | 'total_conn_count'
-  | 'load1'
-  | 'cpu'
-  | 'cpu_cores'
-  | 'mem_used'
-  | 'mem_total'
-  | 'swap_used'
-  | 'swap_total'
-  | 'disk_used'
-  | 'disk_total'
-export type SortOrder = 'asc' | 'desc'
-export type SortGroup = 'base' | 'host' | 'net' | 'conn' | 'load' | 'cap'
+export type SortProp = ServerSortProp
+export type SortOrder = ServerSortOrder
+export type SortGroup = ServerSortGroup
+export type SortOption = ServerSortOption
+export type SortColumn = ServerSortColumn
 
-export interface SortOption {
-  prop: SortProp
-  labelKey: string
-  group: SortGroup
-}
-
-export const SORT_OPTIONS: SortOption[] = [
-  { prop: 'display_index', labelKey: 'nazhua.sortWeight', group: 'base' },
-  { prop: 'name', labelKey: 'nazhua.sortName', group: 'base' },
-  { prop: 'online', labelKey: 'nazhua.sortOnline', group: 'base' },
-  { prop: 'country_code', labelKey: 'nazhua.sortCountry', group: 'host' },
-  { prop: 'platform', labelKey: 'nazhua.sortPlatform', group: 'host' },
-  { prop: 'boot_time', labelKey: 'nazhua.sortUptime', group: 'host' },
-  { prop: 'net_in_speed', labelKey: 'nazhua.sortNetInSpeed', group: 'net' },
-  { prop: 'net_out_speed', labelKey: 'nazhua.sortNetOutSpeed', group: 'net' },
-  { prop: 'net_in_transfer', labelKey: 'nazhua.sortNetInTransfer', group: 'net' },
-  { prop: 'net_out_transfer', labelKey: 'nazhua.sortNetOutTransfer', group: 'net' },
-  { prop: 'total_transfer', labelKey: 'nazhua.sortTotalTransfer', group: 'net' },
-  { prop: 'tcp_conn_count', labelKey: 'nazhua.sortTcp', group: 'conn' },
-  { prop: 'udp_conn_count', labelKey: 'nazhua.sortUdp', group: 'conn' },
-  { prop: 'total_conn_count', labelKey: 'nazhua.sortTotalConn', group: 'conn' },
-  { prop: 'load1', labelKey: 'nazhua.sortLoad', group: 'load' },
-  { prop: 'cpu', labelKey: 'nazhua.sortCpu', group: 'load' },
-  { prop: 'cpu_cores', labelKey: 'nazhua.sortCpuCores', group: 'load' },
-  { prop: 'mem_used', labelKey: 'nazhua.sortMemUsed', group: 'cap' },
-  { prop: 'mem_total', labelKey: 'nazhua.sortMemTotal', group: 'cap' },
-  { prop: 'swap_used', labelKey: 'nazhua.sortSwapUsed', group: 'cap' },
-  { prop: 'swap_total', labelKey: 'nazhua.sortSwapTotal', group: 'cap' },
-  { prop: 'disk_used', labelKey: 'nazhua.sortDiskUsed', group: 'cap' },
-  { prop: 'disk_total', labelKey: 'nazhua.sortDiskTotal', group: 'cap' },
-]
-
-const SORT_PROPS = new Set(SORT_OPTIONS.map(option => option.prop))
-
-// 排序菜单按分组分列展示，避免 23 个选项排成一列吃满视口高度
-export interface SortColumn {
-  group: SortGroup
-  options: SortOption[]
-}
-
-export const SORT_OPTION_COLUMNS: SortColumn[] = SORT_OPTIONS.reduce<SortColumn[]>((columns, option) => {
-  const current = columns[columns.length - 1]
-  if (current && current.group === option.group) current.options.push(option)
-  else columns.push({ group: option.group, options: [option] })
-  return columns
-}, [])
+export const SORT_OPTIONS = SERVER_SORT_OPTIONS
+export const SORT_OPTION_COLUMNS = SERVER_SORT_COLUMNS
 
 export interface ServerListQuery {
   tag: string
@@ -110,61 +55,6 @@ function text(source: Record<string, unknown>, ...keys: string[]) {
   return ''
 }
 
-function sortValue(server: ServerRecord, prop: SortProp): number | string {
-  const host = asRecord(server.host)
-  const state = asRecord(server.state)
-  switch (prop) {
-    case 'name':
-      return server.name
-    case 'online':
-      return Number(isHostOnline(server))
-    case 'country_code':
-      return text(host, 'CountryCode', 'country_code').toLowerCase()
-    case 'platform':
-      return text(host, 'Platform', 'platform').toLowerCase()
-    case 'boot_time': {
-      const boot = num(host, 'BootTime', 'boot_time')
-      return boot > 0 ? Date.now() / 1000 - boot : 0
-    }
-    case 'net_in_speed':
-      return num(state, 'NetInSpeed', 'net_in_speed')
-    case 'net_out_speed':
-      return num(state, 'NetOutSpeed', 'net_out_speed')
-    case 'net_in_transfer':
-      return num(state, 'NetInTransfer', 'net_in_transfer')
-    case 'net_out_transfer':
-      return num(state, 'NetOutTransfer', 'net_out_transfer')
-    case 'total_transfer':
-      return num(state, 'NetInTransfer', 'net_in_transfer') + num(state, 'NetOutTransfer', 'net_out_transfer')
-    case 'tcp_conn_count':
-      return num(state, 'TcpConnCount', 'tcp_conn_count')
-    case 'udp_conn_count':
-      return num(state, 'UdpConnCount', 'udp_conn_count')
-    case 'total_conn_count':
-      return num(state, 'TcpConnCount', 'tcp_conn_count') + num(state, 'UdpConnCount', 'udp_conn_count')
-    case 'load1':
-      return num(state, 'Load1', 'load1')
-    case 'cpu':
-      return num(state, 'CPU', 'Cpu', 'cpu')
-    case 'cpu_cores':
-      return parseCpuCores(host.CPU ?? host.cpu)
-    case 'mem_used':
-      return num(state, 'MemUsed', 'mem_used')
-    case 'mem_total':
-      return num(host, 'MemTotal', 'mem_total') || num(state, 'MemTotal', 'mem_total')
-    case 'swap_used':
-      return num(state, 'SwapUsed', 'swap_used')
-    case 'swap_total':
-      return num(host, 'SwapTotal', 'swap_total') || num(state, 'SwapTotal', 'swap_total')
-    case 'disk_used':
-      return num(state, 'DiskUsed', 'disk_used')
-    case 'disk_total':
-      return num(host, 'DiskTotal', 'disk_total') || num(state, 'DiskTotal', 'disk_total')
-    default:
-      return server.display_index
-  }
-}
-
 export function filterAndSortServers(source: ServerRecord[], query: ServerListQuery) {
   const q = query.search.trim().toLowerCase()
   const list = source.filter((server) => {
@@ -183,21 +73,11 @@ export function filterAndSortServers(source: ServerRecord[], query: ServerListQu
     }
     return true
   })
-  const direction = query.order === 'asc' ? 1 : -1
-  const prop = SORT_PROPS.has(query.sort) ? query.sort : 'display_index'
-  return [...list].sort((a, b) => {
-    const left = sortValue(a, prop)
-    const right = sortValue(b, prop)
-    if (typeof left === 'string' || typeof right === 'string') {
-      return String(left).localeCompare(String(right)) * direction
-    }
-    return (left - right) * direction
-  })
+  return sortServers(list, query.sort, query.order)
 }
 
 function readStoredSortProp(): SortProp {
-  const stored = localStorage.getItem('santaizi-nazhua-sort-prop') as SortProp | null
-  return stored && SORT_PROPS.has(stored) ? stored : 'display_index'
+  return resolveServerSortProp(localStorage.getItem('santaizi-nazhua-sort-prop'))
 }
 
 function readStoredSortOrder(): SortOrder {

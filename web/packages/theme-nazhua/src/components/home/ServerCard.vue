@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { NazhuaServerView } from '../../domain/nazhuaServerView'
+import { formatNazhuaBilling } from '../../domain/nazhuaServerView'
 import { formatLiveSpeed, splitTransfer } from '../../utils/host'
 import DonutChart from '../charts/DonutChart.vue'
 import OsLogo from '../common/OsLogo.vue'
@@ -17,14 +18,7 @@ const trafficLabel = computed(() => {
   return t('trafficBidirectionalQuota')
 })
 
-const billingText = computed(() => {
-  const bill = props.server.publicNote.bill
-  if (bill.amountKind === 'free') return t('freeBilling')
-  if (bill.amountKind === 'metered') return t('meteredBilling')
-  if (!bill.amountValue) return ''
-  const cycle = bill.cycleLabel && te(bill.cycleLabel) ? t(bill.cycleLabel) : bill.cycleLabel
-  return cycle ? `${bill.amountValue}/${cycle}` : bill.amountValue
-})
+const billingText = computed(() => formatNazhuaBilling(props.server.publicNote, t, te))
 
 const uptime = computed(() => {
   const seconds = Math.max(0, Math.floor(props.server.uptimeSeconds))

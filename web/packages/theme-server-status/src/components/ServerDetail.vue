@@ -13,6 +13,7 @@ import {
   trafficQuotaText,
 } from '../domain/publicNoteDisplay'
 import LatencyChart from './LatencyChart.vue'
+import ServerResourceHistory from './ServerResourceHistory.vue'
 
 const availabilityCache = new Map<number, PublicAvailability>()
 
@@ -202,6 +203,8 @@ watch(() => props.server.id, (id) => {
         <div><dt>{{ t('longestOffline') }}</dt><dd>{{ longestOffline }}</dd></div>
       </dl>
     </section>
+
+    <ServerResourceHistory :server="server" />
 
     <LatencyChart :server-id="server.id" />
   </div>

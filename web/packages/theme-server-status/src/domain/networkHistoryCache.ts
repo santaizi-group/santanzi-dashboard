@@ -32,16 +32,20 @@ export function rememberNetworkHistory(id: number, rows: MonitorHistory[]) {
   cache.set(id, rows)
 }
 
-export async function loadNetworkHistory(id: number) {
-  const hit = cache.get(id)
-  if (hit) return hit
-  const pending = inflight.get(id)
-  if (pending) return pending
+export async function loadNetworkHistory(id: number, options?: { force?: boolean }) {
+  if (!options?.force) {
+    const hit = cache.get(id)
+    if (hit) return hit
+    const pending = inflight.get(id)
+    if (pending) return pending
+  }
   const request = (async () => {
     await acquire()
     try {
-      const cached = cache.get(id)
-      if (cached) return cached
+      if (!options?.force) {
+        const cached = cache.get(id)
+        if (cached) return cached
+      }
       const rows = (await getPublicNetwork(id)).data || []
       cache.set(id, rows)
       return rows

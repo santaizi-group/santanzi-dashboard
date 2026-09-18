@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { getPublicMetrics, type PublicMetricPoint, type ServerRecord } from '@santaizi/api'
 import { formatSpeed } from '@santaizi/theme-server-status'
 import { AppEmpty } from '@santaizi/ui'
-import { percentOf, toNazhuaServerView } from '../../domain/nazhuaServerView'
+import { toNazhuaServerView } from '../../domain/nazhuaServerView'
 import ResourceHistoryChart, { type HistorySeries, type HistoryUnit } from './ResourceHistoryChart.vue'
 
 const DEFAULT_RANGE_MS = 24 * 3600 * 1000
@@ -29,6 +29,7 @@ type HistoryCard = {
   key: string
   title: string
   unit: HistoryUnit
+  max?: number
   summary?: string
   detail?: string
   metrics?: Array<{ key: string; label: string; value: string; color: string }>
@@ -79,8 +80,6 @@ const cards = computed<HistoryCard[]>(() => {
   const current = view.value
   const memTotal = current.memoryTotal
   const diskTotal = current.diskTotal
-  const memUnit: HistoryUnit = memTotal > 0 ? 'percent' : 'bytes'
-  const diskUnit: HistoryUnit = diskTotal > 0 ? 'percent' : 'bytes'
   return [
     {
       key: 'cpu',
@@ -92,22 +91,20 @@ const cards = computed<HistoryCard[]>(() => {
     {
       key: 'memory',
       title: t('nazhua.historyMemory'),
-      unit: memUnit,
+      unit: 'bytes',
+      max: memTotal > 0 ? memTotal : undefined,
       summary: formatPercent(current.memoryPercent),
       detail: current.memoryText,
-      series: [seriesOf(rows, t('nazhua.memory'), COLORS.memory, row => (
-        memTotal > 0 ? percentOf(Number(row.mem_used || 0), memTotal) : Number(row.mem_used || 0)
-      ))],
+      series: [seriesOf(rows, t('nazhua.memory'), COLORS.memory, row => Number(row.mem_used || 0))],
     },
     {
       key: 'disk',
       title: t('nazhua.historyDisk'),
-      unit: diskUnit,
+      unit: 'bytes',
+      max: diskTotal > 0 ? diskTotal : undefined,
       summary: formatPercent(current.diskPercent),
       detail: current.diskText,
-      series: [seriesOf(rows, t('nazhua.disk'), COLORS.disk, row => (
-        diskTotal > 0 ? percentOf(Number(row.disk_used || 0), diskTotal) : Number(row.disk_used || 0)
-      ))],
+      series: [seriesOf(rows, t('nazhua.disk'), COLORS.disk, row => Number(row.disk_used || 0))],
     },
     {
       key: 'process',
@@ -222,7 +219,7 @@ watch(() => props.server.id, load, { immediate: true })
               <small v-if="card.detail">{{ card.detail }}</small>
             </div>
           </header>
-          <ResourceHistoryChart :series="card.series" :unit="card.unit" />
+          <ResourceHistoryChart :series="card.series" :unit="card.unit" :max="card.max" />
         </article>
       </div>
     </div>

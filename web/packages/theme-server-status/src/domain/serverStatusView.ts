@@ -393,7 +393,5 @@ export function toServerStatusViews(
   nowMs = Date.now(),
   locale = 'zh-CN',
 ) {
-  return [...servers]
-    .sort((a, b) => b.display_index - a.display_index)
-    .map((server) => toServerStatusView(server, cycles, nowMs, locale))
+  return servers.map((server) => toServerStatusView(server, cycles, nowMs, locale))
 }

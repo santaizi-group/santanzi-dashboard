@@ -3,6 +3,7 @@ import type { ResourceRecord, ServerRecord } from '@santaizi/api'
 import {
   clampPercent,
   formatCompactBytes,
+  formatNazhuaBilling,
   formatUptime,
   mapCycleTransfers,
   parseCpuCores,
@@ -54,7 +55,8 @@ describe('Nazhua server view adapter', () => {
     expect(view.online).toBe(true)
     expect(view.cpuPercent).toBe(12.5)
     expect(view.cpuCores).toBe(2)
-    expect(view.spec).toBe('2C2G20G')
+    expect(view.spec).toBe('2C/2G/20G')
+    expect(view.tableSpec).toBe('2C/2G')
     expect(view.memoryPercent).toBe(50)
     expect(view.diskPercent).toBe(50)
     expect(view.memoryValue).toBe('1024M')
@@ -64,7 +66,7 @@ describe('Nazhua server view adapter', () => {
     expect(view.diskValue).toBe('10G')
     expect(view.diskTotalLabel).toBe('20G')
     expect(view.diskCaption).toBe('10G / 20G (50%)')
-    expect(view.uptime).toBe('2')
+    expect(view.uptime).toBe('2天')
     expect(view.slogan).toBe('香港边缘')
     expect(view.publicNote.planTags).toEqual(['CN2', 'GIA', '__dual_stack__'])
     expect(view.location?.code).toBeTruthy()
@@ -136,6 +138,24 @@ describe('Nazhua server view adapter', () => {
     expect(percentOf(1, 4)).toBe(25)
     expect(formatCompactBytes(1_073_741_824)).toBe('1024M')
     expect(formatCompactBytes(2 * 1024 ** 3)).toBe('2G')
+    expect(formatUptime(172_800)).toBe('2天')
+    expect(formatUptime(172_800, 'd')).toBe('2d')
     expect(formatUptime(3_601)).toBe('1h')
+  })
+
+  it('formats billed rows as amount/cycle like the card footer', () => {
+    const view = toNazhuaServerView(server())
+    const t = (key: string) => {
+      if (key === 'cycleMonth') return '月'
+      if (key === 'freeBilling') return '免费'
+      if (key === 'meteredBilling') return '按量'
+      return key
+    }
+    expect(formatNazhuaBilling(view.publicNote, t, key => key === 'cycleMonth')).toBe('9.99CNY/月')
+    expect(formatNazhuaBilling(
+      toNazhuaServerView(server({ public_note: { billingDataMod: { amount: '-1' } } })).publicNote,
+      t,
+      () => false,
+    )).toBe('按量')
   })
 })

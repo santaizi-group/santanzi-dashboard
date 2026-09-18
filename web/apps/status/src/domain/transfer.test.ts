@@ -4,6 +4,7 @@ import {
   formatCycleBytes,
   formatProductVersion,
   formatTransfer,
+  bytesAxisFormatter,
   getCycleTransferStatusLevel,
   osLabel,
   osLogoClass,
@@ -22,6 +23,22 @@ describe('formatTransfer', () => {
     expect(formatTransfer(1024 ** 2 + 1)).toBe('1M')
     expect(formatTransfer(2 * 1024 ** 3)).toBe('2G')
     expect(formatTransfer(1.5 * 1024 ** 4)).toBe('1.5T')
+  })
+})
+
+describe('bytesAxisFormatter', () => {
+  it('locks a 2T disk axis to T and writes 0 without a unit', () => {
+    const format = bytesAxisFormatter(2 * 1024 ** 4)
+    expect(format(0)).toBe('0')
+    expect(format(0.4 * 1024 ** 4)).toBe('0.4T')
+    expect(format(2 * 1024 ** 4)).toBe('2T')
+  })
+
+  it('locks a 2G memory axis to G so ticks do not mix M and G', () => {
+    const format = bytesAxisFormatter(2 * 1024 ** 3)
+    expect(format(0)).toBe('0')
+    expect(format(0.4 * 1024 ** 3)).toBe('0.4G')
+    expect(format(2 * 1024 ** 3)).toBe('2G')
   })
 })
 

@@ -1,4 +1,5 @@
 import type { ServerRecord } from '@santaizi/api'
+import type { ServerSortProp } from '@santaizi/status-core'
 import { flagCode, getBillAndPlan, publicLocation } from './publicNoteView'
 
 export interface StatusNoteColumns {
@@ -11,7 +12,7 @@ export interface StatusTableColumns extends StatusNoteColumns {
   availability: boolean
 }
 
-type ColumnId =
+export type ColumnId =
   | 'status'
   | 'name'
   | 'platform'
@@ -27,6 +28,25 @@ type ColumnId =
   | 'memory'
   | 'disk'
   | 'remaining'
+
+const COLUMN_SORT: Partial<Record<ColumnId, ServerSortProp>> = {
+  status: 'online',
+  name: 'name',
+  platform: 'platform',
+  location: 'country_code',
+  online: 'boot_time',
+  load: 'load1',
+  conn: 'total_conn_count',
+  speed: 'net_out_speed',
+  traffic: 'total_transfer',
+  cores: 'cpu',
+  memory: 'mem_used',
+  disk: 'disk_used',
+}
+
+export function columnSortProp(id: ColumnId): ServerSortProp | undefined {
+  return COLUMN_SORT[id]
+}
 
 const COLUMN_ORDER: ColumnId[] = [
   'status', 'name', 'platform', 'location', 'price', 'online', 'availability',

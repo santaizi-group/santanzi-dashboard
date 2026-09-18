@@ -43,6 +43,28 @@ export function formatTransfer(bytes: number) {
   return `${stripTrailingZeros(stats.k.toFixed(1))}K`
 }
 
+export type BytesAxisUnit = 'T' | 'G' | 'M' | 'K'
+
+/** 按满量程一次定档，避免同一根轴混用 T/G。 */
+export function bytesAxisUnit(maxBytes: number): BytesAxisUnit {
+  const stats = calcBinary(Math.max(0, finite(maxBytes)))
+  if (stats.t > 1) return 'T'
+  if (stats.g > 1) return 'G'
+  if (stats.m > 1) return 'M'
+  return 'K'
+}
+
+export function bytesAxisFormatter(maxBytes: number) {
+  const unit = bytesAxisUnit(maxBytes)
+  const divisor = unit === 'T' ? 1024 ** 4 : unit === 'G' ? 1024 ** 3 : unit === 'M' ? 1024 ** 2 : 1024
+  const decimals = unit === 'T' || unit === 'G' ? 2 : 1
+  return (value: number) => {
+    const n = finite(value)
+    if (n === 0) return '0'
+    return `${stripTrailingZeros((n / divisor).toFixed(decimals))}${unit}`
+  }
+}
+
 export function formatSpeed(bytesPerSecond: number) {
   return `${formatTransfer(bytesPerSecond)}/s`
 }

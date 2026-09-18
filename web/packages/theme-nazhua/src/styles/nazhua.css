@@ -77,7 +77,10 @@
   --nazhua-flag-w: 32px;
   --nazhua-flag-h: 21px;
   --nazhua-os-size: 18px;
-  --nazhua-table-flag-col: 72px;
+  --nazhua-table-os-col: 28px;
+  --nazhua-table-flag-col: 56px;
+  --nazhua-table-flag-w: 24px;
+  --nazhua-table-flag-h: 16px;
   --status-bg: var(--nazhua-bg);
   --status-panel: var(--nazhua-panel);
   --status-border: var(--nazhua-border);
@@ -605,8 +608,8 @@ html.dark .nazhua-card:hover,
 .offline { color: var(--nazhua-offline); }
 
 .nazhua-status-table {
-  overflow: auto;
-  max-height: calc(100vh - 220px);
+  width: 100%;
+  min-width: 0;
   border: 0;
   border-radius: 10px;
   background-color: var(--nazhua-surface);
@@ -615,11 +618,23 @@ html.dark .nazhua-card:hover,
   color: var(--nazhua-text);
   box-shadow: var(--nazhua-shadow);
 }
-/* 各断点的列宽之和须能塞进 --nazhua-list-width，否则表格会退化成横向滚动。 */
+.nazhua-status-table .nazhua-os-logo { color: var(--nazhua-text); }
+.nazhua-status-table .nazhua-flag,
+.nazhua-status-table .nazhua-flag.fi {
+  width: var(--nazhua-table-flag-w);
+  height: var(--nazhua-table-flag-h);
+  font-size: var(--nazhua-table-flag-h);
+}
+.nazhua-status-table .nazhua-flag-fallback {
+  width: var(--nazhua-table-flag-w);
+  height: var(--nazhua-table-flag-h);
+  font-size: calc(var(--nazhua-table-flag-h) - 4px);
+}
+/* 各断点的列宽之和须能塞进 --nazhua-list-width − 40，否则末列会被 shell overflow-x: clip 裁掉。 */
 .nazhua-status-table__head,
 .nazhua-status-table__row {
   display: grid;
-  grid-template-columns: minmax(150px, 1.5fr) var(--nazhua-table-flag-col) minmax(80px, .9fr) minmax(80px, .9fr) 56px repeat(3, minmax(100px, 1fr)) minmax(140px, 1.1fr) minmax(84px, .9fr) 52px 56px 76px;
+  grid-template-columns: var(--nazhua-table-os-col) minmax(180px, 2fr) var(--nazhua-table-flag-col) minmax(88px, .7fr) minmax(64px, .5fr) 56px repeat(3, minmax(64px, .45fr)) minmax(96px, .55fr) minmax(72px, .45fr) 48px 64px minmax(112px, .6fr);
   align-items: center;
   gap: 8px;
   min-height: 48px;
@@ -629,7 +644,7 @@ html.dark .nazhua-card:hover,
 .nazhua-status-table__head {
   position: sticky;
   z-index: 2;
-  top: 0;
+  top: var(--nazhua-header-height);
   background: var(--nazhua-surface-sunken);
   box-shadow: 0 1px 0 var(--nazhua-border);
   color: var(--nazhua-muted);
@@ -641,21 +656,73 @@ html.dark .nazhua-card:hover,
 }
 .nazhua-status-table__row:nth-child(odd) { background: color-mix(in srgb, var(--nazhua-surface-sunken) 55%, transparent); }
 .nazhua-status-table__row:focus-within { background-color: color-mix(in srgb, var(--nazhua-accent) 8%, var(--nazhua-surface)); }
+.nazhua-status-table__logo { display: inline-flex; align-items: center; justify-content: center; }
 .nazhua-status-table__name { display: flex; align-items: center; min-width: 0; }
 /* 行本身是 role=row，不能再当链接，否则屏幕阅读器读不到链接语义；由名称链接铺满整行承接点击。 */
 .nazhua-status-table__link { display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; color: inherit; text-decoration: none; }
 .nazhua-status-table__link::after { content: ''; position: absolute; inset: 0; }
+.nazhua-status-table__usage {
+  --usage: 0%;
+  --usage-fill: color-mix(in srgb, var(--nazhua-online) 22%, transparent);
+  --usage-track: color-mix(in srgb, var(--nazhua-online) 8%, transparent);
+  isolation: isolate;
+  position: relative;
+}
+.nazhua-status-table__usage.is-warn {
+  --usage-fill: color-mix(in srgb, var(--nazhua-warning) 22%, transparent);
+  --usage-track: color-mix(in srgb, var(--nazhua-warning) 8%, transparent);
+}
+.nazhua-status-table__usage.is-danger {
+  --usage-fill: color-mix(in srgb, var(--nazhua-offline) 22%, transparent);
+  --usage-track: color-mix(in srgb, var(--nazhua-offline) 8%, transparent);
+}
+.nazhua-status-table__usage.has-track::after {
+  content: '';
+  position: absolute;
+  z-index: -2;
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  right: 0;
+  border-radius: 4px;
+  background: var(--usage-track);
+  pointer-events: none;
+}
+.nazhua-status-table__usage.has-fill::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  width: var(--usage);
+  max-width: 100%;
+  border-radius: 4px;
+  background: var(--usage-fill);
+  pointer-events: none;
+}
 .nazhua-status-table__name strong,
 .nazhua-status-table__name small { display: block; overflow: hidden; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
 .nazhua-status-table__name small { color: var(--nazhua-muted); font-size: 12px; }
-.nazhua-status-table__metric { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; min-width: 0; font-variant-numeric: tabular-nums; text-align: right; }
-.nazhua-status-table__metric small { overflow: hidden; max-width: 100%; text-overflow: ellipsis; white-space: nowrap; }
-.nazhua-status-table__speed { overflow: hidden; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
-.nazhua-status-table__head .is-metric { text-align: right; }
-.nazhua-mini-bar { display: block; width: 100%; height: 4px; overflow: hidden; border-radius: 4px; background: color-mix(in srgb, var(--nazhua-muted) 22%, transparent); }
-.nazhua-mini-bar b { display: block; height: 100%; border-radius: inherit; background: var(--nazhua-online); }
-.nazhua-mini-bar.is-warning b { background: var(--nazhua-warning); }
-.nazhua-mini-bar.is-critical b { background: var(--nazhua-offline); }
+.nazhua-status-table__speed,
+.nazhua-status-table .is-spec,
+.nazhua-status-table .is-load,
+.nazhua-status-table .is-billing {
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nazhua-status-table__speed,
+.nazhua-status-table .is-spec {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.nazhua-status-table .is-spec { text-align: left; }
+.nazhua-status-table .is-uptime { overflow: hidden; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nazhua-status-table__head .is-metric,
+.nazhua-status-table__head .is-load,
+.nazhua-status-table__head .is-billing { text-align: right; }
 
 .nazhua-detail { display: flex; flex-direction: column; gap: 20px; width: var(--nazhua-detail-width); margin: 0 auto; padding: 20px; }
 .nazhua-detail-name,
@@ -852,7 +919,7 @@ html.dark .nazhua-footer a,
   .nazhua-status-table .is-conn { display: none; }
   .nazhua-status-table__head,
   .nazhua-status-table__row {
-    grid-template-columns: minmax(150px, 1.5fr) var(--nazhua-table-flag-col) minmax(80px, .9fr) 56px repeat(3, minmax(100px, 1fr)) minmax(144px, 1.1fr) minmax(84px, .9fr) 76px;
+    grid-template-columns: var(--nazhua-table-os-col) minmax(180px, 2fr) var(--nazhua-table-flag-col) minmax(88px, .7fr) 56px repeat(3, minmax(64px, .45fr)) minmax(96px, .55fr) minmax(72px, .45fr) minmax(112px, .6fr);
   }
 }
 
@@ -864,7 +931,7 @@ html.dark .nazhua-footer a,
   .nazhua-status-table .is-platform { display: none; }
   .nazhua-status-table__head,
   .nazhua-status-table__row {
-    grid-template-columns: minmax(150px, 1.5fr) var(--nazhua-table-flag-col) 56px repeat(3, minmax(100px, 1fr)) minmax(144px, 1.1fr) minmax(84px, .9fr) 76px;
+    grid-template-columns: var(--nazhua-table-os-col) minmax(180px, 2fr) var(--nazhua-table-flag-col) 56px repeat(3, minmax(64px, .45fr)) minmax(96px, .55fr) minmax(72px, .45fr) minmax(112px, .6fr);
   }
 }
 
@@ -878,7 +945,7 @@ html.dark .nazhua-footer a,
   .nazhua-status-table .is-cycle { display: none; }
   .nazhua-status-table__head,
   .nazhua-status-table__row {
-    grid-template-columns: minmax(140px, 1.5fr) var(--nazhua-table-flag-col) 52px repeat(3, minmax(88px, 1fr)) minmax(116px, 1.1fr);
+    grid-template-columns: var(--nazhua-table-os-col) minmax(140px, 1.5fr) var(--nazhua-table-flag-col) 52px repeat(3, minmax(64px, .45fr)) minmax(96px, .55fr);
   }
   .nazhua-monitor__grid { grid-template-columns: 1fr; }
 }
@@ -898,7 +965,7 @@ html.dark .nazhua-footer a,
   .nazhua-detail-status__metric .nazhua-donut__text strong { font-size: 24px; }
   .nazhua-status-table__head,
   .nazhua-status-table__row {
-    grid-template-columns: minmax(124px, 1.5fr) var(--nazhua-table-flag-col) 48px repeat(3, minmax(84px, 1fr)) minmax(108px, 1.1fr);
+    grid-template-columns: var(--nazhua-table-os-col) minmax(124px, 1.5fr) var(--nazhua-table-flag-col) 48px repeat(3, minmax(64px, .45fr)) minmax(96px, .55fr);
   }
 }
 
