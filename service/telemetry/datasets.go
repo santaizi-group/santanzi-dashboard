@@ -77,6 +77,7 @@ type AgentReliabilityRecord struct {
 	OldestPending   *string     `json:"oldest_pending"`
 	ClockUntrusted  bool        `json:"clock_untrusted"`
 	ProtocolVersion string      `json:"protocol_version,omitempty"`
+	AgentVersion    string      `json:"agent_version,omitempty"`
 	UpdatedAt       *string     `json:"updated_at"`
 	Sinks           []AgentSink `json:"sinks"`
 }
@@ -189,7 +190,7 @@ func ListAgentReliability(db *gorm.DB, offset, limit int) ([]AgentReliabilityRec
 			WalPressure: walPressureLabel(row.WalPressure), WalBytes: row.WalBytes,
 			PendingEvents: row.PendingEvents, OldestPending: RFC3339NanoPtr(row.OldestPending),
 			ClockUntrusted: row.ClockUntrusted, ProtocolVersion: row.ProtocolVersion,
-			UpdatedAt: RFC3339TimePtr(row.UpdatedAt), Sinks: []AgentSink{},
+			AgentVersion: row.AgentVersion, UpdatedAt: RFC3339TimePtr(row.UpdatedAt), Sinks: []AgentSink{},
 		}
 		if agent := decoded[i]; agent != nil {
 			for _, sink := range agent.GetSinks() {

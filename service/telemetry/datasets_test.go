@@ -45,7 +45,7 @@ func TestListAgentReliabilityDecodesSinksAndTimes(t *testing.T) {
 	if err := db.Create(&model.AgentTelemetryRuntime{
 		NodeUUID: node, WalPressure: int32(pb.WalPressure_WAL_PRESSURE_HEALTHY), WalBytes: 2048,
 		PendingEvents: 6, OldestPending: now.UnixNano(), SinkCursors: blob, ClockUntrusted: true,
-		ProtocolVersion: "v2", UpdatedAt: now,
+		ProtocolVersion: "v2", AgentVersion: "1.0.0-rs", UpdatedAt: now,
 	}).Error; err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestListAgentReliabilityDecodesSinksAndTimes(t *testing.T) {
 		t.Fatalf("rows=%d", len(rows))
 	}
 	row := rows[0]
-	if row.ServerName != "edge-a" || row.WalPressure != "healthy" || !row.ClockUntrusted || row.OldestPending == nil {
+	if row.ServerName != "edge-a" || row.WalPressure != "healthy" || !row.ClockUntrusted || row.OldestPending == nil || row.AgentVersion != "1.0.0-rs" {
 		t.Fatalf("row=%#v json=%s", row, mustJSON(t, row))
 	}
 	if !strings.Contains(*row.OldestPending, "2023-11-14") {

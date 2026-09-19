@@ -343,6 +343,9 @@ onMounted(async () => {
           <el-table-column :label="t('clock')" min-width="120">
             <template #default="{row}">{{ t(row.clock_untrusted ? 'clockUntrusted' : 'clockTrusted') }}</template>
           </el-table-column>
+          <el-table-column :label="t('agentVersion')" min-width="120">
+            <template #default="{row}"><span class="cell-ellipsis">{{ pretty(row.agent_version, 'agent_version') }}</span></template>
+          </el-table-column>
           <el-table-column :label="t('protocolVersion')" width="120">
             <template #default="{row}"><span class="cell-ellipsis">{{ pretty(row.protocol_version, 'protocol_version') }}</span></template>
           </el-table-column>
@@ -452,6 +455,7 @@ onMounted(async () => {
               <div><dt>{{ t('pendingEvents') }}</dt><dd>{{ pretty((row as AgentReliabilityRecord).pending_events, 'pending_events') }}</dd></div>
               <div><dt>{{ t('oldestPending') }}</dt><dd>{{ pretty((row as AgentReliabilityRecord).oldest_pending, 'oldest_pending') }}</dd></div>
               <div><dt>{{ t('clock') }}</dt><dd>{{ t((row as AgentReliabilityRecord).clock_untrusted ? 'clockUntrusted' : 'clockTrusted') }}</dd></div>
+              <div><dt>{{ t('agentVersion') }}</dt><dd class="cell-ellipsis">{{ pretty((row as AgentReliabilityRecord).agent_version, 'agent_version') }}</dd></div>
               <div><dt>{{ t('protocolVersion') }}</dt><dd class="cell-ellipsis">{{ pretty((row as AgentReliabilityRecord).protocol_version, 'protocol_version') }}</dd></div>
               <div><dt>{{ t('modifiedAt') }}</dt><dd>{{ pretty((row as AgentReliabilityRecord).updated_at, 'updated_at') }}</dd></div>
             </dl>
@@ -515,6 +519,7 @@ onMounted(async () => {
         <div><dt>{{ t('pendingEvents') }}</dt><dd>{{ pretty(agentRow.pending_events, 'pending_events') }}</dd></div>
         <div><dt>{{ t('oldestPending') }}</dt><dd>{{ pretty(agentRow.oldest_pending, 'oldest_pending') }}</dd></div>
         <div><dt>{{ t('clock') }}</dt><dd>{{ t(agentRow.clock_untrusted ? 'clockUntrusted' : 'clockTrusted') }}</dd></div>
+        <div><dt>{{ t('agentVersion') }}</dt><dd>{{ pretty(agentRow.agent_version, 'agent_version') }}</dd></div>
         <div><dt>{{ t('protocolVersion') }}</dt><dd>{{ pretty(agentRow.protocol_version, 'protocol_version') }}</dd></div>
         <div><dt>{{ t('modifiedAt') }}</dt><dd>{{ pretty(agentRow.updated_at, 'updated_at') }}</dd></div>
         <div><dt>{{ t('nodeUUID') }}</dt><dd><CopyableId :value="agentRow.node_uuid" :compact="false" /></dd></div>

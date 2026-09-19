@@ -509,6 +509,9 @@ func (r *Runtime) Ingest(stream grpc.BidiStreamingServer[pb.TelemetryRequest, pb
 	if err := r.matchIngestCertificate(stream.Context(), hello.GetNodeUuid(), verification.Claims.GetNodeUuid()); err != nil {
 		return err
 	}
+	if err := stream.SendHeader(nil); err != nil {
+		return err
+	}
 	r.connectedAgents.Add(1)
 	defer r.connectedAgents.Add(^uint64(0))
 	for {

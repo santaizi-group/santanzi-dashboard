@@ -20,6 +20,8 @@ export interface AgentReliabilityRecord {
   oldest_pending?: string;
   clock_untrusted: boolean;
   protocol_version?: string;
+  /** 探针二进制版本 */
+  agent_version?: string;
   updated_at?: string;
   sinks: AgentSink[];
 }

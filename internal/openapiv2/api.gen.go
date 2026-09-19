@@ -1676,6 +1676,8 @@ type APITokenWritePermission string
 
 // AgentReliabilityRecord defines model for AgentReliabilityRecord.
 type AgentReliabilityRecord struct {
+	// AgentVersion 探针二进制版本
+	AgentVersion    *string                           `json:"agent_version,omitempty"`
 	ClockUntrusted  bool                              `json:"clock_untrusted"`
 	NodeUuid        string                            `json:"node_uuid"`
 	OldestPending   *time.Time                        `json:"oldest_pending,omitempty"`

@@ -108,6 +108,11 @@ func (h *V2Handler) Ingest(stream grpc.BidiStreamingServer[pb.TelemetryRequest, 
 	if err := matchAgentCertificate(stream.Context(), hello.GetNodeUuid(), verification.Claims.GetNodeUuid()); err != nil {
 		return err
 	}
+	// tonic 的 ingest().await 先等 HTTP/2 响应头；grpc-go 默认要等到第一次 Send。
+	// 只发头、不发消息，Go 探针 Recv 配对不受影响。
+	if err := stream.SendHeader(nil); err != nil {
+		return err
+	}
 
 	for {
 		request, err := stream.Recv()
@@ -234,6 +239,7 @@ func (h *V2Handler) Control(stream grpc.BidiStreamingServer[pb.AgentControlReque
 					WalBytes: body.Runtime.GetWalBytes(), PendingEvents: body.Runtime.GetPendingEvents(),
 					OldestPending: body.Runtime.GetOldestPendingUnixNano(), SinkCursors: sinkPayload,
 					ClockUntrusted: body.Runtime.GetClockUntrusted(), ProtocolVersion: body.Runtime.GetProtocolVersion(),
+					AgentVersion: hello.GetAgentVersion(),
 				}
 				if err := singleton.DB.Clauses(clause.OnConflict{
 					Columns: []clause.Column{{Name: "node_uuid"}}, UpdateAll: true,

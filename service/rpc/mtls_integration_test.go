@@ -361,6 +361,69 @@ func TestFreshEnrollControlIngest(t *testing.T) {
 	}
 }
 
+func TestIngestSendsHeadersAfterHello(t *testing.T) {
+	f := setupPrimaryGRPC(t, true)
+	key, err := pki.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	csr, err := pki.CreateCSR(key, pki.EncodeAgentURI(f.node))
+	if err != nil {
+		t.Fatal(err)
+	}
+	enrollConn := f.dial(t, nil, nil, &EnrollmentCredential{ClientSecret: f.secret})
+	enroll, err := pb.NewSantaiziEnrollmentServiceClient(enrollConn).Enroll(context.Background(), &pb.AgentEnrollRequest{
+		NodeUuid: f.node, CsrDer: csr, AgentVersion: "test",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyPEM, err := pki.MarshalPrivateKeyPEM(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientCert, err := tls.X509KeyPair([]byte(enroll.GetCertificatePem()), keyPEM)
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn := f.dial(t, &clientCert, nil, nil)
+	control, err := pb.NewSantaiziControlServiceClient(conn).Control(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	session := bytes.Repeat([]byte{0x31}, 16)
+	if err := control.Send(&pb.AgentControlRequest{Body: &pb.AgentControlRequest_Hello{Hello: &pb.AgentControlHello{
+		NodeUuid: f.node, SessionId: session, AgentVersion: "1.0.0-rs",
+	}}}); err != nil {
+		t.Fatal(err)
+	}
+	credMsg, err := control.Recv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if credMsg.GetCredential() == nil {
+		t.Fatal("expected credential")
+	}
+	if _, err := control.Recv(); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	ingest, err := pb.NewSantaiziTelemetryServiceClient(conn).Ingest(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ingest.Send(&pb.TelemetryRequest{Body: &pb.TelemetryRequest_Hello{Hello: &pb.TelemetryHello{
+		NodeUuid: f.node, EndpointId: "primary", Credential: credMsg.GetCredential(), ProtocolVersion: "2",
+	}}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ingest.Header(); err != nil {
+		t.Fatalf("ingest headers after hello: %v", err)
+	}
+}
+
 func TestExistingCertificateSkipsEnrollAndRenews(t *testing.T) {
 	f := setupPrimaryGRPC(t, true)
 	key, err := pki.GenerateKey()

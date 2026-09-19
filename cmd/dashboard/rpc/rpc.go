@@ -4,10 +4,12 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	grpc_health_v1 "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/keepalive"
 
 	"github.com/hi2shark/santaizi-dashboard/model"
 	pb "github.com/hi2shark/santaizi-dashboard/proto"
@@ -58,10 +60,10 @@ func grpcServerOptions(cfg model.GRPCTLSConfig, bundle *pki.Bundle, collectorLis
 		RequireCollectorMTLS: cfg.RequireCollectorMTLS,
 		ForceAgentIngest:     collectorListener && cfg.Enabled,
 	}
-	options := []grpc.ServerOption{
+	options := append(grpcKeepaliveOptions(),
 		grpc.ChainUnaryInterceptor(rpcService.UnaryDeviceAuth(policy)),
 		grpc.ChainStreamInterceptor(rpcService.StreamDeviceAuth(policy)),
-	}
+	)
 	if !cfg.Enabled {
 		return options, nil
 	}
@@ -87,10 +89,10 @@ func grpcServerOptions(cfg model.GRPCTLSConfig, bundle *pki.Bundle, collectorLis
 
 func collectorServerOptions(cfg model.GRPCTLSConfig, agentCAProvider func() *x509.CertPool) ([]grpc.ServerOption, error) {
 	policy := rpcService.DeviceAuthPolicy{ForceAgentIngest: cfg.Enabled}
-	options := []grpc.ServerOption{
+	options := append(grpcKeepaliveOptions(),
 		grpc.ChainUnaryInterceptor(rpcService.UnaryDeviceAuth(policy)),
 		grpc.ChainStreamInterceptor(rpcService.StreamDeviceAuth(policy)),
-	}
+	)
 	if !cfg.Enabled {
 		return options, nil
 	}
@@ -102,6 +104,19 @@ func collectorServerOptions(cfg model.GRPCTLSConfig, agentCAProvider func() *x50
 		return nil, err
 	}
 	return append(options, grpc.Creds(creds)), nil
+}
+
+func grpcKeepaliveOptions() []grpc.ServerOption {
+	return []grpc.ServerOption{
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             10 * time.Second,
+			PermitWithoutStream: true,
+		}),
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			Time:    60 * time.Second,
+			Timeout: 20 * time.Second,
+		}),
+	}
 }
 
 func DispatchMonitor(serviceSentinelDispatchBus <-chan model.Monitor) {

@@ -78,11 +78,13 @@ type TelemetryGap struct {
 }
 
 type TelemetryIngestCursor struct {
-	ReceiverID string `gorm:"primaryKey;size:64"`
-	NodeUUID   []byte `gorm:"type:BLOB;size:16;primaryKey"`
-	SessionID  []byte `gorm:"type:BLOB;size:16;primaryKey"`
-	AckThrough uint64 `gorm:"not null"`
-	UpdatedAt  time.Time
+	ReceiverID   string `gorm:"primaryKey;size:64"`
+	NodeUUID     []byte `gorm:"type:BLOB;size:16;primaryKey"`
+	SessionID    []byte `gorm:"type:BLOB;size:16;primaryKey"`
+	AckThrough   uint64 `gorm:"not null"`
+	HoleSequence uint64
+	HoleSince    int64
+	UpdatedAt    time.Time
 }
 
 const (
@@ -375,6 +377,7 @@ type AgentTelemetryRuntime struct {
 	SinkCursors     []byte `gorm:"type:BLOB"`
 	ClockUntrusted  bool
 	ProtocolVersion string
+	AgentVersion    string
 	UpdatedAt       time.Time
 }
 

@@ -65,6 +65,9 @@ func TestOpenDBFromPathCreatesVersionedSchema(t *testing.T) {
 	if !db.Migrator().HasColumn(&model.Collector{}, "mtr_probes") {
 		t.Fatal("collector mtr_probes column was not created")
 	}
+	if !db.Migrator().HasColumn(&model.TelemetryIngestCursor{}, "hole_sequence") || !db.Migrator().HasColumn(&model.AgentTelemetryRuntime{}, "agent_version") {
+		t.Fatal("ingest cursor hole / agent_version columns were not created")
+	}
 	var autoVacuum int
 	if err := db.Raw("PRAGMA auto_vacuum").Scan(&autoVacuum).Error; err != nil {
 		t.Fatal(err)
@@ -137,7 +140,7 @@ func TestMigrateV12AddsCollectorRuntimeSoftwareVersion(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
 		t.Fatal(err)
 	}
-	if current != 17 {
+	if current != 18 {
 		t.Fatalf("version = %d", current)
 	}
 	if err := db.Create(&model.CollectorRuntime{CollectorUUID: "c1", Status: "online", SoftwareVersion: "1.2.3"}).Error; err != nil {
@@ -191,7 +194,7 @@ func TestMigrateV13AddsServerProbeOverrides(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
 		t.Fatal(err)
 	}
-	if current != 17 {
+	if current != 18 {
 		t.Fatalf("version = %d", current)
 	}
 }
@@ -235,7 +238,7 @@ func TestMigrateV14AddsAvailabilityWindow(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
 		t.Fatal(err)
 	}
-	if current != 17 {
+	if current != 18 {
 		t.Fatalf("version = %d", current)
 	}
 }
@@ -281,7 +284,7 @@ func TestMigrateV15AddsProbeTraceTCP(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
 		t.Fatal(err)
 	}
-	if current != 17 {
+	if current != 18 {
 		t.Fatalf("version = %d", current)
 	}
 }
@@ -319,7 +322,7 @@ func TestMigrateV16AddsProbeRoutes(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&version).Error; err != nil {
 		t.Fatal(err)
 	}
-	if version != 17 {
+	if version != 18 {
 		t.Fatalf("version = %d", version)
 	}
 }
@@ -390,7 +393,71 @@ func TestMigrateV17AddsMTRProbes(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&version).Error; err != nil {
 		t.Fatal(err)
 	}
-	if version != 17 {
+	if version != 18 {
 		t.Fatalf("version = %d", version)
+	}
+}
+
+func TestMigrateV18AddsCursorHoleAndAgentVersion(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v17.db")
+	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := CloseDB(db); err != nil {
+			t.Errorf("close db: %v", err)
+		}
+	})
+	if err := db.AutoMigrate(&model.SchemaMigration{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE TABLE telemetry_ingest_cursors (
+		receiver_id TEXT,
+		node_uuid BLOB,
+		session_id BLOB,
+		ack_through INTEGER NOT NULL,
+		updated_at DATETIME,
+		PRIMARY KEY (receiver_id, node_uuid, session_id)
+	)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE TABLE agent_telemetry_runtimes (
+		node_uuid BLOB PRIMARY KEY,
+		wal_pressure INTEGER NOT NULL,
+		wal_bytes INTEGER,
+		pending_events INTEGER,
+		oldest_pending INTEGER,
+		sink_cursors BLOB,
+		clock_untrusted INTEGER,
+		protocol_version TEXT,
+		updated_at DATETIME
+	)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.SchemaMigration{Version: 17, AppliedAt: time.Now().UTC()}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if db.Migrator().HasColumn(&model.TelemetryIngestCursor{}, "hole_sequence") {
+		t.Fatal("fixture should omit hole_sequence")
+	}
+	if db.Migrator().HasColumn(&model.AgentTelemetryRuntime{}, "agent_version") {
+		t.Fatal("fixture should omit agent_version")
+	}
+	if err := migrateDatabase(db); err != nil {
+		t.Fatal(err)
+	}
+	if !db.Migrator().HasColumn(&model.TelemetryIngestCursor{}, "hole_sequence") || !db.Migrator().HasColumn(&model.TelemetryIngestCursor{}, "hole_since") {
+		t.Fatal("v18 should add cursor hole columns")
+	}
+	if !db.Migrator().HasColumn(&model.AgentTelemetryRuntime{}, "agent_version") {
+		t.Fatal("v18 should add agent_version")
+	}
+	var current uint64
+	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
+		t.Fatal(err)
+	}
+	if current != 18 {
+		t.Fatalf("version = %d", current)
 	}
 }

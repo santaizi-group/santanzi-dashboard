@@ -113,6 +113,7 @@ type TelemetryConfig struct {
 	OfflineThresholdSeconds            uint64 `koanf:"offline_threshold_seconds" yaml:"offline_threshold_seconds"`
 	IngestBatchSize                    int    `koanf:"ingest_batch_size" yaml:"ingest_batch_size"`
 	IngestQueueSize                    int    `koanf:"ingest_queue_size" yaml:"ingest_queue_size"`
+	SequenceHoleGraceSeconds           int64  `koanf:"sequence_hole_grace_seconds" yaml:"sequence_hole_grace_seconds"`
 	CredentialValidityDays             uint64 `koanf:"credential_validity_days" yaml:"credential_validity_days"`
 	CredentialRefreshDays              uint64 `koanf:"credential_refresh_days" yaml:"credential_refresh_days"`
 	CredentialGraceDays                uint64 `koanf:"credential_grace_days" yaml:"credential_grace_days"`

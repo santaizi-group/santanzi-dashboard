@@ -82,11 +82,11 @@ function onSort(prop?: ServerSortProp) {
             v-if="head.sort"
             type="button"
             class="ss-th"
-            :class="{ 'is-sorted': sortProp === head.sort }"
+            :class="{ 'is-sorted': sortProp === head.sort, 'ss-th--status': head.id === 'status' }"
             :aria-sort="ariaSort(head.sort)"
             @click="onSort(head.sort)"
           >
-            <span>{{ head.label }}</span>
+            <span :class="{ 'sr-only': head.id === 'status' }">{{ head.label }}</span>
             <i :class="sortIcon(head.sort)" aria-hidden="true"></i>
           </button>
           <span v-else>{{ head.label }}</span>

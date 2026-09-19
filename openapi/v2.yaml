@@ -4708,6 +4708,9 @@ components:
           type: boolean
         protocol_version:
           type: string
+        agent_version:
+          type: string
+          description: 探针二进制版本
         updated_at:
           type: string
           format: date-time

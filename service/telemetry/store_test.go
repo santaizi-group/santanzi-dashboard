@@ -20,7 +20,7 @@ func newTelemetryStore(t *testing.T) (*Store, *gorm.DB) {
 	}
 	if err := db.AutoMigrate(
 		&model.TelemetryEvent{}, &model.TelemetryObservation{}, &model.TelemetryGap{}, &model.TelemetryIngestCursor{},
-		&model.ObserverHealthBucket{}, &model.ObserverPathBucket{}, &model.ObserverAssignment{},
+		&model.TelemetryDataLoss{}, &model.ObserverHealthBucket{}, &model.ObserverPathBucket{}, &model.ObserverAssignment{},
 		&model.AvailabilityRecomputeQueue{}, &model.CollectorReplicationReceipt{}, &model.CollectorRuntime{},
 	); err != nil {
 		t.Fatal(err)
@@ -160,6 +160,82 @@ func TestReplicationAckLossRetryIsIdempotent(t *testing.T) {
 	}
 	if paths != 1 {
 		t.Fatalf("paths=%d", paths)
+	}
+}
+
+func TestHoleDoesNotAdvanceBeforeGrace(t *testing.T) {
+	store, db := newTelemetryStore(t)
+	now := time.Now()
+	node, session := bytes.Repeat([]byte{0x21}, 16), bytes.Repeat([]byte{0x22}, 16)
+	result, err := store.Ingest(context.Background(), &pb.TelemetryBatch{Records: []*pb.TelemetryRecord{
+		{Record: &pb.TelemetryRecord_Event{Event: event(t, node, session, 1, now)}},
+		{Record: &pb.TelemetryRecord_Event{Event: event(t, node, session, 3, now)}},
+	}}, "primary", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := result.Acks[0].GetAckThrough(); got != 1 {
+		t.Fatalf("ack=%d", got)
+	}
+	var cursor model.TelemetryIngestCursor
+	if err := db.First(&cursor, "receiver_id = ?", "primary").Error; err != nil {
+		t.Fatal(err)
+	}
+	if cursor.HoleSequence != 2 || cursor.HoleSince == 0 {
+		t.Fatalf("hole=%d since=%d", cursor.HoleSequence, cursor.HoleSince)
+	}
+	var gaps, losses int64
+	db.Model(&model.TelemetryGap{}).Count(&gaps)
+	db.Model(&model.TelemetryDataLoss{}).Count(&losses)
+	if gaps != 0 || losses != 0 {
+		t.Fatalf("gaps=%d losses=%d", gaps, losses)
+	}
+}
+
+func TestHoleHealsAfterGrace(t *testing.T) {
+	store, db := newTelemetryStore(t)
+	now := time.Now()
+	node, session := bytes.Repeat([]byte{0x23}, 16), bytes.Repeat([]byte{0x24}, 16)
+	if _, err := store.Ingest(context.Background(), &pb.TelemetryBatch{Records: []*pb.TelemetryRecord{
+		{Record: &pb.TelemetryRecord_Event{Event: event(t, node, session, 1, now)}},
+		{Record: &pb.TelemetryRecord_Event{Event: event(t, node, session, 3, now)}},
+	}}, "primary", now); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Model(&model.TelemetryIngestCursor{}).Where("receiver_id = ?", "primary").
+		Update("hole_since", now.Add(-6*time.Minute).UnixNano()).Error; err != nil {
+		t.Fatal(err)
+	}
+	later := now.Add(time.Minute)
+	result, err := store.Ingest(context.Background(), &pb.TelemetryBatch{Records: []*pb.TelemetryRecord{
+		{Record: &pb.TelemetryRecord_Event{Event: event(t, node, session, 3, later)}},
+	}}, "primary", later)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := result.Acks[0].GetAckThrough(); got != 3 {
+		t.Fatalf("ack=%d", got)
+	}
+	var gap model.TelemetryGap
+	if err := db.First(&gap).Error; err != nil {
+		t.Fatal(err)
+	}
+	if gap.StartSequence != 2 || gap.EndSequence != 2 || gap.Reason != int32(pb.GapReason_GAP_REASON_COMPACTED) {
+		t.Fatalf("gap=%#v", gap)
+	}
+	var loss model.TelemetryDataLoss
+	if err := db.First(&loss).Error; err != nil {
+		t.Fatal(err)
+	}
+	if loss.LostRecords != 1 || loss.ComponentID != "primary" {
+		t.Fatalf("loss=%#v", loss)
+	}
+	var cursor model.TelemetryIngestCursor
+	if err := db.First(&cursor, "receiver_id = ?", "primary").Error; err != nil {
+		t.Fatal(err)
+	}
+	if cursor.HoleSequence != 0 || cursor.HoleSince != 0 {
+		t.Fatalf("hole not cleared: %#v", cursor)
 	}
 }
 

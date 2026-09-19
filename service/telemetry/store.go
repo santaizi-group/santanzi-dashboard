@@ -12,6 +12,7 @@ import (
 
 	"github.com/hi2shark/santaizi-dashboard/model"
 	pb "github.com/hi2shark/santaizi-dashboard/proto"
+	"github.com/hi2shark/santaizi-dashboard/service/singleton"
 	"google.golang.org/protobuf/proto"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -304,7 +305,7 @@ func (s *Store) Ingest(ctx context.Context, batch *pb.TelemetryBatch, observerID
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			ack, err := advanceCursor(tx, observerID, nodeBySession[key], sessionIDs[key], maxBySession[key], batchSeq[key])
+			ack, err := advanceCursor(tx, observerID, nodeBySession[key], sessionIDs[key], maxBySession[key], batchSeq[key], receivedAt)
 			if err != nil {
 				return err
 			}
@@ -403,7 +404,69 @@ func validateGap(gap *pb.SequenceGap) error {
 	return nil
 }
 
-func advanceCursor(tx *gorm.DB, receiverID string, nodeUUID, sessionID []byte, maxSequence uint64, batchSequences []uint64) (uint64, error) {
+func inferredGapID(nodeUUID, sessionID []byte, start, end uint64) []byte {
+	var input [48]byte
+	copy(input[:16], nodeUUID)
+	copy(input[16:32], sessionID)
+	binary.BigEndian.PutUint64(input[32:40], start)
+	binary.BigEndian.PutUint64(input[40:48], end)
+	sum := sha256.Sum256(input[:])
+	return append([]byte(nil), sum[:16]...)
+}
+
+func sequenceHoleGrace() time.Duration {
+	if singleton.Conf == nil {
+		return 300 * time.Second
+	}
+	seconds := singleton.Conf.Telemetry.SequenceHoleGraceSeconds
+	if seconds == 0 {
+		return 300 * time.Second
+	}
+	if seconds < 0 {
+		return 0
+	}
+	return time.Duration(seconds) * time.Second
+}
+
+func gapCovers(gaps []model.TelemetryGap, sequence uint64) bool {
+	for _, gap := range gaps {
+		if gap.StartSequence <= sequence && gap.EndSequence >= sequence {
+			return true
+		}
+	}
+	return false
+}
+
+func clearCursorHole(cursor *model.TelemetryIngestCursor) {
+	cursor.HoleSequence = 0
+	cursor.HoleSince = 0
+}
+
+func inferCompactedHole(tx *gorm.DB, cursor *model.TelemetryIngestCursor, receiverID string, nodeUUID, sessionID []byte, start, end uint64, receivedAt time.Time, gaps *[]model.TelemetryGap) error {
+	gapID := inferredGapID(nodeUUID, sessionID, start, end)
+	row := model.TelemetryGap{
+		GapID: gapID, NodeUUID: append([]byte(nil), nodeUUID...), SessionID: append([]byte(nil), sessionID...),
+		StartSequence: start, EndSequence: end, Reason: int32(pb.GapReason_GAP_REASON_COMPACTED),
+		CreatedAtUnixNano: receivedAt.UnixNano(),
+	}
+	if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&row).Error; err != nil {
+		return err
+	}
+	if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.TelemetryDataLoss{
+		FactID: gapID, ComponentID: receiverID, OccurredAt: receivedAt.UnixNano(),
+		Reason: int32(pb.GapReason_GAP_REASON_COMPACTED), FirstSpoolID: start, LastSpoolID: end,
+		LostRecords: end - start + 1,
+		Detail:      fmt.Sprintf("receiver inferred compacted hole %d-%d", start, end),
+	}).Error; err != nil {
+		return err
+	}
+	*gaps = append(*gaps, row)
+	cursor.AckThrough = end
+	clearCursorHole(cursor)
+	return nil
+}
+
+func advanceCursor(tx *gorm.DB, receiverID string, nodeUUID, sessionID []byte, maxSequence uint64, batchSequences []uint64, receivedAt time.Time) (uint64, error) {
 	var cursor model.TelemetryIngestCursor
 	err := tx.Where("receiver_id = ? AND node_uuid = ? AND session_id = ?", receiverID, nodeUUID, sessionID).First(&cursor).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -434,27 +497,47 @@ func advanceCursor(tx *gorm.DB, receiverID string, nodeUUID, sessionID []byte, m
 	if err := tx.Where("node_uuid = ? AND session_id = ? AND end_sequence > ? AND start_sequence <= ?", nodeUUID, sessionID, cursor.AckThrough, maxSequence).Find(&gaps).Error; err != nil {
 		return 0, err
 	}
+	grace := sequenceHoleGrace()
 	for cursor.AckThrough < maxSequence {
 		next := cursor.AckThrough + 1
-		if present[next] {
-			cursor.AckThrough = next
+		if present[next] || gapCovers(gaps, next) {
+			if present[next] {
+				cursor.AckThrough = next
+			} else {
+				for _, gap := range gaps {
+					if gap.StartSequence <= next && gap.EndSequence >= next {
+						cursor.AckThrough = gap.EndSequence
+						break
+					}
+				}
+			}
+			if cursor.HoleSequence != 0 && cursor.AckThrough >= cursor.HoleSequence {
+				clearCursorHole(&cursor)
+			}
 			continue
 		}
-		advanced := false
-		for _, gap := range gaps {
-			if gap.StartSequence <= next && gap.EndSequence >= next {
-				cursor.AckThrough = gap.EndSequence
-				advanced = true
-				break
-			}
-		}
-		if !advanced {
+		if grace <= 0 {
 			break
+		}
+		if cursor.HoleSequence != next {
+			cursor.HoleSequence = next
+			cursor.HoleSince = receivedAt.UnixNano()
+			break
+		}
+		if receivedAt.UnixNano()-cursor.HoleSince < grace.Nanoseconds() {
+			break
+		}
+		end := next
+		for end < maxSequence && !present[end+1] && !gapCovers(gaps, end+1) {
+			end++
+		}
+		if err := inferCompactedHole(tx, &cursor, receiverID, nodeUUID, sessionID, next, end, receivedAt, &gaps); err != nil {
+			return 0, err
 		}
 	}
 	if err := tx.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "receiver_id"}, {Name: "node_uuid"}, {Name: "session_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"ack_through", "updated_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"ack_through", "hole_sequence", "hole_since", "updated_at"}),
 	}).Create(&cursor).Error; err != nil {
 		return 0, err
 	}
