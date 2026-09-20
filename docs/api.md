@@ -71,6 +71,7 @@ Bearer Token 支持有效期与启用状态：过期或禁用视为未认证。�
 - 服务器流量策略与当前周期用量
 - HTTP、ICMP、TCP 服务监控与历史
 - 通知渠道、通知组和可视化告警规则
+- Telegram Bot 接入、授权会话、绑定码与周期报告（Token 不回传原文）
 - DDNS Provider/配置及 NAT 隧道
 - Collector、Scope、Assignment、可靠性、Incident 和 Data Loss
 - 设置、站点资产与 API Token

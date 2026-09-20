@@ -9,7 +9,7 @@ import type {
   ServerGroupRenameWriteBody, ServerImportPreview, ServerImportResult, ServerImportWrite, ServerWriteBody, ScriptCommands, TelemetryAlertRecord, TelemetryDataLossRecord, TrafficPolicy,
   TrafficPolicyHistory, TrafficPolicyWriteBody, TrafficUsage, UpgradePreview, UpgradePreviewWriteBody,
   CycleTransfer, GetPublicMetricsParams, GetPublicServerAvailabilityParams, GetServerTrafficHistoryParams, MonitorHistory, PublicAvailability, PublicMetricPoint,
-  DatabaseStatus,
+  DatabaseStatus, BotSettings, BotSettingsWrite, BotChat, BotChatWrite, BotBindCode, BotBindCodeWrite, BotReport, BotReportWrite, BotTest,
 } from './generated/model'
 import type {
   ApiData, ApiList, CollectorRecord, ResourceQuery, ResourceRecord, ServerRecord,
@@ -157,6 +157,21 @@ export const deleteOfflineHistory = (id: number) => api.deleteOfflineHistory(id)
 export const cleanupOfflineHistory = (body: unknown = {}) => api.cleanupOfflineHistory(body as Record<string, unknown>).then(value => data<Record<string, unknown>>(value))
 export const getDatabase = () => api.getDatabase().then(value => data<DatabaseStatus>(value))
 export const optimizeDatabase = () => api.optimizeDatabase().then(value => data<DatabaseStatus>(value))
+
+export const getBotSettings = () => api.getBotSettings().then(value => data<BotSettings>(value))
+export const updateBotSettings = (body: BotSettingsWrite) => api.updateBotSettings(body).then(value => data<BotSettings>(value))
+export const testBot = () => api.testBot().then(value => data<BotTest>(value))
+export const listBotChats = (params: ResourceQuery = {}) => api.listBotChats(params).then(value => list<BotChat>(value))
+export const updateBotChat = (id: number, body: BotChatWrite) => api.updateBotChat(id, body).then(value => data<BotChat>(value))
+export const deleteBotChat = (id: number) => api.deleteBotChat(id)
+export const listBotBindCodes = (params: ResourceQuery = {}) => api.listBotBindCodes(params).then(value => list<BotBindCode>(value))
+export const createBotBindCode = (body: BotBindCodeWrite) => api.createBotBindCode(body).then(value => data<BotBindCode>(value))
+export const deleteBotBindCode = (id: number) => api.deleteBotBindCode(id)
+export const listBotReports = (params: ResourceQuery = {}) => api.listBotReports(params).then(value => list<BotReport>(value))
+export const createBotReport = (body: BotReportWrite) => api.createBotReport(body).then(value => data<BotReport>(value))
+export const updateBotReport = (id: number, body: BotReportWrite) => api.updateBotReport(id, body).then(value => data<BotReport>(value))
+export const deleteBotReport = (id: number) => api.deleteBotReport(id)
+export const runBotReport = (id: number) => api.runBotReport(id).then(value => data<BotReport>(value))
 
 export function websocketURL(path: string) {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'

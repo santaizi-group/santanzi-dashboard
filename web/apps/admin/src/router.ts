@@ -10,6 +10,7 @@ export const router = createRouter({
     { path: '/alert-rules', name: 'alert-rules', component: () => import('@/pages/AlertRulesPage.vue') },
     { path: '/ddns', name: 'ddns', component: () => import('@/pages/DDNSPage.vue') },
     { path: '/nat', name: 'nat', component: () => import('@/pages/NATPage.vue') },
+    { path: '/bot', name: 'bot', component: () => import('@/pages/BotPage.vue') },
     { path: '/telemetry', name: 'telemetry', component: () => import('@/pages/TelemetryPage.vue') },
     { path: '/connections', name: 'connections', component: () => import('@/pages/ConnectionsPage.vue') },
     { path: '/probes', name: 'probes', component: () => import('@/pages/ProbesPage.vue') },

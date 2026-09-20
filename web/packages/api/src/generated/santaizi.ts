@@ -19,6 +19,18 @@ import type {
   BatchServerDeleteWriteBody,
   BatchServerGroupWriteBody,
   BootstrapResponseResponse,
+  BotBindCodeListResponseResponse,
+  BotBindCodeResponseResponse,
+  BotBindCodeWriteBody,
+  BotChatListResponseResponse,
+  BotChatResponseResponse,
+  BotChatWriteBody,
+  BotReportListResponseResponse,
+  BotReportResponseResponse,
+  BotReportWriteBody,
+  BotSettingsResponseResponse,
+  BotSettingsWriteBody,
+  BotTestResponseResponse,
   CollectorCreatedResponseResponse,
   CollectorInstallPreviewResponseResponse,
   CollectorInstallPreviewWriteBody,
@@ -49,6 +61,9 @@ import type {
   InstallPreviewWriteBody,
   ListAgentReliabilityParams,
   ListAlertRulesParams,
+  ListBotBindCodesParams,
+  ListBotChatsParams,
+  ListBotReportsParams,
   ListConnectionLatencyParams,
   ListConnectionPathsParams,
   ListDDNSProfilesParams,
@@ -1540,7 +1555,228 @@ const listTelemetryAlerts = (
       );
     }
 
-return {getSession,logout,getPublicBootstrap,createViewPasswordSession,listPublicServers,getPublicServer,listPublicServices,getPublicNetworkHistory,listPublicCycleTransfer,getPublicServerAvailability,getPublicMetrics,getAdminSummary,listServers,createServer,exportServers,previewServerImport,importServers,getServer,updateServer,deleteServer,listServerAvailability,updateServerDisplayIndex,listServerGroups,renameServerGroup,resetServerSecret,resetServerAvailability,getServerCredential,getServerInstallPreview,getServerUpgradePreview,getProbeCapabilities,listTrafficPolicies,createTrafficPolicy,getTrafficPolicy,updateTrafficPolicy,deleteTrafficPolicy,getServerTrafficHistory,getTrafficPolicyUsage,batchUpdateServerGroup,batchDeleteServers,listMonitors,createMonitor,getMonitor,updateMonitor,deleteMonitor,listMonitorHistory,listNotifications,createNotification,getNotification,updateNotification,deleteNotification,testNotification,listAlertRules,createAlertRule,getAlertRule,updateAlertRule,deleteAlertRule,listDDNSProviders,listDDNSProfiles,createDDNSProfile,getDDNSProfile,updateDDNSProfile,deleteDDNSProfile,listNATTunnels,createNATTunnel,getNATTunnel,updateNATTunnel,deleteNATTunnel,getSettings,updateSettings,getDatabase,optimizeDatabase,listScriptCommands,listApiTokens,createApiToken,getApiToken,patchApiToken,deleteApiToken,listOfflineHistory,deleteOfflineHistory,cleanupOfflineHistory,getTelemetryOverview,getConnectionSummary,listConnectionPaths,listConnectionLatency,getProbeSummary,listProbePaths,listProbeSamples,getProbeTrace,getProbeRoute,createProbeRoute,listCollectors,createCollector,getCollector,updateCollector,deleteCollector,rotateCollectorToken,getCollectorToken,revokeCollector,updateCollectorScope,getCollectorInstallPreview,listObserverAssignments,listAgentReliability,listIncidents,listIncidentRevisions,listTelemetryDataLoss,listTelemetryAlerts}};
+/**
+ * 仅在 `bot.mode=webhook` 时有效。由 Telegram 调用，使用 `X-Telegram-Bot-Api-Secret-Token` 校验，不走管理会话 CSRF。
+ * @summary Telegram Webhook 入口
+ */
+const telegramBotWebhook = (
+
+ ) => {
+      return santaiziRequest<void>(
+      {url: `/api/v2/bot/telegram/webhook`, method: 'POST'
+    },
+      );
+    }
+
+/**
+ * 不回传 Token 原文，只返回 `token_set` 与末 4 位。
+ * @summary 读取 Telegram Bot 接入配置
+ */
+const getBotSettings = (
+
+ ) => {
+      return santaiziRequest<BotSettingsResponseResponse>(
+      {url: `/api/v2/admin/bot/settings`, method: 'GET'
+    },
+      );
+    }
+
+/**
+ * @summary 更新 Telegram Bot 接入配置
+ */
+const updateBotSettings = (
+    botSettingsWriteBody: BotSettingsWriteBody,
+ ) => {
+      return santaiziRequest<BotSettingsResponseResponse>(
+      {url: `/api/v2/admin/bot/settings`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: botSettingsWriteBody
+    },
+      );
+    }
+
+/**
+ * @summary 测试 Bot Token（getMe）
+ */
+const testBot = (
+
+ ) => {
+      return santaiziRequest<BotTestResponseResponse>(
+      {url: `/api/v2/admin/bot/test`, method: 'POST'
+    },
+      );
+    }
+
+/**
+ * @summary 授权会话列表
+ */
+const listBotChats = (
+    params?: ListBotChatsParams,
+ ) => {
+      return santaiziRequest<BotChatListResponseResponse>(
+      {url: `/api/v2/admin/bot/chats`, method: 'GET',
+        params
+    },
+      );
+    }
+
+/**
+ * @summary 授权会话详情
+ */
+const getBotChat = (
+    id: number,
+ ) => {
+      return santaiziRequest<BotChatResponseResponse>(
+      {url: `/api/v2/admin/bot/chats/${id}`, method: 'GET'
+    },
+      );
+    }
+
+/**
+ * @summary 更新授权会话
+ */
+const updateBotChat = (
+    id: number,
+    botChatWriteBody: BotChatWriteBody,
+ ) => {
+      return santaiziRequest<BotChatResponseResponse>(
+      {url: `/api/v2/admin/bot/chats/${id}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: botChatWriteBody
+    },
+      );
+    }
+
+/**
+ * @summary 撤销授权会话
+ */
+const deleteBotChat = (
+    id: number,
+ ) => {
+      return santaiziRequest<void>(
+      {url: `/api/v2/admin/bot/chats/${id}`, method: 'DELETE'
+    },
+      );
+    }
+
+/**
+ * @summary 绑定码列表
+ */
+const listBotBindCodes = (
+    params?: ListBotBindCodesParams,
+ ) => {
+      return santaiziRequest<BotBindCodeListResponseResponse>(
+      {url: `/api/v2/admin/bot/bind-codes`, method: 'GET',
+        params
+    },
+      );
+    }
+
+/**
+ * @summary 生成一次性绑定码
+ */
+const createBotBindCode = (
+    botBindCodeWriteBody: BotBindCodeWriteBody,
+ ) => {
+      return santaiziRequest<BotBindCodeResponseResponse>(
+      {url: `/api/v2/admin/bot/bind-codes`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: botBindCodeWriteBody
+    },
+      );
+    }
+
+/**
+ * @summary 删除绑定码
+ */
+const deleteBotBindCode = (
+    id: number,
+ ) => {
+      return santaiziRequest<void>(
+      {url: `/api/v2/admin/bot/bind-codes/${id}`, method: 'DELETE'
+    },
+      );
+    }
+
+/**
+ * @summary 周期报告列表
+ */
+const listBotReports = (
+    params?: ListBotReportsParams,
+ ) => {
+      return santaiziRequest<BotReportListResponseResponse>(
+      {url: `/api/v2/admin/bot/reports`, method: 'GET',
+        params
+    },
+      );
+    }
+
+/**
+ * @summary 创建周期报告
+ */
+const createBotReport = (
+    botReportWriteBody: BotReportWriteBody,
+ ) => {
+      return santaiziRequest<BotReportResponseResponse>(
+      {url: `/api/v2/admin/bot/reports`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: botReportWriteBody
+    },
+      );
+    }
+
+/**
+ * @summary 周期报告详情
+ */
+const getBotReport = (
+    id: number,
+ ) => {
+      return santaiziRequest<BotReportResponseResponse>(
+      {url: `/api/v2/admin/bot/reports/${id}`, method: 'GET'
+    },
+      );
+    }
+
+/**
+ * @summary 更新周期报告
+ */
+const updateBotReport = (
+    id: number,
+    botReportWriteBody: BotReportWriteBody,
+ ) => {
+      return santaiziRequest<BotReportResponseResponse>(
+      {url: `/api/v2/admin/bot/reports/${id}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: botReportWriteBody
+    },
+      );
+    }
+
+/**
+ * @summary 删除周期报告
+ */
+const deleteBotReport = (
+    id: number,
+ ) => {
+      return santaiziRequest<void>(
+      {url: `/api/v2/admin/bot/reports/${id}`, method: 'DELETE'
+    },
+      );
+    }
+
+/**
+ * @summary 立即发送周期报告
+ */
+const runBotReport = (
+    id: number,
+ ) => {
+      return santaiziRequest<BotReportResponseResponse>(
+      {url: `/api/v2/admin/bot/reports/${id}/run`, method: 'POST'
+    },
+      );
+    }
+
+return {getSession,logout,getPublicBootstrap,createViewPasswordSession,listPublicServers,getPublicServer,listPublicServices,getPublicNetworkHistory,listPublicCycleTransfer,getPublicServerAvailability,getPublicMetrics,getAdminSummary,listServers,createServer,exportServers,previewServerImport,importServers,getServer,updateServer,deleteServer,listServerAvailability,updateServerDisplayIndex,listServerGroups,renameServerGroup,resetServerSecret,resetServerAvailability,getServerCredential,getServerInstallPreview,getServerUpgradePreview,getProbeCapabilities,listTrafficPolicies,createTrafficPolicy,getTrafficPolicy,updateTrafficPolicy,deleteTrafficPolicy,getServerTrafficHistory,getTrafficPolicyUsage,batchUpdateServerGroup,batchDeleteServers,listMonitors,createMonitor,getMonitor,updateMonitor,deleteMonitor,listMonitorHistory,listNotifications,createNotification,getNotification,updateNotification,deleteNotification,testNotification,listAlertRules,createAlertRule,getAlertRule,updateAlertRule,deleteAlertRule,listDDNSProviders,listDDNSProfiles,createDDNSProfile,getDDNSProfile,updateDDNSProfile,deleteDDNSProfile,listNATTunnels,createNATTunnel,getNATTunnel,updateNATTunnel,deleteNATTunnel,getSettings,updateSettings,getDatabase,optimizeDatabase,listScriptCommands,listApiTokens,createApiToken,getApiToken,patchApiToken,deleteApiToken,listOfflineHistory,deleteOfflineHistory,cleanupOfflineHistory,getTelemetryOverview,getConnectionSummary,listConnectionPaths,listConnectionLatency,getProbeSummary,listProbePaths,listProbeSamples,getProbeTrace,getProbeRoute,createProbeRoute,listCollectors,createCollector,getCollector,updateCollector,deleteCollector,rotateCollectorToken,getCollectorToken,revokeCollector,updateCollectorScope,getCollectorInstallPreview,listObserverAssignments,listAgentReliability,listIncidents,listIncidentRevisions,listTelemetryDataLoss,listTelemetryAlerts,telegramBotWebhook,getBotSettings,updateBotSettings,testBot,listBotChats,getBotChat,updateBotChat,deleteBotChat,listBotBindCodes,createBotBindCode,deleteBotBindCode,listBotReports,createBotReport,getBotReport,updateBotReport,deleteBotReport,runBotReport}};
 export type GetSessionResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['getSession']>>>
 export type LogoutResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['logout']>>>
 export type GetPublicBootstrapResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['getPublicBootstrap']>>>
@@ -1647,3 +1883,20 @@ export type ListIncidentsResult = NonNullable<Awaited<ReturnType<ReturnType<type
 export type ListIncidentRevisionsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['listIncidentRevisions']>>>
 export type ListTelemetryDataLossResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['listTelemetryDataLoss']>>>
 export type ListTelemetryAlertsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['listTelemetryAlerts']>>>
+export type TelegramBotWebhookResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['telegramBotWebhook']>>>
+export type GetBotSettingsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['getBotSettings']>>>
+export type UpdateBotSettingsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['updateBotSettings']>>>
+export type TestBotResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['testBot']>>>
+export type ListBotChatsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['listBotChats']>>>
+export type GetBotChatResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['getBotChat']>>>
+export type UpdateBotChatResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['updateBotChat']>>>
+export type DeleteBotChatResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['deleteBotChat']>>>
+export type ListBotBindCodesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['listBotBindCodes']>>>
+export type CreateBotBindCodeResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['createBotBindCode']>>>
+export type DeleteBotBindCodeResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['deleteBotBindCode']>>>
+export type ListBotReportsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['listBotReports']>>>
+export type CreateBotReportResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['createBotReport']>>>
+export type GetBotReportResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['getBotReport']>>>
+export type UpdateBotReportResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['updateBotReport']>>>
+export type DeleteBotReportResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['deleteBotReport']>>>
+export type RunBotReportResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['runBotReport']>>>

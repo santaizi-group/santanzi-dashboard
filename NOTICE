@@ -16,6 +16,12 @@ d08c973bb4446a24356f49b81d75d6773286596e, Copyright (c) 2024 hi2hi,
 used under the MIT License. A copy is retained in
 web/packages/theme-nazhua/LICENSE.
 
+Chart PNG rendering embeds `resource/font/santaizi-cjk.ttf`. The file currently
+shipped is Go Regular from `golang.org/x/image/font/gofont` (Copyright The Go
+Authors, BSD-3-Clause). Replacing it with a Noto Sans SC subset enables CJK
+glyphs in chart labels; Noto fonts are licensed under the SIL Open Font
+License 1.1 (https://scripts.sil.org/OFL).
+
 Optional probe routing on collector hosts may exec an independently
 installed nexttrace binary (https://github.com/nxtrace/NTrace-core),
 licensed under GNU GPL-3.0. Santaizi does not link NTrace-core, does

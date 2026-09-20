@@ -43,3 +43,10 @@ retention:
   receipt_days: 7
   compact_min_bytes: 67108864
   auto_compact: true
+bot:
+  enabled: false
+  provider: telegram
+  token: ""
+  mode: polling
+  charts: false
+  rate_per_minute: 20

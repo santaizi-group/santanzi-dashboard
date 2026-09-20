@@ -7,6 +7,7 @@ require (
 	github.com/BurntSushi/toml v1.3.2
 	github.com/coreos/go-oidc/v3 v3.11.0
 	github.com/gin-gonic/gin v1.10.1
+	github.com/go-telegram/bot v1.18.0
 	github.com/google/go-github/v47 v47.1.0
 	github.com/gorilla/websocket v1.5.1
 	github.com/jinzhu/copier v0.4.0
@@ -30,6 +31,7 @@ require (
 	github.com/tidwall/gjson v1.18.0
 	github.com/xanzy/go-gitlab v0.103.0
 	golang.org/x/crypto v0.52.0
+	golang.org/x/image v0.32.0
 	golang.org/x/net v0.55.0
 	golang.org/x/oauth2 v0.34.0
 	golang.org/x/sync v0.20.0

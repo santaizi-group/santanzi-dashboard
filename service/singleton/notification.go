@@ -152,6 +152,9 @@ func SendNotification(notificationTag string, desc string, muteLabel *string, ex
 	notificationDeliver(notificationTag, desc, server)
 }
 
+// AfterNotificationDelivered 在 Webhook 渠道投递之后调用（如 Telegram Bot 订阅转发）。
+var AfterNotificationDelivered func(notificationTag, desc string, server *model.Server)
+
 func deliverNotification(notificationTag, desc string, server *model.Server) {
 	notificationsLock.RLock()
 	defer notificationsLock.RUnlock()
@@ -170,6 +173,38 @@ func deliverNotification(notificationTag, desc string, server *model.Server) {
 			log.Println("SANTAIZI>> 向 ", n.Name, " 发送通知成功：")
 		}
 	}
+	if AfterNotificationDelivered != nil {
+		AfterNotificationDelivered(notificationTag, desc, server)
+	}
+}
+
+func botMuteKey(serverID uint64) string {
+	return fmt.Sprintf("bot::mute:%d", serverID)
+}
+
+func BotMuteServer(serverID uint64, duration time.Duration) {
+	if Cache == nil || serverID == 0 {
+		return
+	}
+	if duration <= 0 {
+		duration = time.Hour
+	}
+	Cache.Set(botMuteKey(serverID), true, duration)
+}
+
+func BotUnmuteServer(serverID uint64) {
+	if Cache == nil || serverID == 0 {
+		return
+	}
+	Cache.Delete(botMuteKey(serverID))
+}
+
+func IsBotMuted(serverID uint64) bool {
+	if Cache == nil || serverID == 0 {
+		return false
+	}
+	_, ok := Cache.Get(botMuteKey(serverID))
+	return ok
 }
 
 type _NotificationMuteLabel struct{}

@@ -112,6 +112,7 @@ func registerSPAAPIV2(root gin.IRouter) {
 	admin.POST("/offline-history/cleanup", v2CleanupOfflineHistory)
 	admin.GET("/database", v2GetDatabase)
 	admin.POST("/database/optimize", v2OptimizeDatabase)
+	registerBotRoutes(root, admin)
 
 	telemetry := admin.Group("/telemetry")
 	telemetry.GET("/overview", v2TelemetryOverview)

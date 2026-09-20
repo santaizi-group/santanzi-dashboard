@@ -27,7 +27,7 @@ const nav = computed(() => [
   ['probes', '/probes', 'ri-radar-line', t('probeObservation')],
   ['settings', '/settings', 'ri-settings-3-line', t('settings')], ['api-tokens', '/api-tokens', 'ri-key-2-line', t('apiTokens')],
 ])
-const addonNav = computed(() => [['ddns', '/ddns', 'ri-global-line', t('ddns')], ['nat', '/nat', 'ri-route-line', t('nat')]])
+const addonNav = computed(() => [['ddns', '/ddns', 'ri-global-line', t('ddns')], ['nat', '/nat', 'ri-route-line', t('nat')], ['bot', '/bot', 'ri-robot-2-line', t('bot')]])
 const panelVersion = computed(() => formatProductVersion(session.state.version))
 const activeMessage = computed(() => messages.activeMessage)
 const fieldEntries = computed(() => Object.entries(activeMessage.value?.fields || {}))

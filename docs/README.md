@@ -13,6 +13,7 @@
 - [服务器管理](servers.md) — 添加服务器、分组、离线历史
 - [服务监控](monitoring.md) — HTTP / ICMP / TCP 监控与告警规则
 - [通知方式](notifications.md) — Webhook 通知与变量占位符
+- [Telegram 机器人](bot.md) — 绑定码授权、统计查询与周期报告
 - [动态 DNS (DDNS)](ddns.md)
 - [内网穿透 (NAT)](nat.md)
 - [API v2 文档](api.md)

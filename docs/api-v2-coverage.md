@@ -17,6 +17,7 @@
 | 告警规则 | `createAlertRule`, `updateAlertRule`, `deleteAlertRule` | `/admin/alert-rules` 可视化条件卡片 | 指标、阈值、持续时间、服务器范围和通知组 |
 | DDNS | `createDDNSProfile`, `updateDDNSProfile`, `deleteDDNSProfile` | 附加功能中的 Provider 驱动编辑器 | 域名、协议、凭据和 Webhook 动态字段 |
 | NAT | `createNATTunnel`, `updateNATTunnel`, `deleteNATTunnel` | 附加功能中的服务器选择器与目标表单 | 完整 CRUD 与目标格式校验 |
+| Telegram 机器人 | `getBotSettings`, `updateBotSettings`, `testBot`, `listBotChats`, `updateBotChat`, `deleteBotChat`, `listBotBindCodes`, `createBotBindCode`, `deleteBotBindCode`, `listBotReports`, `createBotReport`, `updateBotReport`, `deleteBotReport`, `runBotReport` | `/admin/bot` 接入配置、授权会话、绑定码、周期报告专用编辑器 | Token 只回末 4 位；绑定码一次性；报告 `LastPeriodKey` 防重发 |
 | 系统设置 | `updateSettings`, `getDatabase`, `optimizeDatabase` | `/admin/settings`；告警相关键（含 `plain_ip_in_notification`）在告警配置页维护 | 站点、网络、可用性、通知和安全外观；标题旁数据库体积与优化 |
 | 脚本命令 | `listScriptCommands` | 顶栏脚本命令抽屉 | 无参命令复制；不含密钥；空 URL 跳过 |
 | API Token | `listApiTokens`, `createApiToken`, `getApiToken`, `patchApiToken`, `deleteApiToken` | `/admin/api-tokens` 签发（权限/有效期）、列表复制、启用/禁用与删除 | 只读/操作权、过期与禁用鉴权；明文仅详情返回 |

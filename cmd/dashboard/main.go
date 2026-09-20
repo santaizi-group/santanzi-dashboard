@@ -14,6 +14,7 @@ import (
 	"github.com/hi2shark/santaizi-dashboard/cmd/dashboard/rpc"
 	"github.com/hi2shark/santaizi-dashboard/model"
 	"github.com/hi2shark/santaizi-dashboard/service/availability"
+	botservice "github.com/hi2shark/santaizi-dashboard/service/bot"
 	collectorservice "github.com/hi2shark/santaizi-dashboard/service/collector"
 	"github.com/hi2shark/santaizi-dashboard/service/singleton"
 	telemetryservice "github.com/hi2shark/santaizi-dashboard/service/telemetry"
@@ -100,6 +101,7 @@ func initSystem() {
 	if _, err := singleton.Cron.AddFunc("0 0 * * * *", singleton.RecordTransferHourlyUsage); err != nil {
 		panic(err)
 	}
+	botservice.StartScheduler()
 }
 
 func main() {
@@ -127,6 +129,7 @@ func main() {
 	go singleton.AlertSentinelStart()
 	singleton.NewServiceSentinel(serviceSentinelDispatchBus)
 	go singleton.StartOfflineDetector()
+	go botservice.Shared().Run(context.Background())
 	srv := controller.ServeWeb(singleton.Conf.HTTPPort)
 	if err := graceful.Graceful(func() error {
 		return srv.ListenAndServe()

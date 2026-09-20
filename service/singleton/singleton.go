@@ -363,11 +363,22 @@ func migrateDatabase(db *gorm.DB) error {
 		current = 17
 	}
 	if current < 18 {
-		return db.Transaction(func(tx *gorm.DB) error {
+		if err := db.Transaction(func(tx *gorm.DB) error {
 			if err := tx.AutoMigrate(&model.TelemetryIngestCursor{}, &model.AgentTelemetryRuntime{}); err != nil {
 				return err
 			}
 			return tx.Create(&model.SchemaMigration{Version: 18, AppliedAt: time.Now().UTC()}).Error
+		}); err != nil {
+			return err
+		}
+		current = 18
+	}
+	if current < 19 {
+		return db.Transaction(func(tx *gorm.DB) error {
+			if err := tx.AutoMigrate(&model.BotChat{}, &model.BotBindCode{}, &model.BotReport{}, &model.BotAuditLog{}); err != nil {
+				return err
+			}
+			return tx.Create(&model.SchemaMigration{Version: 19, AppliedAt: time.Now().UTC()}).Error
 		})
 	}
 	return nil

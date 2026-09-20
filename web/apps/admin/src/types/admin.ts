@@ -165,6 +165,68 @@ export interface ProbeCapabilitiesMetadata {
   presets: Record<string, MonitoringOptions>
 }
 
+export type BotRole = 'blocked' | 'viewer' | 'operator' | 'admin'
+export type BotPeriod = 'daily' | 'weekly' | 'monthly'
+export type BotCover = 'all' | 'include' | 'exclude'
+export type BotSection = 'status' | 'servers' | 'traffic' | 'uptime' | 'probes' | 'alerts'
+
+export interface BotSettings {
+  enabled: boolean
+  provider: string
+  mode: 'polling' | 'webhook'
+  api_endpoint?: string
+  webhook_base_url?: string
+  charts: boolean
+  language?: string
+  rate_per_minute: number
+  token_set: boolean
+  token_suffix?: string
+  webhook_secret_set: boolean
+}
+
+export interface BotChatRecord extends ResourceRecord {
+  id: number
+  chat_id: number
+  kind: string
+  title: string
+  role: BotRole
+  allowed_user_ids: number[]
+  subscribe_tags: string[]
+  note: string
+  bound_by?: number
+  last_seen_at?: string
+  enabled: boolean
+}
+
+export interface BotBindCodeRecord extends ResourceRecord {
+  id: number
+  code: string
+  role: BotRole
+  expires_at: string
+  used_by_chat_id?: number
+  used_at?: string
+  created_by?: string
+}
+
+export interface BotReportRecord extends ResourceRecord {
+  id: number
+  name: string
+  chat_ids: number[]
+  period: BotPeriod
+  hour_local: number
+  minute: number
+  weekday: number
+  day_of_month: number
+  sections: BotSection[]
+  cover: BotCover
+  ignore_ids: number[]
+  with_charts: boolean
+  enabled: boolean
+  last_period_key?: string
+  last_run_at?: string
+  last_status?: string
+}
+
 export interface ServerEditorValue extends ServerRecord {
   traffic_policies?: TrafficPolicyRecord[]
 }

@@ -184,6 +184,7 @@ type Config struct {
 	Rollup        RollupConfig        `koanf:"rollup" yaml:"rollup"`
 	Retention     RetentionConfig     `koanf:"retention" yaml:"retention"`
 	Web           WebConfig           `koanf:"web" yaml:"web"`
+	Bot           BotConfig           `koanf:"bot" yaml:"bot"`
 	Oauth2        struct {
 		Type            string
 		Admin           string // 管理员用户名列表
@@ -478,6 +479,7 @@ func (c *Config) Read(path string) error {
 		return errors.New("grpc_tls.enabled requires cert_file and key_file")
 	}
 
+	c.Bot.Normalize(c.Language)
 	c.NormalizeOfflineConfig()
 	c.updateIgnoredIPNotificationID()
 	return nil
@@ -485,7 +487,7 @@ func (c *Config) Read(path string) error {
 
 func configEnvKey(name string) string {
 	key := strings.ToLower(strings.TrimPrefix(name, "SANTAIZI_"))
-	for _, section := range []string{"grpc_tls", "telemetry", "collector", "rollup", "retention", "web", "site", "oauth2", "installscript"} {
+	for _, section := range []string{"grpc_tls", "telemetry", "collector", "rollup", "retention", "web", "site", "oauth2", "installscript", "bot"} {
 		prefix := section + "_"
 		if strings.HasPrefix(key, prefix) {
 			return section + "." + strings.TrimPrefix(key, prefix)

@@ -55,6 +55,7 @@ site:
 | `enableofflinenotification` | bool | `false` | 离线时发送通知 |
 | `enablerecoverynotification` | bool | `false` | 恢复时发送通知 |
 | `showavailabilitytoguest` | bool | `false` | 是否向前台访客展示服务器可用性摘要（30 天可用率、离线次数等）。公开站该可用率按离线历史存活率计算；Admin 可用性历史抽屉的「可用率」是完整连通率（部分连通拉低百分比，不算离线），二者不是同一口径 |
+| `bot` | object | 见下 | Telegram 机器人（仅 primary）。详见 [Telegram 机器人](bot.md) |
 
 ### `grpc_tls` gRPC 传输与设备证书
 
@@ -116,6 +117,42 @@ SANTAIZI_GEOIP_DB=/var/lib/santaizi-dashboard/ipinfo_lite.mmdb
 | `site.logourl` | `/static/logo.svg` | 本地或 data image Logo |
 | `site.safecustomcss` | `""` | 受限 CSS；禁止远程和可执行规则 |
 | `web.delivery` | `embedded` | `embedded` 或同域反向代理下的 `external` |
+
+---
+
+## `bot` Telegram 机器人
+
+仅 `mode: primary` 启动；从端不跑 Bot。后台 **附加功能 → 机器人** 保存后热加载。Token 与 Webhook 密钥按 `0600` 写入 yaml，Admin API 只回 `token_set` 与末 4 位。
+
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| `bot.enabled` | `false` | 是否启动 |
+| `bot.provider` | `telegram` | 当前只支持 Telegram |
+| `bot.token` | `""` | BotFather Token |
+| `bot.api_endpoint` | `""` | 自建 Bot API 根地址，空则官方 |
+| `bot.mode` | `polling` | `polling` 长轮询；`webhook` 需公网 URL |
+| `bot.webhook_base_url` | `""` | webhook 模式下的公网根，实际路径为 `{base}/api/v2/bot/telegram/webhook` |
+| `bot.webhook_secret` | `""` | `X-Telegram-Bot-Api-Secret-Token`；webhook 且为空时后台会生成 |
+| `bot.charts` | `false` | 允许周期报告附带 PNG |
+| `bot.language` | 跟随 `language` | 预留 |
+| `bot.rate_per_minute` | `20` | 每会话命令上限，最大 60 |
+
+```yaml
+bot:
+  enabled: false
+  provider: telegram
+  token: ""
+  api_endpoint: ""
+  mode: polling
+  webhook_base_url: ""
+  webhook_secret: ""
+  charts: false
+  rate_per_minute: 20
+```
+
+命令、绑定码、周期报告与告警转发见 [Telegram 机器人](bot.md)。
+
+---
 
 ---
 
@@ -428,6 +465,14 @@ telemetry:
   offline_threshold_seconds: 30
   availability_bucket_seconds: 30
   min_observers: 1
+
+bot:
+  enabled: false
+  provider: telegram
+  token: ""
+  mode: polling
+  charts: false
+  rate_per_minute: 20
 
 rollup:
   enabled: true

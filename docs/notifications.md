@@ -170,3 +170,7 @@
 ## IP 脱敏
 
 默认情况下，通知中的服务器 IP 会经过脱敏处理。如果需要完整 IP，可以在 **告警配置** 页开启 **通知中 IP 不打码**（`enableplainipinnotification: true`）。自定义通知模板的 `#SERVER.IP#`、`#SERVER.IPV4#`、`#SERVER.IPV6#` 占位符始终输出原文，不受该开关控制。
+
+## Telegram 机器人
+
+Webhook 渠道与 [Telegram 机器人](bot.md) 是两套投递。授权会话可订阅通知组，在渠道发送之后 fan-out 到 Telegram，并可在对话里静音 Bot 侧告警。Bot 静音不关闭 Webhook 渠道。

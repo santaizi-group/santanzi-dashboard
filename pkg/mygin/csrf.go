@@ -155,7 +155,13 @@ func isSafeMethod(method string) bool {
 }
 
 func requiresCSRF(c *gin.Context) bool {
-	return !isSafeMethod(c.Request.Method)
+	if isSafeMethod(c.Request.Method) {
+		return false
+	}
+	if c.Request.URL.Path == "/api/v2/bot/telegram/webhook" {
+		return false
+	}
+	return true
 }
 
 func mustRandomBytes(n int) []byte {

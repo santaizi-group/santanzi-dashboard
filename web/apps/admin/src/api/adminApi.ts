@@ -3,9 +3,10 @@ import type {
   AlertRuleWriteBody, CollectorRecord, DDNSProfileWriteBody, MonitorWriteBody,
   NATTunnelWriteBody, NotificationChannelWriteBody, ResourceQuery, ResourceRecord,
   ScriptCommand, ServerBackup, ServerImportWrite, ServerRecord, ServerWriteBody,
+  BotSettingsWrite, BotChatWrite, BotBindCodeWrite, BotReportWrite,
 } from '@santaizi/api'
 import type {
-  AlertRuleRecord, DDNSProfileRecord, MonitorRecord,
+  AlertRuleRecord, BotBindCodeRecord, BotChatRecord, BotReportRecord, BotSettings, DDNSProfileRecord, MonitorRecord,
   NATTunnelRecord, NotificationChannelRecord, ProbeCapabilitiesMetadata,
   TrafficPolicyRecord,
 } from '@/types/admin'
@@ -99,6 +100,21 @@ export const listServerAvailability = api.listServerAvailability
 export const listOfflineHistory = api.listOfflineHistory
 export const deleteOfflineHistory = api.deleteOfflineHistory
 export const getSettings = api.getSettings
+
+export const getBotSettings = () => api.getBotSettings() as Promise<BotSettings>
+export const updateBotSettings = (body: BotSettingsWrite) => api.updateBotSettings(body) as Promise<BotSettings>
+export const testBot = api.testBot
+export const listBotChats = (query: ResourceQuery = {}) => api.listBotChats(query) as Promise<api.ApiList<BotChatRecord>>
+export const updateBotChat = (id: number, body: BotChatWrite) => api.updateBotChat(id, body) as Promise<BotChatRecord>
+export const deleteBotChat = api.deleteBotChat
+export const listBotBindCodes = (query: ResourceQuery = {}) => api.listBotBindCodes(query) as Promise<api.ApiList<BotBindCodeRecord>>
+export const createBotBindCode = (body: BotBindCodeWrite) => api.createBotBindCode(body) as Promise<BotBindCodeRecord>
+export const deleteBotBindCode = api.deleteBotBindCode
+export const listBotReports = (query: ResourceQuery = {}) => api.listBotReports(query) as Promise<api.ApiList<BotReportRecord>>
+export const createBotReport = (body: BotReportWrite) => api.createBotReport(body) as Promise<BotReportRecord>
+export const updateBotReport = (id: number, body: BotReportWrite) => api.updateBotReport(id, body) as Promise<BotReportRecord>
+export const deleteBotReport = api.deleteBotReport
+export const runBotReport = (id: number) => api.runBotReport(id) as Promise<BotReportRecord>
 
 export async function listNotificationGroups() {
   const result = await listNotifications({ page: 1, page_size: 1000, sort: 'tag', order: 'asc' })

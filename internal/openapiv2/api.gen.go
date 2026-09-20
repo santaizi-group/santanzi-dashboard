@@ -235,6 +235,180 @@ func (e BootstrapTheme) Valid() bool {
 	}
 }
 
+// Defines values for BotReportCover.
+const (
+	BotReportCoverAll     BotReportCover = "all"
+	BotReportCoverExclude BotReportCover = "exclude"
+	BotReportCoverInclude BotReportCover = "include"
+)
+
+// Valid indicates whether the value is a known member of the BotReportCover enum.
+func (e BotReportCover) Valid() bool {
+	switch e {
+	case BotReportCoverAll:
+		return true
+	case BotReportCoverExclude:
+		return true
+	case BotReportCoverInclude:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BotReportPeriod.
+const (
+	BotReportPeriodDaily   BotReportPeriod = "daily"
+	BotReportPeriodMonthly BotReportPeriod = "monthly"
+	BotReportPeriodWeekly  BotReportPeriod = "weekly"
+)
+
+// Valid indicates whether the value is a known member of the BotReportPeriod enum.
+func (e BotReportPeriod) Valid() bool {
+	switch e {
+	case BotReportPeriodDaily:
+		return true
+	case BotReportPeriodMonthly:
+		return true
+	case BotReportPeriodWeekly:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BotReportSections.
+const (
+	Alerts  BotReportSections = "alerts"
+	Probes  BotReportSections = "probes"
+	Servers BotReportSections = "servers"
+	Status  BotReportSections = "status"
+	Traffic BotReportSections = "traffic"
+	Uptime  BotReportSections = "uptime"
+)
+
+// Valid indicates whether the value is a known member of the BotReportSections enum.
+func (e BotReportSections) Valid() bool {
+	switch e {
+	case Alerts:
+		return true
+	case Probes:
+		return true
+	case Servers:
+		return true
+	case Status:
+		return true
+	case Traffic:
+		return true
+	case Uptime:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BotReportWriteCover.
+const (
+	BotReportWriteCoverAll     BotReportWriteCover = "all"
+	BotReportWriteCoverExclude BotReportWriteCover = "exclude"
+	BotReportWriteCoverInclude BotReportWriteCover = "include"
+)
+
+// Valid indicates whether the value is a known member of the BotReportWriteCover enum.
+func (e BotReportWriteCover) Valid() bool {
+	switch e {
+	case BotReportWriteCoverAll:
+		return true
+	case BotReportWriteCoverExclude:
+		return true
+	case BotReportWriteCoverInclude:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BotReportWritePeriod.
+const (
+	BotReportWritePeriodDaily   BotReportWritePeriod = "daily"
+	BotReportWritePeriodMonthly BotReportWritePeriod = "monthly"
+	BotReportWritePeriodWeekly  BotReportWritePeriod = "weekly"
+)
+
+// Valid indicates whether the value is a known member of the BotReportWritePeriod enum.
+func (e BotReportWritePeriod) Valid() bool {
+	switch e {
+	case BotReportWritePeriodDaily:
+		return true
+	case BotReportWritePeriodMonthly:
+		return true
+	case BotReportWritePeriodWeekly:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BotRole.
+const (
+	Admin    BotRole = "admin"
+	Blocked  BotRole = "blocked"
+	Operator BotRole = "operator"
+	Viewer   BotRole = "viewer"
+)
+
+// Valid indicates whether the value is a known member of the BotRole enum.
+func (e BotRole) Valid() bool {
+	switch e {
+	case Admin:
+		return true
+	case Blocked:
+		return true
+	case Operator:
+		return true
+	case Viewer:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BotSettingsMode.
+const (
+	BotSettingsModePolling BotSettingsMode = "polling"
+	BotSettingsModeWebhook BotSettingsMode = "webhook"
+)
+
+// Valid indicates whether the value is a known member of the BotSettingsMode enum.
+func (e BotSettingsMode) Valid() bool {
+	switch e {
+	case BotSettingsModePolling:
+		return true
+	case BotSettingsModeWebhook:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BotSettingsWriteMode.
+const (
+	BotSettingsWriteModePolling BotSettingsWriteMode = "polling"
+	BotSettingsWriteModeWebhook BotSettingsWriteMode = "webhook"
+)
+
+// Valid indicates whether the value is a known member of the BotSettingsWriteMode enum.
+func (e BotSettingsWriteMode) Valid() bool {
+	switch e {
+	case BotSettingsWriteModePolling:
+		return true
+	case BotSettingsWriteModeWebhook:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CollectorKind.
 const (
 	CollectorKindObserver CollectorKind = "observer"
@@ -1495,6 +1669,42 @@ func (e ListAlertRulesParamsOrder) Valid() bool {
 	}
 }
 
+// Defines values for ListBotChatsParamsOrder.
+const (
+	ListBotChatsParamsOrderAsc  ListBotChatsParamsOrder = "asc"
+	ListBotChatsParamsOrderDesc ListBotChatsParamsOrder = "desc"
+)
+
+// Valid indicates whether the value is a known member of the ListBotChatsParamsOrder enum.
+func (e ListBotChatsParamsOrder) Valid() bool {
+	switch e {
+	case ListBotChatsParamsOrderAsc:
+		return true
+	case ListBotChatsParamsOrderDesc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListBotReportsParamsOrder.
+const (
+	ListBotReportsParamsOrderAsc  ListBotReportsParamsOrder = "asc"
+	ListBotReportsParamsOrderDesc ListBotReportsParamsOrder = "desc"
+)
+
+// Valid indicates whether the value is a known member of the ListBotReportsParamsOrder enum.
+func (e ListBotReportsParamsOrder) Valid() bool {
+	switch e {
+	case ListBotReportsParamsOrderAsc:
+		return true
+	case ListBotReportsParamsOrderDesc:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListConnectionLatencyParamsKind.
 const (
 	ListConnectionLatencyParamsKindCollectorHeartbeat   ListConnectionLatencyParamsKind = "collector_heartbeat"
@@ -1783,6 +1993,147 @@ type BootstrapLocale string
 
 // BootstrapTheme defines model for Bootstrap.Theme.
 type BootstrapTheme string
+
+// BotBindCode defines model for BotBindCode.
+type BotBindCode struct {
+	Code         string     `json:"code"`
+	CreatedAt    *time.Time `json:"created_at,omitempty"`
+	CreatedBy    *string    `json:"created_by,omitempty"`
+	ExpiresAt    time.Time  `json:"expires_at"`
+	Id           int64      `json:"id"`
+	Role         BotRole    `json:"role"`
+	UsedAt       *time.Time `json:"used_at,omitempty"`
+	UsedByChatId *int64     `json:"used_by_chat_id,omitempty"`
+}
+
+// BotBindCodeWrite defines model for BotBindCodeWrite.
+type BotBindCodeWrite struct {
+	Role       *BotRole `json:"role,omitempty"`
+	TtlSeconds *int64   `json:"ttl_seconds,omitempty"`
+}
+
+// BotChat defines model for BotChat.
+type BotChat struct {
+	AllowedUserIds *[]int64   `json:"allowed_user_ids,omitempty"`
+	BoundBy        *int64     `json:"bound_by,omitempty"`
+	ChatId         int64      `json:"chat_id"`
+	CreatedAt      *time.Time `json:"created_at,omitempty"`
+	Enabled        bool       `json:"enabled"`
+	Id             int64      `json:"id"`
+	Kind           *string    `json:"kind,omitempty"`
+	LastSeenAt     *time.Time `json:"last_seen_at,omitempty"`
+	Note           *string    `json:"note,omitempty"`
+	Role           BotRole    `json:"role"`
+	SubscribeTags  *[]string  `json:"subscribe_tags,omitempty"`
+	Title          *string    `json:"title,omitempty"`
+	UpdatedAt      *time.Time `json:"updated_at,omitempty"`
+}
+
+// BotChatWrite defines model for BotChatWrite.
+type BotChatWrite struct {
+	AllowedUserIds *[]int64  `json:"allowed_user_ids,omitempty"`
+	Enabled        *bool     `json:"enabled,omitempty"`
+	Note           *string   `json:"note,omitempty"`
+	Role           *BotRole  `json:"role,omitempty"`
+	SubscribeTags  *[]string `json:"subscribe_tags,omitempty"`
+}
+
+// BotReport defines model for BotReport.
+type BotReport struct {
+	ChatIds       *[]int64             `json:"chat_ids,omitempty"`
+	Cover         *BotReportCover      `json:"cover,omitempty"`
+	CreatedAt     *time.Time           `json:"created_at,omitempty"`
+	DayOfMonth    *int64               `json:"day_of_month,omitempty"`
+	Enabled       bool                 `json:"enabled"`
+	HourLocal     *int64               `json:"hour_local,omitempty"`
+	Id            int64                `json:"id"`
+	IgnoreIds     *[]int64             `json:"ignore_ids,omitempty"`
+	LastPeriodKey *string              `json:"last_period_key,omitempty"`
+	LastRunAt     *time.Time           `json:"last_run_at,omitempty"`
+	LastStatus    *string              `json:"last_status,omitempty"`
+	Minute        *int64               `json:"minute,omitempty"`
+	Name          string               `json:"name"`
+	Period        BotReportPeriod      `json:"period"`
+	Sections      *[]BotReportSections `json:"sections,omitempty"`
+	UpdatedAt     *time.Time           `json:"updated_at,omitempty"`
+	Weekday       *int64               `json:"weekday,omitempty"`
+	WithCharts    *bool                `json:"with_charts,omitempty"`
+}
+
+// BotReportCover defines model for BotReport.Cover.
+type BotReportCover string
+
+// BotReportPeriod defines model for BotReport.Period.
+type BotReportPeriod string
+
+// BotReportSections defines model for BotReport.Sections.
+type BotReportSections string
+
+// BotReportWrite defines model for BotReportWrite.
+type BotReportWrite struct {
+	ChatIds    *[]int64              `json:"chat_ids,omitempty"`
+	Cover      *BotReportWriteCover  `json:"cover,omitempty"`
+	DayOfMonth *int64                `json:"day_of_month,omitempty"`
+	Enabled    *bool                 `json:"enabled,omitempty"`
+	HourLocal  *int64                `json:"hour_local,omitempty"`
+	IgnoreIds  *[]int64              `json:"ignore_ids,omitempty"`
+	Minute     *int64                `json:"minute,omitempty"`
+	Name       string                `json:"name"`
+	Period     *BotReportWritePeriod `json:"period,omitempty"`
+	Sections   *[]string             `json:"sections,omitempty"`
+	Weekday    *int64                `json:"weekday,omitempty"`
+	WithCharts *bool                 `json:"with_charts,omitempty"`
+}
+
+// BotReportWriteCover defines model for BotReportWrite.Cover.
+type BotReportWriteCover string
+
+// BotReportWritePeriod defines model for BotReportWrite.Period.
+type BotReportWritePeriod string
+
+// BotRole defines model for BotRole.
+type BotRole string
+
+// BotSettings defines model for BotSettings.
+type BotSettings struct {
+	ApiEndpoint      *string         `json:"api_endpoint,omitempty"`
+	Charts           bool            `json:"charts"`
+	Enabled          bool            `json:"enabled"`
+	Language         *string         `json:"language,omitempty"`
+	Mode             BotSettingsMode `json:"mode"`
+	Provider         string          `json:"provider"`
+	RatePerMinute    int64           `json:"rate_per_minute"`
+	TokenSet         bool            `json:"token_set"`
+	TokenSuffix      *string         `json:"token_suffix,omitempty"`
+	WebhookBaseUrl   *string         `json:"webhook_base_url,omitempty"`
+	WebhookSecretSet bool            `json:"webhook_secret_set"`
+}
+
+// BotSettingsMode defines model for BotSettings.Mode.
+type BotSettingsMode string
+
+// BotSettingsWrite defines model for BotSettingsWrite.
+type BotSettingsWrite struct {
+	ApiEndpoint    *string               `json:"api_endpoint,omitempty"`
+	Charts         *bool                 `json:"charts,omitempty"`
+	Enabled        *bool                 `json:"enabled,omitempty"`
+	Language       *string               `json:"language,omitempty"`
+	Mode           *BotSettingsWriteMode `json:"mode,omitempty"`
+	Provider       *string               `json:"provider,omitempty"`
+	RatePerMinute  *int64                `json:"rate_per_minute,omitempty"`
+	Token          *string               `json:"token,omitempty"`
+	WebhookBaseUrl *string               `json:"webhook_base_url,omitempty"`
+	WebhookSecret  *string               `json:"webhook_secret,omitempty"`
+}
+
+// BotSettingsWriteMode defines model for BotSettingsWrite.Mode.
+type BotSettingsWriteMode string
+
+// BotTest defines model for BotTest.
+type BotTest struct {
+	Ok       bool    `json:"ok"`
+	Username *string `json:"username,omitempty"`
+}
 
 // Collector defines model for Collector.
 type Collector struct {
@@ -3225,6 +3576,49 @@ type BootstrapResponse struct {
 	Data Bootstrap `json:"data"`
 }
 
+// BotBindCodeListResponse defines model for BotBindCodeListResponse.
+type BotBindCodeListResponse struct {
+	Data []BotBindCode `json:"data"`
+	Meta Meta          `json:"meta"`
+}
+
+// BotBindCodeResponse defines model for BotBindCodeResponse.
+type BotBindCodeResponse struct {
+	Data BotBindCode `json:"data"`
+}
+
+// BotChatListResponse defines model for BotChatListResponse.
+type BotChatListResponse struct {
+	Data []BotChat `json:"data"`
+	Meta Meta      `json:"meta"`
+}
+
+// BotChatResponse defines model for BotChatResponse.
+type BotChatResponse struct {
+	Data BotChat `json:"data"`
+}
+
+// BotReportListResponse defines model for BotReportListResponse.
+type BotReportListResponse struct {
+	Data []BotReport `json:"data"`
+	Meta Meta        `json:"meta"`
+}
+
+// BotReportResponse defines model for BotReportResponse.
+type BotReportResponse struct {
+	Data BotReport `json:"data"`
+}
+
+// BotSettingsResponse defines model for BotSettingsResponse.
+type BotSettingsResponse struct {
+	Data BotSettings `json:"data"`
+}
+
+// BotTestResponse defines model for BotTestResponse.
+type BotTestResponse struct {
+	Data BotTest `json:"data"`
+}
+
 // CollectorCreatedResponse defines model for CollectorCreatedResponse.
 type CollectorCreatedResponse struct {
 	Data CollectorCreated `json:"data"`
@@ -3547,6 +3941,96 @@ type DeleteApiTokenParams struct {
 
 // PatchApiTokenParams defines parameters for PatchApiToken.
 type PatchApiTokenParams struct {
+	// XCSRFToken Cookie 会话写操作时必填；Bearer Token 调用可省略
+	XCSRFToken *CsrfToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// ListBotBindCodesParams defines parameters for ListBotBindCodes.
+type ListBotBindCodesParams struct {
+	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// CreateBotBindCodeParams defines parameters for CreateBotBindCode.
+type CreateBotBindCodeParams struct {
+	// XCSRFToken Cookie 会话写操作时必填；Bearer Token 调用可省略
+	XCSRFToken *CsrfToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// DeleteBotBindCodeParams defines parameters for DeleteBotBindCode.
+type DeleteBotBindCodeParams struct {
+	// XCSRFToken Cookie 会话写操作时必填；Bearer Token 调用可省略
+	XCSRFToken *CsrfToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// ListBotChatsParams defines parameters for ListBotChats.
+type ListBotChatsParams struct {
+	Page     *Page                    `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *PageSize                `form:"page_size,omitempty" json:"page_size,omitempty"`
+	Q        *Search                  `form:"q,omitempty" json:"q,omitempty"`
+	Sort     *Sort                    `form:"sort,omitempty" json:"sort,omitempty"`
+	Order    *ListBotChatsParamsOrder `form:"order,omitempty" json:"order,omitempty"`
+}
+
+// ListBotChatsParamsOrder defines parameters for ListBotChats.
+type ListBotChatsParamsOrder string
+
+// DeleteBotChatParams defines parameters for DeleteBotChat.
+type DeleteBotChatParams struct {
+	// XCSRFToken Cookie 会话写操作时必填；Bearer Token 调用可省略
+	XCSRFToken *CsrfToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// UpdateBotChatParams defines parameters for UpdateBotChat.
+type UpdateBotChatParams struct {
+	// XCSRFToken Cookie 会话写操作时必填；Bearer Token 调用可省略
+	XCSRFToken *CsrfToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// ListBotReportsParams defines parameters for ListBotReports.
+type ListBotReportsParams struct {
+	Page     *Page                      `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *PageSize                  `form:"page_size,omitempty" json:"page_size,omitempty"`
+	Q        *Search                    `form:"q,omitempty" json:"q,omitempty"`
+	Sort     *Sort                      `form:"sort,omitempty" json:"sort,omitempty"`
+	Order    *ListBotReportsParamsOrder `form:"order,omitempty" json:"order,omitempty"`
+}
+
+// ListBotReportsParamsOrder defines parameters for ListBotReports.
+type ListBotReportsParamsOrder string
+
+// CreateBotReportParams defines parameters for CreateBotReport.
+type CreateBotReportParams struct {
+	// XCSRFToken Cookie 会话写操作时必填；Bearer Token 调用可省略
+	XCSRFToken *CsrfToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// DeleteBotReportParams defines parameters for DeleteBotReport.
+type DeleteBotReportParams struct {
+	// XCSRFToken Cookie 会话写操作时必填；Bearer Token 调用可省略
+	XCSRFToken *CsrfToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// UpdateBotReportParams defines parameters for UpdateBotReport.
+type UpdateBotReportParams struct {
+	// XCSRFToken Cookie 会话写操作时必填；Bearer Token 调用可省略
+	XCSRFToken *CsrfToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// RunBotReportParams defines parameters for RunBotReport.
+type RunBotReportParams struct {
+	// XCSRFToken Cookie 会话写操作时必填；Bearer Token 调用可省略
+	XCSRFToken *CsrfToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// UpdateBotSettingsParams defines parameters for UpdateBotSettings.
+type UpdateBotSettingsParams struct {
+	// XCSRFToken Cookie 会话写操作时必填；Bearer Token 调用可省略
+	XCSRFToken *CsrfToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// TestBotParams defines parameters for TestBot.
+type TestBotParams struct {
 	// XCSRFToken Cookie 会话写操作时必填；Bearer Token 调用可省略
 	XCSRFToken *CsrfToken `json:"X-CSRF-Token,omitempty"`
 }
@@ -4020,6 +4504,21 @@ type CreateApiTokenJSONRequestBody = APITokenWrite
 
 // PatchApiTokenJSONRequestBody defines body for PatchApiToken for application/json ContentType.
 type PatchApiTokenJSONRequestBody = APITokenPatch
+
+// CreateBotBindCodeJSONRequestBody defines body for CreateBotBindCode for application/json ContentType.
+type CreateBotBindCodeJSONRequestBody = BotBindCodeWrite
+
+// UpdateBotChatJSONRequestBody defines body for UpdateBotChat for application/json ContentType.
+type UpdateBotChatJSONRequestBody = BotChatWrite
+
+// CreateBotReportJSONRequestBody defines body for CreateBotReport for application/json ContentType.
+type CreateBotReportJSONRequestBody = BotReportWrite
+
+// UpdateBotReportJSONRequestBody defines body for UpdateBotReport for application/json ContentType.
+type UpdateBotReportJSONRequestBody = BotReportWrite
+
+// UpdateBotSettingsJSONRequestBody defines body for UpdateBotSettings for application/json ContentType.
+type UpdateBotSettingsJSONRequestBody = BotSettingsWrite
 
 // CreateDDNSProfileJSONRequestBody defines body for CreateDDNSProfile for application/json ContentType.
 type CreateDDNSProfileJSONRequestBody = DDNSProfileWrite
@@ -4724,6 +5223,54 @@ type ServerInterface interface {
 	// PatchApiToken 启用或禁用 API Token
 	// (PATCH /api/v2/admin/api-tokens/{id})
 	PatchApiToken(c *gin.Context, id Id, params PatchApiTokenParams)
+	// ListBotBindCodes 绑定码列表
+	// (GET /api/v2/admin/bot/bind-codes)
+	ListBotBindCodes(c *gin.Context, params ListBotBindCodesParams)
+	// CreateBotBindCode 生成一次性绑定码
+	// (POST /api/v2/admin/bot/bind-codes)
+	CreateBotBindCode(c *gin.Context, params CreateBotBindCodeParams)
+	// DeleteBotBindCode 删除绑定码
+	// (DELETE /api/v2/admin/bot/bind-codes/{id})
+	DeleteBotBindCode(c *gin.Context, id Id, params DeleteBotBindCodeParams)
+	// ListBotChats 授权会话列表
+	// (GET /api/v2/admin/bot/chats)
+	ListBotChats(c *gin.Context, params ListBotChatsParams)
+	// DeleteBotChat 撤销授权会话
+	// (DELETE /api/v2/admin/bot/chats/{id})
+	DeleteBotChat(c *gin.Context, id Id, params DeleteBotChatParams)
+	// GetBotChat 授权会话详情
+	// (GET /api/v2/admin/bot/chats/{id})
+	GetBotChat(c *gin.Context, id Id)
+	// UpdateBotChat 更新授权会话
+	// (PATCH /api/v2/admin/bot/chats/{id})
+	UpdateBotChat(c *gin.Context, id Id, params UpdateBotChatParams)
+	// ListBotReports 周期报告列表
+	// (GET /api/v2/admin/bot/reports)
+	ListBotReports(c *gin.Context, params ListBotReportsParams)
+	// CreateBotReport 创建周期报告
+	// (POST /api/v2/admin/bot/reports)
+	CreateBotReport(c *gin.Context, params CreateBotReportParams)
+	// DeleteBotReport 删除周期报告
+	// (DELETE /api/v2/admin/bot/reports/{id})
+	DeleteBotReport(c *gin.Context, id Id, params DeleteBotReportParams)
+	// GetBotReport 周期报告详情
+	// (GET /api/v2/admin/bot/reports/{id})
+	GetBotReport(c *gin.Context, id Id)
+	// UpdateBotReport 更新周期报告
+	// (PATCH /api/v2/admin/bot/reports/{id})
+	UpdateBotReport(c *gin.Context, id Id, params UpdateBotReportParams)
+	// RunBotReport 立即发送周期报告
+	// (POST /api/v2/admin/bot/reports/{id}/run)
+	RunBotReport(c *gin.Context, id Id, params RunBotReportParams)
+	// GetBotSettings 读取 Telegram Bot 接入配置
+	// (GET /api/v2/admin/bot/settings)
+	GetBotSettings(c *gin.Context)
+	// UpdateBotSettings 更新 Telegram Bot 接入配置
+	// (PATCH /api/v2/admin/bot/settings)
+	UpdateBotSettings(c *gin.Context, params UpdateBotSettingsParams)
+	// TestBot 测试 Bot Token（getMe）
+	// (POST /api/v2/admin/bot/test)
+	TestBot(c *gin.Context, params TestBotParams)
 	// ListConnectionLatency 连接延迟历史
 	// (GET /api/v2/admin/connections/latency)
 	ListConnectionLatency(c *gin.Context, params ListConnectionLatencyParams)
@@ -4985,6 +5532,9 @@ type ServerInterface interface {
 	// GetSession 获取当前会话
 	// (GET /api/v2/auth/session)
 	GetSession(c *gin.Context)
+	// TelegramBotWebhook Telegram Webhook 入口
+	// (POST /api/v2/bot/telegram/webhook)
+	TelegramBotWebhook(c *gin.Context)
 	// GetPublicBootstrap 公开站点引导信息
 	// (GET /api/v2/public/bootstrap)
 	GetPublicBootstrap(c *gin.Context)
@@ -5419,6 +5969,676 @@ func (siw *ServerInterfaceWrapper) PatchApiToken(c *gin.Context) {
 	}
 
 	siw.Handler.PatchApiToken(c, id, params)
+}
+
+// ListBotBindCodes operation middleware
+func (siw *ServerInterfaceWrapper) ListBotBindCodes(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListBotBindCodesParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListBotBindCodes(c, params)
+}
+
+// CreateBotBindCode operation middleware
+func (siw *ServerInterfaceWrapper) CreateBotBindCode(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateBotBindCodeParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CsrfToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateBotBindCode(c, params)
+}
+
+// DeleteBotBindCode operation middleware
+func (siw *ServerInterfaceWrapper) DeleteBotBindCode(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteBotBindCodeParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CsrfToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeleteBotBindCode(c, id, params)
+}
+
+// ListBotChats operation middleware
+func (siw *ServerInterfaceWrapper) ListBotChats(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListBotChatsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", c.Request.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter q: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "sort", c.Request.URL.Query(), &params.Sort, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter sort: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "order" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "order", c.Request.URL.Query(), &params.Order, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter order: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListBotChats(c, params)
+}
+
+// DeleteBotChat operation middleware
+func (siw *ServerInterfaceWrapper) DeleteBotChat(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteBotChatParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CsrfToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeleteBotChat(c, id, params)
+}
+
+// GetBotChat operation middleware
+func (siw *ServerInterfaceWrapper) GetBotChat(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetBotChat(c, id)
+}
+
+// UpdateBotChat operation middleware
+func (siw *ServerInterfaceWrapper) UpdateBotChat(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateBotChatParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CsrfToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UpdateBotChat(c, id, params)
+}
+
+// ListBotReports operation middleware
+func (siw *ServerInterfaceWrapper) ListBotReports(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListBotReportsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", c.Request.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter q: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "sort", c.Request.URL.Query(), &params.Sort, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter sort: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "order" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "order", c.Request.URL.Query(), &params.Order, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter order: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListBotReports(c, params)
+}
+
+// CreateBotReport operation middleware
+func (siw *ServerInterfaceWrapper) CreateBotReport(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateBotReportParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CsrfToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateBotReport(c, params)
+}
+
+// DeleteBotReport operation middleware
+func (siw *ServerInterfaceWrapper) DeleteBotReport(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteBotReportParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CsrfToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeleteBotReport(c, id, params)
+}
+
+// GetBotReport operation middleware
+func (siw *ServerInterfaceWrapper) GetBotReport(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetBotReport(c, id)
+}
+
+// UpdateBotReport operation middleware
+func (siw *ServerInterfaceWrapper) UpdateBotReport(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateBotReportParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CsrfToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UpdateBotReport(c, id, params)
+}
+
+// RunBotReport operation middleware
+func (siw *ServerInterfaceWrapper) RunBotReport(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RunBotReportParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CsrfToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.RunBotReport(c, id, params)
+}
+
+// GetBotSettings operation middleware
+func (siw *ServerInterfaceWrapper) GetBotSettings(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetBotSettings(c)
+}
+
+// UpdateBotSettings operation middleware
+func (siw *ServerInterfaceWrapper) UpdateBotSettings(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateBotSettingsParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CsrfToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UpdateBotSettings(c, params)
+}
+
+// TestBot operation middleware
+func (siw *ServerInterfaceWrapper) TestBot(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params TestBotParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CsrfToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.TestBot(c, params)
 }
 
 // ListConnectionLatency operation middleware
@@ -8793,6 +10013,19 @@ func (siw *ServerInterfaceWrapper) GetSession(c *gin.Context) {
 	siw.Handler.GetSession(c)
 }
 
+// TelegramBotWebhook operation middleware
+func (siw *ServerInterfaceWrapper) TelegramBotWebhook(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.TelegramBotWebhook(c)
+}
+
 // GetPublicBootstrap operation middleware
 func (siw *ServerInterfaceWrapper) GetPublicBootstrap(c *gin.Context) {
 
@@ -9151,4 +10384,21 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v2/admin/telemetry/incident-revisions", wrapper.ListIncidentRevisions)
 	router.GET(options.BaseURL+"/api/v2/admin/telemetry/data-loss", wrapper.ListTelemetryDataLoss)
 	router.GET(options.BaseURL+"/api/v2/admin/telemetry/alerts", wrapper.ListTelemetryAlerts)
+	router.POST(options.BaseURL+"/api/v2/bot/telegram/webhook", wrapper.TelegramBotWebhook)
+	router.GET(options.BaseURL+"/api/v2/admin/bot/settings", wrapper.GetBotSettings)
+	router.PATCH(options.BaseURL+"/api/v2/admin/bot/settings", wrapper.UpdateBotSettings)
+	router.POST(options.BaseURL+"/api/v2/admin/bot/test", wrapper.TestBot)
+	router.GET(options.BaseURL+"/api/v2/admin/bot/chats", wrapper.ListBotChats)
+	router.DELETE(options.BaseURL+"/api/v2/admin/bot/chats/:id", wrapper.DeleteBotChat)
+	router.GET(options.BaseURL+"/api/v2/admin/bot/chats/:id", wrapper.GetBotChat)
+	router.PATCH(options.BaseURL+"/api/v2/admin/bot/chats/:id", wrapper.UpdateBotChat)
+	router.GET(options.BaseURL+"/api/v2/admin/bot/bind-codes", wrapper.ListBotBindCodes)
+	router.POST(options.BaseURL+"/api/v2/admin/bot/bind-codes", wrapper.CreateBotBindCode)
+	router.DELETE(options.BaseURL+"/api/v2/admin/bot/bind-codes/:id", wrapper.DeleteBotBindCode)
+	router.GET(options.BaseURL+"/api/v2/admin/bot/reports", wrapper.ListBotReports)
+	router.POST(options.BaseURL+"/api/v2/admin/bot/reports", wrapper.CreateBotReport)
+	router.DELETE(options.BaseURL+"/api/v2/admin/bot/reports/:id", wrapper.DeleteBotReport)
+	router.GET(options.BaseURL+"/api/v2/admin/bot/reports/:id", wrapper.GetBotReport)
+	router.PATCH(options.BaseURL+"/api/v2/admin/bot/reports/:id", wrapper.UpdateBotReport)
+	router.POST(options.BaseURL+"/api/v2/admin/bot/reports/:id/run", wrapper.RunBotReport)
 }

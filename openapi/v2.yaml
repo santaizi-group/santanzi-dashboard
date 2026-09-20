@@ -29,6 +29,8 @@ tags:
   description: Collector、Observer 和可靠性
 - name: Probes
   description: 探测型从端主动探测结果
+- name: Bot
+  description: Telegram 机器人
 security:
 - cookieAuth: []
 - bearerAuth: []
@@ -1961,6 +1963,300 @@ paths:
           $ref: '#/components/responses/TelemetryAlertListResponse'
         default:
           $ref: '#/components/responses/Problem'
+  /api/v2/bot/telegram/webhook:
+    post:
+      tags:
+      - Bot
+      summary: Telegram Webhook 入口
+      description: 仅在 `bot.mode=webhook` 时有效。由 Telegram 调用，使用 `X-Telegram-Bot-Api-Secret-Token` 校验，不走管理会话 CSRF。
+      operationId: telegramBotWebhook
+      security: []
+      responses:
+        '200':
+          description: Accepted
+        '404':
+          description: Bot 未启用或未处于 webhook 模式
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v2/admin/bot/settings:
+    get:
+      tags:
+      - Bot
+      summary: 读取 Telegram Bot 接入配置
+      description: 不回传 Token 原文，只返回 `token_set` 与末 4 位。
+      operationId: getBotSettings
+      x-ui-route: /admin/bot
+      responses:
+        '200':
+          $ref: '#/components/responses/BotSettingsResponse'
+        default:
+          $ref: '#/components/responses/Problem'
+    patch:
+      tags:
+      - Bot
+      summary: 更新 Telegram Bot 接入配置
+      operationId: updateBotSettings
+      x-ui-route: /admin/bot
+      security:
+      - cookieAuth: []
+        csrfHeader: []
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        $ref: '#/components/requestBodies/BotSettingsWrite'
+      responses:
+        '200':
+          $ref: '#/components/responses/BotSettingsResponse'
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v2/admin/bot/test:
+    post:
+      tags:
+      - Bot
+      summary: 测试 Bot Token（getMe）
+      operationId: testBot
+      x-ui-route: /admin/bot
+      security:
+      - cookieAuth: []
+        csrfHeader: []
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '200':
+          $ref: '#/components/responses/BotTestResponse'
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v2/admin/bot/chats:
+    get:
+      tags:
+      - Bot
+      summary: 授权会话列表
+      operationId: listBotChats
+      x-ui-route: /admin/bot
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Search'
+      - $ref: '#/components/parameters/Sort'
+      - $ref: '#/components/parameters/Order'
+      responses:
+        '200':
+          $ref: '#/components/responses/BotChatListResponse'
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v2/admin/bot/chats/{id}:
+    parameters:
+    - $ref: '#/components/parameters/Id'
+    get:
+      tags:
+      - Bot
+      summary: 授权会话详情
+      operationId: getBotChat
+      x-ui-route: /admin/bot
+      responses:
+        '200':
+          $ref: '#/components/responses/BotChatResponse'
+        default:
+          $ref: '#/components/responses/Problem'
+    patch:
+      tags:
+      - Bot
+      summary: 更新授权会话
+      operationId: updateBotChat
+      x-ui-route: /admin/bot
+      security:
+      - cookieAuth: []
+        csrfHeader: []
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        $ref: '#/components/requestBodies/BotChatWrite'
+      responses:
+        '200':
+          $ref: '#/components/responses/BotChatResponse'
+        default:
+          $ref: '#/components/responses/Problem'
+    delete:
+      tags:
+      - Bot
+      summary: 撤销授权会话
+      operationId: deleteBotChat
+      x-ui-route: /admin/bot
+      security:
+      - cookieAuth: []
+        csrfHeader: []
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204':
+          description: Deleted
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v2/admin/bot/bind-codes:
+    get:
+      tags:
+      - Bot
+      summary: 绑定码列表
+      operationId: listBotBindCodes
+      x-ui-route: /admin/bot
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          $ref: '#/components/responses/BotBindCodeListResponse'
+        default:
+          $ref: '#/components/responses/Problem'
+    post:
+      tags:
+      - Bot
+      summary: 生成一次性绑定码
+      operationId: createBotBindCode
+      x-ui-route: /admin/bot
+      security:
+      - cookieAuth: []
+        csrfHeader: []
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        $ref: '#/components/requestBodies/BotBindCodeWrite'
+      responses:
+        '201':
+          $ref: '#/components/responses/BotBindCodeResponse'
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v2/admin/bot/bind-codes/{id}:
+    parameters:
+    - $ref: '#/components/parameters/Id'
+    delete:
+      tags:
+      - Bot
+      summary: 删除绑定码
+      operationId: deleteBotBindCode
+      x-ui-route: /admin/bot
+      security:
+      - cookieAuth: []
+        csrfHeader: []
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204':
+          description: Deleted
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v2/admin/bot/reports:
+    get:
+      tags:
+      - Bot
+      summary: 周期报告列表
+      operationId: listBotReports
+      x-ui-route: /admin/bot
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Search'
+      - $ref: '#/components/parameters/Sort'
+      - $ref: '#/components/parameters/Order'
+      responses:
+        '200':
+          $ref: '#/components/responses/BotReportListResponse'
+        default:
+          $ref: '#/components/responses/Problem'
+    post:
+      tags:
+      - Bot
+      summary: 创建周期报告
+      operationId: createBotReport
+      x-ui-route: /admin/bot
+      security:
+      - cookieAuth: []
+        csrfHeader: []
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        $ref: '#/components/requestBodies/BotReportWrite'
+      responses:
+        '201':
+          $ref: '#/components/responses/BotReportResponse'
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v2/admin/bot/reports/{id}:
+    parameters:
+    - $ref: '#/components/parameters/Id'
+    get:
+      tags:
+      - Bot
+      summary: 周期报告详情
+      operationId: getBotReport
+      x-ui-route: /admin/bot
+      responses:
+        '200':
+          $ref: '#/components/responses/BotReportResponse'
+        default:
+          $ref: '#/components/responses/Problem'
+    patch:
+      tags:
+      - Bot
+      summary: 更新周期报告
+      operationId: updateBotReport
+      x-ui-route: /admin/bot
+      security:
+      - cookieAuth: []
+        csrfHeader: []
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        $ref: '#/components/requestBodies/BotReportWrite'
+      responses:
+        '200':
+          $ref: '#/components/responses/BotReportResponse'
+        default:
+          $ref: '#/components/responses/Problem'
+    delete:
+      tags:
+      - Bot
+      summary: 删除周期报告
+      operationId: deleteBotReport
+      x-ui-route: /admin/bot
+      security:
+      - cookieAuth: []
+        csrfHeader: []
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204':
+          description: Deleted
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v2/admin/bot/reports/{id}/run:
+    parameters:
+    - $ref: '#/components/parameters/Id'
+    post:
+      tags:
+      - Bot
+      summary: 立即发送周期报告
+      operationId: runBotReport
+      x-ui-route: /admin/bot
+      security:
+      - cookieAuth: []
+        csrfHeader: []
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '202':
+          $ref: '#/components/responses/BotReportResponse'
+        default:
+          $ref: '#/components/responses/Problem'
 components:
   securitySchemes:
     cookieAuth:
@@ -3235,6 +3531,336 @@ components:
           updated_at:
             type: string
             format: date-time
+    BotRole:
+      type: string
+      enum:
+      - blocked
+      - viewer
+      - operator
+      - admin
+    BotSettings:
+      type: object
+      required:
+      - enabled
+      - provider
+      - mode
+      - charts
+      - rate_per_minute
+      - token_set
+      - webhook_secret_set
+      properties:
+        enabled:
+          type: boolean
+        provider:
+          type: string
+        mode:
+          type: string
+          enum:
+          - polling
+          - webhook
+        api_endpoint:
+          type: string
+        webhook_base_url:
+          type: string
+        charts:
+          type: boolean
+        language:
+          type: string
+        rate_per_minute:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 60
+        token_set:
+          type: boolean
+        token_suffix:
+          type: string
+        webhook_secret_set:
+          type: boolean
+    BotSettingsWrite:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        provider:
+          type: string
+        token:
+          type: string
+          format: password
+        api_endpoint:
+          type: string
+        mode:
+          type: string
+          enum:
+          - polling
+          - webhook
+        webhook_base_url:
+          type: string
+        webhook_secret:
+          type: string
+          format: password
+        charts:
+          type: boolean
+        language:
+          type: string
+        rate_per_minute:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 60
+    BotTest:
+      type: object
+      required:
+      - ok
+      properties:
+        ok:
+          type: boolean
+        username:
+          type: string
+    BotChat:
+      type: object
+      required:
+      - id
+      - chat_id
+      - role
+      - enabled
+      properties:
+        id:
+          type: integer
+          format: int64
+        chat_id:
+          type: integer
+          format: int64
+        kind:
+          type: string
+        title:
+          type: string
+        role:
+          $ref: '#/components/schemas/BotRole'
+        allowed_user_ids:
+          type: array
+          items:
+            type: integer
+            format: int64
+        subscribe_tags:
+          type: array
+          items:
+            type: string
+        note:
+          type: string
+        bound_by:
+          type: integer
+          format: int64
+        last_seen_at:
+          type: string
+          format: date-time
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    BotChatWrite:
+      type: object
+      properties:
+        role:
+          $ref: '#/components/schemas/BotRole'
+        allowed_user_ids:
+          type: array
+          items:
+            type: integer
+            format: int64
+        subscribe_tags:
+          type: array
+          items:
+            type: string
+        note:
+          type: string
+        enabled:
+          type: boolean
+    BotBindCode:
+      type: object
+      required:
+      - id
+      - code
+      - role
+      - expires_at
+      properties:
+        id:
+          type: integer
+          format: int64
+        code:
+          type: string
+        role:
+          $ref: '#/components/schemas/BotRole'
+        expires_at:
+          type: string
+          format: date-time
+        used_by_chat_id:
+          type: integer
+          format: int64
+        used_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    BotBindCodeWrite:
+      type: object
+      properties:
+        role:
+          $ref: '#/components/schemas/BotRole'
+        ttl_seconds:
+          type: integer
+          format: int64
+          minimum: 60
+          maximum: 86400
+    BotReport:
+      type: object
+      required:
+      - id
+      - name
+      - period
+      - enabled
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        chat_ids:
+          type: array
+          items:
+            type: integer
+            format: int64
+        period:
+          type: string
+          enum:
+          - daily
+          - weekly
+          - monthly
+        hour_local:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 23
+        minute:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 59
+        weekday:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 6
+        day_of_month:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 31
+        sections:
+          type: array
+          items:
+            type: string
+            enum:
+            - status
+            - servers
+            - traffic
+            - uptime
+            - probes
+            - alerts
+        cover:
+          type: string
+          enum:
+          - all
+          - include
+          - exclude
+        ignore_ids:
+          type: array
+          items:
+            type: integer
+            format: int64
+        with_charts:
+          type: boolean
+        enabled:
+          type: boolean
+        last_period_key:
+          type: string
+        last_run_at:
+          type: string
+          format: date-time
+        last_status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    BotReportWrite:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        chat_ids:
+          type: array
+          items:
+            type: integer
+            format: int64
+        period:
+          type: string
+          enum:
+          - daily
+          - weekly
+          - monthly
+        hour_local:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 23
+        minute:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 59
+        weekday:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 6
+        day_of_month:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 31
+        sections:
+          type: array
+          items:
+            type: string
+        cover:
+          type: string
+          enum:
+          - all
+          - include
+          - exclude
+        ignore_ids:
+          type: array
+          items:
+            type: integer
+            format: int64
+        with_charts:
+          type: boolean
+        enabled:
+          type: boolean
     TrafficPolicyWrite:
       type: object
       required:
@@ -5034,6 +5660,30 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/NATTunnelWrite'
+    BotSettingsWrite:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BotSettingsWrite'
+    BotChatWrite:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BotChatWrite'
+    BotBindCodeWrite:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BotBindCodeWrite'
+    BotReportWrite:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BotReportWrite'
     TrafficPolicyWrite:
       required: true
       content:
@@ -5497,6 +6147,109 @@ components:
                 type: array
                 items:
                   $ref: '#/components/schemas/NATTunnel'
+              meta:
+                $ref: '#/components/schemas/Meta'
+    BotSettingsResponse:
+      description: Telegram Bot settings
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+            - data
+            properties:
+              data:
+                $ref: '#/components/schemas/BotSettings'
+    BotTestResponse:
+      description: Telegram Bot token test
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+            - data
+            properties:
+              data:
+                $ref: '#/components/schemas/BotTest'
+    BotChatResponse:
+      description: Telegram Bot chat
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+            - data
+            properties:
+              data:
+                $ref: '#/components/schemas/BotChat'
+    BotChatListResponse:
+      description: Telegram Bot chat list
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+            - data
+            - meta
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BotChat'
+              meta:
+                $ref: '#/components/schemas/Meta'
+    BotBindCodeResponse:
+      description: Telegram Bot bind code
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+            - data
+            properties:
+              data:
+                $ref: '#/components/schemas/BotBindCode'
+    BotBindCodeListResponse:
+      description: Telegram Bot bind code list
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+            - data
+            - meta
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BotBindCode'
+              meta:
+                $ref: '#/components/schemas/Meta'
+    BotReportResponse:
+      description: Telegram Bot report
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+            - data
+            properties:
+              data:
+                $ref: '#/components/schemas/BotReport'
+    BotReportListResponse:
+      description: Telegram Bot report list
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+            - data
+            - meta
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BotReport'
               meta:
                 $ref: '#/components/schemas/Meta'
     TrafficPolicyResponse:
