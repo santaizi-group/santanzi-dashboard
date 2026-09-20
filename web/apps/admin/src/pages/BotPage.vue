@@ -106,7 +106,7 @@ async function loadReports() {
   finally { reportsLoading.value = false }
 }
 
-async function saveSettings() {
+async function persistSettings(quiet = false) {
   saving.value = true
   try {
     settings.rate_per_minute = clampNumber(settings.rate_per_minute, 1, 60, 20)
@@ -119,16 +119,25 @@ async function saveSettings() {
     if (settings.webhook_secret.trim()) payload.webhook_secret = settings.webhook_secret.trim()
     const data = await updateBotSettings(payload)
     Object.assign(settings, data, { token: '', webhook_secret: '' })
-    ElMessage.success(t('saveSuccess'))
-  } catch (error) { notifyAPIError(error, t as never, te) }
-  finally { saving.value = false }
+    if (!quiet) ElMessage.success(t('saveSuccess'))
+    return true
+  } catch (error) {
+    notifyAPIError(error, t as never, te)
+    return false
+  } finally { saving.value = false }
+}
+
+async function saveSettings() {
+  await persistSettings()
 }
 
 async function runTest() {
   testing.value = true
   try {
+    if (!await persistSettings(true)) return
     const result = await testBot()
     ElMessage.success(t('botTestOk', { name: result.username || 'bot' }))
+    if (!settings.enabled) ElMessage.warning(t('botTestNeedEnable'))
   } catch (error) { notifyAPIError(error, t as never, te) }
   finally { testing.value = false }
 }
@@ -230,7 +239,9 @@ onMounted(() => { void loadSettings(); void loadChats(); void loadCodes(); void 
     </section>
 
     <section class="surface table-card">
-      <div class="settings-heading"><i class="ri-chat-1-line"></i><div><h2>{{ t('botChats') }}</h2></div></div>
+      <div class="table-card-lead">
+        <div class="settings-heading"><i class="ri-chat-1-line"></i><div><h2>{{ t('botChats') }}</h2></div></div>
+      </div>
       <div class="toolbar">
         <el-input v-model="chatQuery.q" class="search-input" clearable :placeholder="t('search')" @keyup.enter="chatQuery.page=1;loadChats()"><template #prefix><i class="ri-search-line"></i></template></el-input>
         <el-button @click="chatQuery.page=1;loadChats()"><i class="ri-search-line"></i>{{ t('submitSearch') }}</el-button>
@@ -291,8 +302,10 @@ onMounted(() => { void loadSettings(); void loadChats(); void loadCodes(); void 
     </section>
 
     <section class="surface table-card">
-      <div class="settings-heading"><i class="ri-key-2-line"></i><div><h2>{{ t('botBindCodes') }}</h2></div></div>
-      <el-alert type="warning" :closable="false" show-icon :title="t('botGroupRoleWarning')" style="margin-bottom: 16px" />
+      <div class="table-card-lead">
+        <div class="settings-heading"><i class="ri-key-2-line"></i><div><h2>{{ t('botBindCodes') }}</h2></div></div>
+        <el-alert type="warning" :closable="false" show-icon :title="t('botGroupRoleWarning')" />
+      </div>
       <div class="toolbar">
         <el-select v-model="bindForm.role" style="width:140px">
           <el-option :label="t('botRoleViewer')" value="viewer" />
@@ -339,10 +352,12 @@ onMounted(() => { void loadSettings(); void loadChats(); void loadCodes(); void 
     </section>
 
     <section class="surface table-card">
-      <div class="settings-heading">
-        <i class="ri-calendar-schedule-line"></i>
-        <div><h2>{{ t('botReports') }}</h2></div>
-        <el-button type="primary" @click="openReport()"><i class="ri-add-line"></i>{{ t('createBotReport') }}</el-button>
+      <div class="table-card-lead">
+        <div class="settings-heading">
+          <i class="ri-calendar-schedule-line"></i>
+          <div><h2>{{ t('botReports') }}</h2></div>
+          <el-button type="primary" @click="openReport()"><i class="ri-add-line"></i>{{ t('createBotReport') }}</el-button>
+        </div>
       </div>
       <div class="toolbar">
         <el-input v-model="reportQuery.q" class="search-input" clearable :placeholder="t('search')" @keyup.enter="reportQuery.page=1;loadReports()"><template #prefix><i class="ri-search-line"></i></template></el-input>
@@ -409,5 +424,8 @@ onMounted(() => { void loadSettings(); void loadChats(); void loadCodes(); void 
 </template>
 
 <style scoped>
-.bind-code-result { margin: 0 0 12px; font-size: 13px; }
+.bind-code-result { margin: 12px 16px; font-size: 13px; }
+@media (max-width: 860px) {
+  .bind-code-result { margin-left: 0; margin-right: 0; }
+}
 </style>

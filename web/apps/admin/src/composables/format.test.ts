@@ -3,7 +3,8 @@ import { formatAdminValue, formatAPIError, formatBytes, formatClockTime, formatD
 
 const values: Record<string, string> = {
   yes: '是', no: '否', healthy: '健康', loadFailed: '加载失败', requestFailedWithCode: '请求失败（错误码：x）',
-  'errors.authentication_required': '登录已过期，请重新登录', connectivity_degraded: '连通性降级',
+  'errors.authentication_required': '登录已过期，请重新登录', 'errors.bot_test_failed': 'Token 测试失败',
+  connectivity_degraded: '连通性降级',
 }
 const t = (key: string) => values[key] || key
 const te = (key: string) => key in values
@@ -33,5 +34,11 @@ describe('localized value formatting', () => {
 
   it('uses stable problem codes for localized API errors', () => {
     expect(formatAPIError({ code: 'authentication_required' }, t, te)).toBe('登录已过期，请重新登录')
+  })
+
+  it('surfaces problem detail instead of opaque numeric codes', () => {
+    expect(formatAPIError({ code: 'bot_test_failed', message: '尚未保存 Token。' }, t, te)).toBe('Token 测试失败：尚未保存 Token。')
+    expect(formatAPIError({ code: '10', message: '无法连接 Telegram Bot API。' }, t, te)).toBe('无法连接 Telegram Bot API。')
+    expect(formatAPIError({ code: '10' }, t, te)).toBe('加载失败')
   })
 })

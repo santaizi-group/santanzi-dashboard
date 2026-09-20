@@ -128,7 +128,24 @@ func v2PatchBotSettings(c *gin.Context) {
 
 func v2TestBot(c *gin.Context) {
 	conf := singleton.Conf.Bot
-	name, err := botservice.TestToken(c.Request.Context(), conf.Token, conf.APIEndpoint)
+	token, endpoint := conf.Token, conf.APIEndpoint
+	if c.Request.ContentLength > 0 {
+		var body struct {
+			Token       *string `json:"token"`
+			APIEndpoint *string `json:"api_endpoint"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			writeV2Problem(c, 400, "bot_test_failed", err.Error())
+			return
+		}
+		if body.Token != nil && strings.TrimSpace(*body.Token) != "" {
+			token = strings.TrimSpace(*body.Token)
+		}
+		if body.APIEndpoint != nil {
+			endpoint = strings.TrimSpace(*body.APIEndpoint)
+		}
+	}
+	name, err := botservice.TestToken(c.Request.Context(), token, endpoint)
 	if err != nil {
 		writeV2Problem(c, 400, "bot_test_failed", err.Error())
 		return

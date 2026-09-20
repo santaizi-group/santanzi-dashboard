@@ -9,17 +9,17 @@
 ## 接入
 
 1. 向 [@BotFather](https://t.me/BotFather) 申请 Token。
-2. 在接入配置填写 Token，默认 **长轮询**（自托管不需要公网入口）。
-3. 可选打开 **允许附带图表**。保存后进程热加载，不必重启。
-4. 点 **测试 Token** 调用 `getMe`。
+2. 打开 **启用**，填写 Token，默认 **长轮询**。国内访问不通官方 API 时，在 **Bot API 地址** 填可用的反代根地址（空则 `https://api.telegram.org`）；也可给面板进程设 `HTTPS_PROXY`。
+3. 点 **测试 Token**（会先保存当前表单）。成功且已启用后进程才开始收消息；失败时 Bot 不会应答任何私聊。
+4. 私聊先点 **Start**，再发 `/bind <绑定码>`。绑定码无效也会回执；未点 Start 时 Telegram 不会把消息交给 Bot。
 
-Webhook 模式填公网根地址，面板会登记 `{base}/api/v2/bot/telegram/webhook`，并用 `X-Telegram-Bot-Api-Secret-Token` 校验；该路径不走管理会话 CSRF。密钥留空时后台生成。自建 Bot API 填 `bot.api_endpoint`。
+Webhook 模式填公网根地址，面板会登记 `{base}/api/v2/bot/telegram/webhook`，并用 `X-Telegram-Bot-Api-Secret-Token` 校验；该路径不走管理会话 CSRF。密钥留空时后台生成。
 
 Admin API **不回传 Token 原文**，只回 `token_set` 与末 4 位。yaml 保存权限 `0600`。
 
 ## 授权
 
-未授权会话一律静默忽略，只处理 `/start <code>` 与 `/bind <code>`，避免把 Bot 当成可探测面。
+未授权会话除 `/start`、`/bind` 外一律静默忽略。这两条命令无论绑定成败都会回执。
 
 1. 在绑定码区选择角色与有效期（默认 10 分钟），生成一次性码。
 2. 私聊或群里发送 `/bind <code>`。

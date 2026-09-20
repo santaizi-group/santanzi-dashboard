@@ -732,6 +732,19 @@ html.dark .topology-globe__canvas { filter: none; }
   height: var(--control-height);
 }
 .page-stack { display: grid; gap: 18px; }
+.table-card > .table-card-lead {
+  padding: 16px 16px 0;
+}
+.table-card > .table-card-lead > .settings-heading {
+  margin-bottom: 12px;
+}
+.table-card > .table-card-lead > .settings-heading:last-child {
+  margin-bottom: 0;
+}
+.table-card > .table-card-lead > .el-alert {
+  width: auto;
+  margin: 0 0 16px;
+}
 .table-card-title {
   margin: 0;
   display: inline-flex;
@@ -1845,7 +1858,8 @@ html.dark .topology-globe__canvas { filter: none; }
     border-radius: 0;
   }
   .table-card .toolbar,
-  .table-card .pagination {
+  .table-card .pagination,
+  .table-card > .table-card-lead {
     padding-left: 0;
     padding-right: 0;
   }

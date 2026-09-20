@@ -37,7 +37,7 @@ func IssueBindCode(role uint8, ttl time.Duration, createdBy string) (*model.BotB
 
 func ConsumeBindCode(code string, chat *model.BotChat) (*model.BotBindCode, error) {
 	code = strings.ToUpper(strings.TrimSpace(code))
-	if code == "" || chat == nil {
+	if code == "" || chat == nil || singleton.DB == nil {
 		return nil, errBindInvalid
 	}
 	var row model.BotBindCode

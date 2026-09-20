@@ -91,28 +91,48 @@ export interface ExtractedAPIError {
   message?: string
 }
 
+function isOpaqueErrorCode(code: string) {
+  return !code || /^\d+$/.test(code) || /^ERR_/.test(code) || /^(ECONN|ETIMEDOUT|EPIPE|ENOTFOUND)/.test(code)
+}
+
 export function extractAPIError(error: unknown): ExtractedAPIError {
   if (typeof error !== 'object' || error === null) return { code: '' }
   const record = error as {
     code?: unknown
+    error_code?: unknown
     status?: unknown
     traceId?: unknown
     fields?: unknown
     message?: unknown
+    detail?: unknown
   }
-  const code = record.code != null ? String(record.code) : ''
+  let code = record.code != null && record.code !== '' ? String(record.code) : ''
+  if (!code && record.error_code != null && record.error_code !== '') code = String(record.error_code)
   const status = typeof record.status === 'number' ? record.status : undefined
   const traceId = record.traceId != null ? String(record.traceId) : undefined
   const fields = record.fields && typeof record.fields === 'object'
     ? record.fields as Record<string, string[]>
     : undefined
   const message = record.message != null ? String(record.message) : undefined
-  return { code, status, traceId, fields, detail: message, message }
+  const detail = record.detail != null ? String(record.detail) : message
+  return { code, status, traceId, fields, detail, message }
+}
+
+function truncateErrorDetail(value: string, max = 180) {
+  const text = value.trim()
+  if (text.length <= max) return text
+  return `${text.slice(0, max - 1)}…`
 }
 
 export function formatAPIError(error: unknown, t: Translate, te: (key: string) => boolean) {
-  const { code } = extractAPIError(error)
+  const { code, detail } = extractAPIError(error)
   const key = `errors.${code}`
-  if (code && te(key)) return t(key)
-  return code ? t('requestFailedWithCode', { code }) : t('loadFailed')
+  const extra = detail ? truncateErrorDetail(detail) : ''
+  if (code && te(key)) {
+    const localized = t(key)
+    if (extra && extra !== localized) return `${localized}：${extra}`
+    return localized
+  }
+  if (extra) return extra
+  return code && !isOpaqueErrorCode(code) ? t('requestFailedWithCode', { code }) : t('loadFailed')
 }

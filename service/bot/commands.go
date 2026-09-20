@@ -78,6 +78,7 @@ func (h *Hub) cmdStart(ctx context.Context, chatID int64, arg string) {
 		h.Reply(chatID, "已绑定。发 /help 查看命令。")
 		return
 	}
+	h.Reply(chatID, "在管理后台生成绑定码后，发送 /bind <绑定码>。")
 }
 
 func (h *Hub) cmdBind(ctx context.Context, chatID int64, arg string) {
@@ -86,12 +87,14 @@ func (h *Hub) cmdBind(ctx context.Context, chatID int64, arg string) {
 		return
 	}
 	chat.ChatID = chatID
+	if strings.TrimSpace(arg) == "" {
+		h.Reply(chatID, "用法：/bind <绑定码> 或 /start <绑定码>")
+		return
+	}
 	_, err := ConsumeBindCode(arg, chat)
 	if err != nil {
 		h.audit(ctx, "bind", arg, "denied")
-		if rec := h.authz.Lookup(chatID); rec != nil && rec.IsEnabled() {
-			h.Reply(chatID, "绑定码无效或已过期。")
-		}
+		h.Reply(chatID, "绑定码无效或已过期。")
 		return
 	}
 	h.authz.Upsert(chat)

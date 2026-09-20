@@ -15,6 +15,10 @@ describe('admin translations', () => {
     }
   })
 
+  it('resolves nested API error keys', () => {
+    expect(messages['zh-CN'].errors.bot_test_failed).toBe('Token 测试失败')
+  })
+
   it('does not leak Chinese fallback text into English or Spanish', () => {
     for (const locale of ['en-US', 'es-ES'] as const) {
       expect(strings(messages[locale]).filter(value => /[\u3400-\u9fff]/u.test(value))).toEqual([])

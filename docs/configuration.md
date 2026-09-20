@@ -129,7 +129,7 @@ SANTAIZI_GEOIP_DB=/var/lib/santaizi-dashboard/ipinfo_lite.mmdb
 | `bot.enabled` | `false` | 是否启动 |
 | `bot.provider` | `telegram` | 当前只支持 Telegram |
 | `bot.token` | `""` | BotFather Token |
-| `bot.api_endpoint` | `""` | 自建 Bot API 根地址，空则官方 |
+| `bot.api_endpoint` | `""` | Bot API 根地址；空则官方 `https://api.telegram.org`。官方不通时可填反代根地址 |
 | `bot.mode` | `polling` | `polling` 长轮询；`webhook` 需公网 URL |
 | `bot.webhook_base_url` | `""` | webhook 模式下的公网根，实际路径为 `{base}/api/v2/bot/telegram/webhook` |
 | `bot.webhook_secret` | `""` | `X-Telegram-Bot-Api-Secret-Token`；webhook 且为空时后台会生成 |

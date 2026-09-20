@@ -71,7 +71,7 @@ func (h *Hub) Reload() {
 		tgbot.WithMiddlewares(h.authMiddleware),
 		tgbot.WithDefaultHandler(h.onUpdate),
 		tgbot.WithHTTPClient(25*time.Second, utils.HttpClient),
-		tgbot.WithCheckInitTimeout(10 * time.Second),
+		tgbot.WithCheckInitTimeout(25 * time.Second),
 	}
 	if endpoint := strings.TrimSpace(conf.APIEndpoint); endpoint != "" {
 		opts = append(opts, tgbot.WithServerURL(endpoint))
@@ -81,7 +81,7 @@ func (h *Hub) Reload() {
 	}
 	client, err := tgbot.New(conf.Token, opts...)
 	if err != nil {
-		log.Println("SANTAIZI>> bot init:", err)
+		log.Println("SANTAIZI>> bot init:", classifyBotAPIError(err))
 		cancel()
 		h.cancel = nil
 		return
@@ -156,19 +156,19 @@ func (h *Hub) Authz() *Authz { return h.authz }
 func TestToken(ctx context.Context, token, endpoint string) (string, error) {
 	token = strings.TrimSpace(token)
 	if token == "" {
-		return "", fmt.Errorf("token 为空")
+		return "", classifyBotAPIError(fmt.Errorf("token 为空"))
 	}
-	opts := []tgbot.Option{tgbot.WithHTTPClient(15*time.Second, utils.HttpClient), tgbot.WithCheckInitTimeout(10 * time.Second)}
+	opts := []tgbot.Option{tgbot.WithHTTPClient(25*time.Second, utils.HttpClient), tgbot.WithCheckInitTimeout(25 * time.Second)}
 	if strings.TrimSpace(endpoint) != "" {
 		opts = append(opts, tgbot.WithServerURL(endpoint))
 	}
 	client, err := tgbot.New(token, opts...)
 	if err != nil {
-		return "", err
+		return "", classifyBotAPIError(err)
 	}
 	me, err := client.GetMe(ctx)
 	if err != nil {
-		return "", err
+		return "", classifyBotAPIError(err)
 	}
 	if me.Username != "" {
 		return me.Username, nil
@@ -250,6 +250,8 @@ func snapshotChart(snap report.Snapshot) ([]byte, error) {
 
 func defaultCommands() []models.BotCommand {
 	return []models.BotCommand{
+		{Command: "start", Description: "开始绑定"},
+		{Command: "bind", Description: "绑定授权码"},
 		{Command: "help", Description: "命令说明"},
 		{Command: "status", Description: "面板总览"},
 		{Command: "servers", Description: "主机列表"},
