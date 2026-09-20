@@ -30,7 +30,9 @@ func (h *Hub) onUpdate(ctx context.Context, b *tgbot.Bot, update *models.Update)
 	case "bind":
 		h.cmdBind(ctx, update.Message.Chat.ID, arg)
 	case "help":
-		h.cmdHelp(ctx)
+		h.cmdHelp(ctx, arg)
+	case "menu":
+		h.cmdMenu(ctx)
 	case "whoami":
 		h.cmdWhoami(ctx)
 	case "status":
@@ -39,14 +41,46 @@ func (h *Hub) onUpdate(ctx context.Context, b *tgbot.Bot, update *models.Update)
 		h.cmdServers(ctx, arg, 1)
 	case "server":
 		h.cmdServer(ctx, arg)
+	case "find":
+		h.runKind(ctx, "find", arg)
+	case "top":
+		h.runKind(ctx, "top", arg)
+	case "usage":
+		h.runKind(ctx, "usage", arg)
 	case "traffic":
 		h.cmdTraffic(ctx)
 	case "uptime":
-		h.cmdUptime(ctx, arg)
+		h.runKind(ctx, "uptime", arg)
+	case "groups":
+		h.runKind(ctx, "groups", arg)
+	case "chart", "cpu", "net":
+		if cmd == "cpu" {
+			arg = strings.TrimSpace(arg + " cpu")
+		}
+		if cmd == "net" {
+			arg = strings.TrimSpace(arg + " net")
+		}
+		h.runKind(ctx, "chart", arg)
+	case "cmp":
+		h.runKind(ctx, "cmp", arg)
+	case "services":
+		h.cmdServices(ctx)
+	case "rules":
+		h.cmdRules(ctx)
+	case "collectors":
+		h.cmdCollectors(ctx)
+	case "agents":
+		h.cmdAgents(ctx)
+	case "offline":
+		h.cmdOffline(ctx, arg)
 	case "probes":
 		h.cmdProbes(ctx)
 	case "alerts":
 		h.cmdAlerts(ctx)
+	case "audit":
+		h.cmdAudit(ctx)
+	case "health":
+		h.cmdHealth(ctx)
 	case "report":
 		h.cmdReport(ctx, arg)
 	case "mute":
@@ -64,6 +98,11 @@ func (h *Hub) onUpdate(ctx context.Context, b *tgbot.Bot, update *models.Update)
 	default:
 		if cmd != "" {
 			h.Reply(update.Message.Chat.ID, "未知命令。发 /help 查看。")
+			return
+		}
+		chat := chatFrom(ctx)
+		if chat != nil && chat.Kind == model.BotChatPrivate && strings.TrimSpace(update.Message.Text) != "" {
+			h.searchHosts(ctx, update.Message.Text)
 		}
 	}
 }
@@ -75,7 +114,7 @@ func (h *Hub) cmdStart(ctx context.Context, chatID int64, arg string) {
 	}
 	chat := chatFrom(ctx)
 	if chat != nil && chat.ID != 0 && chat.IsEnabled() {
-		h.Reply(chatID, "已绑定。发 /help 查看命令。")
+		h.cmdMenu(ctx)
 		return
 	}
 	h.Reply(chatID, "在管理后台生成绑定码后，发送 /bind <绑定码>。")
@@ -102,24 +141,41 @@ func (h *Hub) cmdBind(ctx context.Context, chatID int64, arg string) {
 	if chat.Kind != model.BotChatPrivate {
 		notice += "\n群内成员都将获得该角色。需要收紧时，在面板填写允许的用户 ID。"
 	}
-	h.Reply(chatID, notice+"\n发 /help 查看命令。")
+	h.Reply(chatID, notice+"\n发 /menu 打开菜单。")
 	h.audit(ctx, "bind", arg, "ok")
 }
 
-func (h *Hub) cmdHelp(ctx context.Context) {
+func (h *Hub) cmdHelp(ctx context.Context, arg string) {
 	chat := chatFrom(ctx)
 	if chat == nil {
 		return
 	}
+	if strings.TrimSpace(strings.ToLower(arg)) == "query" {
+		h.Reply(chat.ChatID, helpQueryText())
+		return
+	}
 	text := Bold("三太子监控") + "\n" +
-		"/status 总览\n/servers 主机列表\n/server &lt;id|名称&gt; 主机详情\n/traffic 流量\n/uptime [天数] 可用率\n/probes 探针观察\n/alerts 连通异常\n/report now 立即报告\n/whoami 当前权限"
+		"/menu 菜单\n/status 总览\n/servers 主机列表\n/server &lt;id|名称&gt; 主机详情\n/find 条件筛选\n/top 排行\n/usage 范围流量\n/traffic 流量配额\n/uptime 可用率\n/groups 分组\n/chart 曲线\n/cmp 对比\n/services 服务监控\n/rules 告警规则\n/collectors 从端\n/agents 探针版本\n/offline 离线记录\n/probes 探针观察\n/alerts 连通异常\n/report now 立即报告\n/whoami 当前权限\n/help query 查询语法"
 	if chat.Role >= model.BotRoleOperator {
 		text += "\n/mute &lt;主机&gt; [时长]\n/unmute &lt;主机&gt;\n/rule &lt;id&gt; on|off"
 	}
 	if chat.Role >= model.BotRoleAdmin {
-		text += "\n/chats\n/role &lt;chatID&gt; &lt;角色&gt;\n/revoke &lt;chatID&gt;"
+		text += "\n/chats\n/role &lt;chatID&gt; &lt;角色&gt;\n/revoke &lt;chatID&gt;\n/audit\n/health"
 	}
-	h.Reply(chat.ChatID, text)
+	h.respond(ctx, text, markup([]models.InlineKeyboardButton{navHome()}))
+}
+
+func helpQueryText() string {
+	return Bold("查询语法") + "\n" +
+		"字段 cpu mem disk net total uptime load tag name ver\n" +
+		"范围 today yesterday 7d 30d month 24h 2026-09-01..2026-09-20\n" +
+		"聚合 avg: max: min:　排序 sort=-cpu　分组 group=tag　环比 vs=prev\n" +
+		Code("/find cpu>80 tag=hk") + "\n" +
+		Code("/find cpu>80 7d") + "\n" +
+		Code("/top cpu 7d tag=hk") + "\n" +
+		Code("/usage month group=tag") + "\n" +
+		Code("/cmp tag=hk tag=jp 7d") + "\n" +
+		Code("/chart hk-1 cpu 24h")
 }
 
 func (h *Hub) cmdWhoami(ctx context.Context) {
@@ -128,46 +184,6 @@ func (h *Hub) cmdWhoami(ctx context.Context) {
 		return
 	}
 	h.Reply(chat.ChatID, fmt.Sprintf("会话 %s\n角色 %s", Code(fmt.Sprintf("%d", chat.ChatID)), Escape(roleLabel(chat.Role))))
-}
-
-func (h *Hub) cmdStatus(ctx context.Context) {
-	chat := chatFrom(ctx)
-	if chat == nil {
-		return
-	}
-	snap, err := report.Collect(report.Options{Sections: map[string]bool{"status": true, "probes": true}})
-	if err != nil {
-		h.Reply(chat.ChatID, "读取总览失败。")
-		return
-	}
-	h.Reply(chat.ChatID, FormatSnapshot(snap, map[string]bool{"status": true, "probes": true}))
-}
-
-func (h *Hub) cmdServers(ctx context.Context, query string, page int) {
-	chat := chatFrom(ctx)
-	if chat == nil {
-		return
-	}
-	hosts := report.FilterHosts(query)
-	text, total := FormatServerPage(hosts, page, 8)
-	var markup *models.InlineKeyboardMarkup
-	if total > 1 {
-		markup = pageKeyboard("servers", page, total, query)
-	}
-	h.ReplyMarkup(chat.ChatID, text, markup)
-}
-
-func (h *Hub) cmdServer(ctx context.Context, query string) {
-	chat := chatFrom(ctx)
-	if chat == nil {
-		return
-	}
-	hosts := report.FilterHosts(query)
-	if query == "" || len(hosts) == 0 {
-		h.Reply(chat.ChatID, "未找到主机。")
-		return
-	}
-	h.Reply(chat.ChatID, FormatHost(hosts[0]))
 }
 
 func (h *Hub) cmdTraffic(ctx context.Context) {
@@ -185,53 +201,6 @@ func (h *Hub) cmdTraffic(ctx context.Context) {
 		return
 	}
 	h.Reply(chat.ChatID, FormatSnapshot(snap, map[string]bool{"traffic": true}))
-}
-
-func (h *Hub) cmdUptime(ctx context.Context, arg string) {
-	chat := chatFrom(ctx)
-	if chat == nil {
-		return
-	}
-	days := 7
-	if n, ok := parsePositiveInt(arg); ok && n > 0 && n <= 90 {
-		days = n
-	}
-	snap, err := report.Collect(report.Options{UptimeDays: days, Sections: map[string]bool{"uptime": true}})
-	if err != nil {
-		h.Reply(chat.ChatID, "读取可用率失败。")
-		return
-	}
-	h.Reply(chat.ChatID, FormatSnapshot(snap, map[string]bool{"uptime": true}))
-}
-
-func (h *Hub) cmdProbes(ctx context.Context) {
-	chat := chatFrom(ctx)
-	if chat == nil {
-		return
-	}
-	snap, err := report.Collect(report.Options{Sections: map[string]bool{"probes": true}})
-	if err != nil {
-		h.Reply(chat.ChatID, "读取探针观察失败。")
-		return
-	}
-	h.Reply(chat.ChatID, FormatSnapshot(snap, map[string]bool{"probes": true}))
-}
-
-func (h *Hub) cmdAlerts(ctx context.Context) {
-	chat := chatFrom(ctx)
-	if chat == nil {
-		return
-	}
-	snap, err := report.Collect(report.Options{Sections: map[string]bool{"alerts": true}})
-	if err != nil {
-		h.Reply(chat.ChatID, "读取连通异常失败。")
-		return
-	}
-	if len(snap.Alerts) == 0 {
-		h.Reply(chat.ChatID, "当前无连通异常。")
-		return
-	}
-	h.Reply(chat.ChatID, FormatSnapshot(snap, map[string]bool{"alerts": true}))
 }
 
 func (h *Hub) cmdReport(ctx context.Context, arg string) {
@@ -396,7 +365,7 @@ func (h *Hub) cmdChats(ctx context.Context) {
 		}
 		b.WriteString(fmt.Sprintf("%s %s %s %s\n", Code(fmt.Sprintf("%d", row.ChatID)), Escape(title), Escape(roleLabel(row.Role)), Escape(state)))
 	}
-	h.Reply(chat.ChatID, strings.TrimRight(b.String(), "\n"))
+	h.respond(ctx, strings.TrimRight(b.String(), "\n"), markup([]models.InlineKeyboardButton{navHome()}))
 }
 
 func (h *Hub) cmdRole(ctx context.Context, arg string) {
@@ -461,40 +430,160 @@ func (h *Hub) onCallback(ctx context.Context, b *tgbot.Bot, update *models.Updat
 	if chat == nil {
 		return
 	}
-	if strings.HasPrefix(data, "x:") {
-		h.Reply(chat.ChatID, "已取消。")
-		return
-	}
-	if strings.HasPrefix(data, "p:servers:") {
-		rest := strings.TrimPrefix(data, "p:servers:")
-		pageStr, query, _ := strings.Cut(rest, ":")
-		page, _ := strconv.Atoi(pageStr)
-		h.cmdServers(ctx, query, page)
-		return
-	}
-	parts := strings.Split(data, ":")
-	if len(parts) < 3 {
-		return
-	}
-	switch parts[0] + ":" + parts[1] {
-	case "c:mute":
-		id, _ := strconv.ParseUint(parts[2], 10, 64)
+	switch {
+	case data == "x:" || strings.HasPrefix(data, "x:"):
+		h.respond(ctx, "已取消。", nil)
+	case strings.HasPrefix(data, "q:"):
+		h.onQueryCallback(ctx, data)
+	case strings.HasPrefix(data, "m:"):
+		h.onMenuCallback(ctx, data)
+	case strings.HasPrefix(data, "h:"):
+		h.showHost(ctx, parseID(strings.TrimPrefix(data, "h:")))
+	case strings.HasPrefix(data, "svc:"):
+		h.showService(ctx, parseID(strings.TrimPrefix(data, "svc:")))
+	case strings.HasPrefix(data, "of:"):
+		h.showOffline(ctx, parseID(strings.TrimPrefix(data, "of:")))
+	case strings.HasPrefix(data, "up:"):
+		h.runKind(ctx, "uptime", fmt.Sprintf("id=%s 7d", strings.TrimPrefix(data, "up:")))
+	case strings.HasPrefix(data, "u:"):
+		h.onUsageCallback(ctx, data)
+	case strings.HasPrefix(data, "ch:"):
+		h.onChartCallback(ctx, data)
+	case strings.HasPrefix(data, "cm:"):
+		h.onCmpPick(ctx, data)
+	case strings.HasPrefix(data, "c:mute:"):
+		parts := strings.Split(data, ":")
+		id := parseID(parts[2])
 		sec := int64(3600)
 		if len(parts) > 3 {
 			sec, _ = strconv.ParseInt(parts[3], 10, 64)
 		}
 		h.applyMute(ctx, id, sec, false)
-	case "c:unmute":
-		id, _ := strconv.ParseUint(parts[2], 10, 64)
-		h.applyMute(ctx, id, 0, true)
-	case "c:rule":
-		id, _ := strconv.ParseUint(parts[2], 10, 64)
+	case strings.HasPrefix(data, "c:unmute:"):
+		parts := strings.Split(data, ":")
+		h.applyMute(ctx, parseID(parts[2]), 0, true)
+	case strings.HasPrefix(data, "c:rule:"):
+		parts := strings.Split(data, ":")
 		enable := len(parts) > 3 && parts[3] == "1"
-		h.applyRule(ctx, id, enable)
-	case "m:1h":
-		id, _ := strconv.ParseUint(parts[2], 10, 64)
-		h.applyMute(ctx, id, 3600, false)
+		h.applyRule(ctx, parseID(parts[2]), enable)
+	case strings.HasPrefix(data, "m:1h:"):
+		h.applyMute(ctx, parseID(strings.TrimPrefix(data, "m:1h:")), 3600, false)
 	}
+}
+
+func (h *Hub) onMenuCallback(ctx context.Context, data string) {
+	chat := chatFrom(ctx)
+	if chat == nil {
+		return
+	}
+	target := strings.TrimPrefix(data, "m:")
+	if strings.HasPrefix(target, "1h:") {
+		h.applyMute(ctx, parseID(strings.TrimPrefix(target, "1h:")), 3600, false)
+		return
+	}
+	name, arg, _ := strings.Cut(target, ":")
+	switch name {
+	case "home":
+		h.cmdMenu(ctx)
+	case "more":
+		h.respond(ctx, Bold("三太子监控")+"\n"+Escape(roleLabel(chat.Role)), menuKeyboard(chat.Role, true))
+	case "status":
+		h.cmdStatus(ctx)
+	case "servers":
+		h.cmdServers(ctx, arg, 1)
+	case "usage":
+		h.runKind(ctx, "usage", "today")
+	case "services":
+		h.cmdServices(ctx)
+	case "top":
+		h.runKind(ctx, "top", "cpu")
+	case "groups":
+		h.runKind(ctx, "groups", "")
+	case "uptime":
+		h.runKind(ctx, "uptime", "7d")
+	case "probes":
+		h.cmdProbes(ctx)
+	case "alerts":
+		h.cmdAlerts(ctx)
+	case "rules":
+		h.cmdRules(ctx)
+	case "collectors":
+		h.cmdCollectors(ctx)
+	case "agents":
+		h.cmdAgents(ctx)
+	case "help":
+		h.cmdHelp(ctx, "")
+	case "audit":
+		h.cmdAudit(ctx)
+	case "health":
+		h.cmdHealth(ctx)
+	case "chats":
+		h.cmdChats(ctx)
+	}
+}
+
+func (h *Hub) onQueryCallback(ctx context.Context, data string) {
+	chat := chatFrom(ctx)
+	if chat == nil {
+		return
+	}
+	rest := strings.TrimPrefix(data, "q:")
+	token, overlay, _ := strings.Cut(rest, ":")
+	if h.queries == nil {
+		h.respond(ctx, "查询已过期，请重发命令。", markup([]models.InlineKeyboardButton{navHome()}))
+		return
+	}
+	q, _, ok := h.queries.Patch(token, chat.ChatID, overlay)
+	if !ok {
+		h.respond(ctx, "查询已过期，请重发命令。", markup([]models.InlineKeyboardButton{navHome()}))
+		return
+	}
+	h.renderQuery(ctx, q)
+}
+
+func (h *Hub) onUsageCallback(ctx context.Context, data string) {
+	parts := strings.Split(data, ":")
+	if len(parts) < 2 {
+		h.runKind(ctx, "usage", "today")
+		return
+	}
+	rng := parts[1]
+	arg := rng
+	if len(parts) > 2 {
+		arg = rng + " id=" + parts[2]
+	}
+	h.runKind(ctx, "usage", arg)
+}
+
+func (h *Hub) onChartCallback(ctx context.Context, data string) {
+	parts := strings.Split(data, ":")
+	if len(parts) < 2 {
+		return
+	}
+	id := parts[1]
+	metric := "cpu"
+	rng := "24h"
+	if len(parts) > 2 {
+		metric = parts[2]
+	}
+	if len(parts) > 3 {
+		rng = parts[3]
+	}
+	h.runKind(ctx, "chart", fmt.Sprintf("id=%s %s %s", id, metric, rng))
+}
+
+func (h *Hub) onCmpPick(ctx context.Context, data string) {
+	rest := strings.TrimPrefix(data, "cm:")
+	left, right, ok := strings.Cut(rest, ":")
+	if !ok || right == "" {
+		hosts := report.AllHosts()
+		if len(hosts) > 8 {
+			hosts = hosts[:8]
+		}
+		h.respond(ctx, "选择对比的另一台主机。", pickHostMarkup(hosts, "cm:"+rest))
+		return
+	}
+	h.runKind(ctx, "cmp", fmt.Sprintf("id=%s id=%s", left, right))
 }
 
 func confirmKeyboard(action string, id uint64, extra int64) *models.InlineKeyboardMarkup {
@@ -506,24 +595,6 @@ func confirmKeyboard(action string, id uint64, extra int64) *models.InlineKeyboa
 		{Text: "确认", CallbackData: ok},
 		{Text: "取消", CallbackData: "x:" + action},
 	}}}
-}
-
-func pageKeyboard(kind string, page, total int, query string) *models.InlineKeyboardMarkup {
-	query = strings.ReplaceAll(strings.TrimSpace(query), ":", " ")
-	if len(query) > 32 {
-		query = query[:32]
-	}
-	row := []models.InlineKeyboardButton{}
-	if page > 1 {
-		row = append(row, models.InlineKeyboardButton{Text: "上一页", CallbackData: fmt.Sprintf("p:%s:%d:%s", kind, page-1, query)})
-	}
-	if page < total {
-		row = append(row, models.InlineKeyboardButton{Text: "下一页", CallbackData: fmt.Sprintf("p:%s:%d:%s", kind, page+1, query)})
-	}
-	if len(row) == 0 {
-		return nil
-	}
-	return &models.InlineKeyboardMarkup{InlineKeyboard: [][]models.InlineKeyboardButton{row}}
 }
 
 func parseDurationSeconds(value string) (int64, bool) {

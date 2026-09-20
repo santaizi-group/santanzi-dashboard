@@ -11,11 +11,13 @@ import (
 )
 
 type outbound struct {
-	chatID  int64
-	text    string
-	photo   []byte
-	caption string
-	markup  *models.InlineKeyboardMarkup
+	chatID    int64
+	messageID int
+	text      string
+	photo     []byte
+	caption   string
+	markup    *models.InlineKeyboardMarkup
+	edit      bool
 }
 
 type Sender struct {
@@ -57,6 +59,15 @@ func (s *Sender) dispatch(ctx context.Context, msg outbound) {
 		return
 	}
 	var err error
+	if msg.edit && msg.messageID > 0 {
+		err = s.edit(ctx, msg)
+		if err != nil {
+			msg.edit = false
+			s.dispatch(ctx, msg)
+			return
+		}
+		return
+	}
 	if len(msg.photo) > 0 {
 		params := &tgbot.SendPhotoParams{
 			ChatID:    msg.chatID,
@@ -97,4 +108,41 @@ func (s *Sender) dispatch(ctx context.Context, msg outbound) {
 		return
 	}
 	log.Println("SANTAIZI>> bot send:", err)
+}
+
+func (s *Sender) edit(ctx context.Context, msg outbound) error {
+	if len(msg.photo) > 0 {
+		media := &models.InputMediaPhoto{
+			Media:           "attach://chart.png",
+			Caption:         msg.caption,
+			ParseMode:       models.ParseModeHTML,
+			MediaAttachment: bytes.NewReader(msg.photo),
+		}
+		params := &tgbot.EditMessageMediaParams{
+			ChatID:    msg.chatID,
+			MessageID: msg.messageID,
+			Media:     media,
+		}
+		if msg.markup != nil {
+			params.ReplyMarkup = msg.markup
+		}
+		_, err := s.client.EditMessageMedia(ctx, params)
+		return err
+	}
+	text := msg.text
+	if text == "" {
+		text = msg.caption
+	}
+	chunks := SplitChunks(text)
+	params := &tgbot.EditMessageTextParams{
+		ChatID:    msg.chatID,
+		MessageID: msg.messageID,
+		Text:      chunks[0],
+		ParseMode: models.ParseModeHTML,
+	}
+	if msg.markup != nil {
+		params.ReplyMarkup = msg.markup
+	}
+	_, err := s.client.EditMessageText(ctx, params)
+	return err
 }

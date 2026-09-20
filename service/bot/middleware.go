@@ -18,6 +18,7 @@ type ctxKey int
 const (
 	ctxChat ctxKey = iota
 	ctxUserID
+	ctxMessageID
 )
 
 type chatLimiter struct {
@@ -76,14 +77,26 @@ func (h *Hub) authMiddleware(next tgbot.HandlerFunc) tgbot.HandlerFunc {
 		}
 		need := commandMinRole(cmd)
 		if rec.Role < need {
-			h.Reply(chatID, "权限不足。")
+			if isCallback {
+				_, _ = b.AnswerCallbackQuery(ctx, &tgbot.AnswerCallbackQueryParams{
+					CallbackQueryID: update.CallbackQuery.ID, Text: "权限不足。",
+				})
+			} else {
+				h.Reply(chatID, "权限不足。")
+			}
 			return
 		}
 		limit := 20
 		if singleton.Conf != nil {
 			limit = singleton.Conf.Bot.RatePerMinute
 		}
-		if !h.limiter.Allow(chatID, limit) {
+		nav := isCallback && isNavCallback(update.CallbackQuery.Data)
+		if !nav && !h.limiter.Allow(chatID, limit) {
+			if isCallback {
+				_, _ = b.AnswerCallbackQuery(ctx, &tgbot.AnswerCallbackQueryParams{
+					CallbackQueryID: update.CallbackQuery.ID, Text: "操作过于频繁，请稍后再试。",
+				})
+			}
 			return
 		}
 		rec.LastSeenAt = time.Now()
@@ -91,7 +104,7 @@ func (h *Hub) authMiddleware(next tgbot.HandlerFunc) tgbot.HandlerFunc {
 			seen := rec.LastSeenAt
 			go singleton.DB.Model(&model.BotChat{}).Where("id = ?", rec.ID).Update("last_seen_at", seen)
 		}
-		next(context.WithValue(context.WithValue(ctx, ctxUserID, userID), ctxChat, rec), b, update)
+		next(context.WithValue(context.WithValue(context.WithValue(ctx, ctxUserID, userID), ctxChat, rec), ctxMessageID, callbackMessageID(update)), b, update)
 	}
 }
 
@@ -135,19 +148,39 @@ func chatTitle(chat models.Chat) string {
 
 func callbackCommand(data string) string {
 	switch {
-	case strings.HasPrefix(data, "c:mute"), strings.HasPrefix(data, "m:"):
+	case strings.HasPrefix(data, "c:mute"), strings.HasPrefix(data, "m:1h"):
 		return "mute"
 	case strings.HasPrefix(data, "c:unmute"):
 		return "unmute"
 	case strings.HasPrefix(data, "c:rule"):
 		return "rule"
-	case strings.HasPrefix(data, "p:servers"):
-		return "servers"
-	case strings.HasPrefix(data, "p:alerts"):
-		return "alerts"
+	case strings.HasPrefix(data, "au:"):
+		return "audit"
+	case strings.HasPrefix(data, "hl:"):
+		return "health"
 	default:
-		return "help"
+		return "status"
 	}
+}
+
+func isNavCallback(data string) bool {
+	if strings.HasPrefix(data, "c:") || strings.HasPrefix(data, "m:1h") {
+		return false
+	}
+	return true
+}
+
+func callbackMessageID(update *models.Update) int {
+	if update == nil || update.CallbackQuery == nil {
+		return 0
+	}
+	if update.CallbackQuery.Message.Message != nil {
+		return update.CallbackQuery.Message.Message.ID
+	}
+	if update.CallbackQuery.Message.InaccessibleMessage != nil {
+		return update.CallbackQuery.Message.InaccessibleMessage.MessageID
+	}
+	return 0
 }
 
 func chatFrom(ctx context.Context) *model.BotChat {
@@ -157,6 +190,11 @@ func chatFrom(ctx context.Context) *model.BotChat {
 
 func userFrom(ctx context.Context) int64 {
 	id, _ := ctx.Value(ctxUserID).(int64)
+	return id
+}
+
+func messageIDFrom(ctx context.Context) int {
+	id, _ := ctx.Value(ctxMessageID).(int)
 	return id
 }
 

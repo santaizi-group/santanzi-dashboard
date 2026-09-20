@@ -26,9 +26,13 @@ type Hub struct {
 	sender  *Sender
 	authz   *Authz
 	limiter *chatLimiter
+	queries *queryCache
 }
 
-var sharedHub = &Hub{authz: NewAuthz(), limiter: newChatLimiter()}
+var (
+	sharedHub      = &Hub{authz: NewAuthz(), limiter: newChatLimiter(), queries: newQueryCache()}
+	processStarted = time.Now()
+)
 
 func Shared() *Hub { return sharedHub }
 
@@ -142,13 +146,56 @@ func (h *Hub) ReplyMarkup(chatID int64, text string, markup *models.InlineKeyboa
 }
 
 func (h *Hub) ReplyPhoto(chatID int64, png []byte, caption string) {
+	h.ReplyPhotoMarkup(chatID, 0, png, caption, nil, false)
+}
+
+func (h *Hub) ReplyPhotoMarkup(chatID int64, messageID int, png []byte, caption string, markup *models.InlineKeyboardMarkup, edit bool) {
 	h.mu.Lock()
 	sender := h.sender
 	h.mu.Unlock()
 	if sender == nil || len(png) == 0 {
 		return
 	}
-	sender.Enqueue(outbound{chatID: chatID, photo: png, caption: caption})
+	sender.Enqueue(outbound{chatID: chatID, messageID: messageID, photo: png, caption: caption, markup: markup, edit: edit})
+}
+
+func (h *Hub) EditMarkup(chatID int64, messageID int, text string, markup *models.InlineKeyboardMarkup) {
+	h.mu.Lock()
+	sender := h.sender
+	h.mu.Unlock()
+	if sender == nil || messageID <= 0 {
+		h.ReplyMarkup(chatID, text, markup)
+		return
+	}
+	sender.Enqueue(outbound{chatID: chatID, messageID: messageID, text: text, markup: markup, edit: true})
+}
+
+func (h *Hub) respond(ctx context.Context, text string, markup *models.InlineKeyboardMarkup) {
+	chat := chatFrom(ctx)
+	if chat == nil {
+		return
+	}
+	if id := messageIDFrom(ctx); id > 0 {
+		h.EditMarkup(chat.ChatID, id, text, markup)
+		return
+	}
+	h.ReplyMarkup(chat.ChatID, text, markup)
+}
+
+func (h *Hub) respondPhoto(ctx context.Context, png []byte, caption string, markup *models.InlineKeyboardMarkup) {
+	chat := chatFrom(ctx)
+	if chat == nil || len(png) == 0 {
+		if chat != nil {
+			h.respond(ctx, caption, markup)
+		}
+		return
+	}
+	id := messageIDFrom(ctx)
+	h.ReplyPhotoMarkup(chat.ChatID, id, png, caption, markup, id > 0)
+}
+
+func (h *Hub) chartsOn() bool {
+	return singleton.Conf != nil && singleton.Conf.Bot.Charts
 }
 
 func (h *Hub) Authz() *Authz { return h.authz }
@@ -252,11 +299,23 @@ func defaultCommands() []models.BotCommand {
 	return []models.BotCommand{
 		{Command: "start", Description: "开始绑定"},
 		{Command: "bind", Description: "绑定授权码"},
+		{Command: "menu", Description: "主菜单"},
 		{Command: "help", Description: "命令说明"},
 		{Command: "status", Description: "面板总览"},
 		{Command: "servers", Description: "主机列表"},
+		{Command: "find", Description: "条件筛选"},
+		{Command: "top", Description: "排行"},
+		{Command: "usage", Description: "范围流量"},
 		{Command: "traffic", Description: "流量配额"},
 		{Command: "uptime", Description: "可用率"},
+		{Command: "groups", Description: "分组"},
+		{Command: "chart", Description: "历史曲线"},
+		{Command: "cmp", Description: "对比"},
+		{Command: "services", Description: "服务监控"},
+		{Command: "rules", Description: "告警规则"},
+		{Command: "collectors", Description: "从端"},
+		{Command: "agents", Description: "探针版本"},
+		{Command: "offline", Description: "离线记录"},
 		{Command: "probes", Description: "探针观察"},
 		{Command: "alerts", Description: "连通异常"},
 		{Command: "whoami", Description: "当前权限"},

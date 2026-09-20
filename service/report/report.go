@@ -24,17 +24,30 @@ type Options struct {
 }
 
 type HostRow struct {
-	ID      uint64
-	Name    string
-	Tag     string
-	Online  bool
-	CPU     float64
-	MemPct  float64
-	DiskPct float64
-	Load1   float64
-	NetIn   uint64
-	NetOut  uint64
-	IP      string
+	ID           uint64
+	Name         string
+	Tag          string
+	Note         string
+	PublicNote   string
+	Online       bool
+	CPU          float64
+	MemPct       float64
+	DiskPct      float64
+	Load1        float64
+	NetIn        uint64
+	NetOut       uint64
+	NetInSpeed   uint64
+	NetOutSpeed  uint64
+	Uptime       uint64
+	Platform     string
+	PlatformVer  string
+	Arch         string
+	AgentVersion string
+	MemUsed      uint64
+	MemTotal     uint64
+	DiskUsed     uint64
+	DiskTotal    uint64
+	NodeUUID     []byte
 }
 
 type TrafficRow struct {
@@ -48,11 +61,11 @@ type TrafficRow struct {
 }
 
 type UptimeRow struct {
-	ServerID    uint64
-	Name        string
-	Percent     float64
-	OfflineSec  uint64
-	LongestSec  uint64
+	ServerID   uint64
+	Name       string
+	Percent    float64
+	OfflineSec uint64
+	LongestSec uint64
 }
 
 type AlertRow struct {
@@ -63,13 +76,13 @@ type AlertRow struct {
 }
 
 type Snapshot struct {
-	GeneratedAt     time.Time
-	Period          string
-	WindowStart     time.Time
-	WindowEnd       time.Time
-	TotalServers    int
-	OnlineServers   int
-	OfflineServers  int
+	GeneratedAt      time.Time
+	Period           string
+	WindowStart      time.Time
+	WindowEnd        time.Time
+	TotalServers     int
+	OnlineServers    int
+	OfflineServers   int
 	CollectorsOnline int64
 	CollectorsTotal  int64
 	ProbesOnline     int64
@@ -135,7 +148,7 @@ func Collect(opts Options) (Snapshot, error) {
 			snap.Traffic = collectTraffic(hosts, now)
 		}
 		if want(opts.Sections, "uptime") {
-			snap.Uptime = collectUptime(hosts, windowStart, windowEnd)
+			snap.Uptime = CollectUptime(hosts, windowStart, windowEnd)
 		}
 		if want(opts.Sections, "alerts") {
 			snap.Alerts = collectAlerts(now)
@@ -152,17 +165,32 @@ func selectedHosts(cover uint8, ignore map[uint64]bool) []HostRow {
 		if server == nil || !model.ServerInBotScope(server.ID, cover, ignore) {
 			continue
 		}
-		row := HostRow{ID: server.ID, Name: server.Name, Tag: server.Tag, Online: hostOnline(server)}
-		if server.State != nil && server.Host != nil {
+		row := HostRow{
+			ID: server.ID, Name: server.Name, Tag: server.Tag, Note: server.Note,
+			PublicNote: server.PublicNote, Online: hostOnline(server),
+		}
+		if server.State != nil {
 			row.CPU = server.State.CPU
-			row.MemPct = pct(server.State.MemUsed, server.Host.MemTotal)
-			row.DiskPct = pct(server.State.DiskUsed, server.Host.DiskTotal)
 			row.Load1 = server.State.Load1
 			row.NetIn = server.State.NetInTransfer
 			row.NetOut = server.State.NetOutTransfer
+			row.NetInSpeed = server.State.NetInSpeed
+			row.NetOutSpeed = server.State.NetOutSpeed
+			row.Uptime = server.State.Uptime
+			row.MemUsed = server.State.MemUsed
+			row.DiskUsed = server.State.DiskUsed
+			if server.Host != nil {
+				row.MemPct = pct(server.State.MemUsed, server.Host.MemTotal)
+				row.DiskPct = pct(server.State.DiskUsed, server.Host.DiskTotal)
+			}
 		}
 		if server.Host != nil {
-			row.IP = singleton.IPDesensitize(server.Host.IP)
+			row.Platform = server.Host.Platform
+			row.PlatformVer = server.Host.PlatformVersion
+			row.Arch = server.Host.Arch
+			row.AgentVersion = server.Host.Version
+			row.MemTotal = server.Host.MemTotal
+			row.DiskTotal = server.Host.DiskTotal
 		}
 		out = append(out, row)
 	}
@@ -206,7 +234,7 @@ func collectTraffic(hosts []HostRow, now time.Time) []TrafficRow {
 	return out
 }
 
-func collectUptime(hosts []HostRow, start, end time.Time) []UptimeRow {
+func CollectUptime(hosts []HostRow, start, end time.Time) []UptimeRow {
 	out := make([]UptimeRow, 0, len(hosts))
 	period := end.Sub(start).Seconds()
 	if period <= 0 {
@@ -332,9 +360,55 @@ func FilterHosts(query string) []HostRow {
 	}
 	out := []HostRow{}
 	for _, host := range hosts {
-		if strings.Contains(strings.ToLower(host.Name), query) || strings.Contains(strings.ToLower(host.Tag), query) || fmt.Sprintf("%d", host.ID) == query {
+		if hostMatches(host, query) {
 			out = append(out, host)
 		}
 	}
 	return out
+}
+
+func hostMatches(host HostRow, query string) bool {
+	if fmt.Sprintf("%d", host.ID) == query {
+		return true
+	}
+	if strings.Contains(strings.ToLower(host.Name), query) || strings.Contains(strings.ToLower(host.Tag), query) {
+		return true
+	}
+	if strings.Contains(strings.ToLower(host.Note), query) || strings.Contains(strings.ToLower(host.PublicNote), query) {
+		return true
+	}
+	return false
+}
+
+func AllHosts() []HostRow {
+	return selectedHosts(model.RuleCoverAll, nil)
+}
+
+func FindServers(query string) []*model.Server {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil
+	}
+	lower := strings.ToLower(query)
+	singleton.SortedServerLock.RLock()
+	defer singleton.SortedServerLock.RUnlock()
+	var exact []*model.Server
+	var partial []*model.Server
+	for _, server := range singleton.SortedServerList {
+		if server == nil {
+			continue
+		}
+		if fmt.Sprintf("%d", server.ID) == query || strings.EqualFold(server.Name, query) {
+			exact = append(exact, server)
+			continue
+		}
+		if strings.Contains(strings.ToLower(server.Name), lower) || strings.Contains(strings.ToLower(server.Tag), lower) ||
+			strings.Contains(strings.ToLower(server.Note), lower) || strings.Contains(strings.ToLower(server.PublicNote), lower) {
+			partial = append(partial, server)
+		}
+	}
+	if len(exact) > 0 {
+		return exact
+	}
+	return partial
 }

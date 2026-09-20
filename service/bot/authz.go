@@ -71,7 +71,7 @@ func commandMinRole(cmd string) uint8 {
 		return 0
 	case "mute", "unmute", "rule":
 		return model.BotRoleOperator
-	case "chats", "role", "revoke":
+	case "chats", "role", "revoke", "audit", "health":
 		return model.BotRoleAdmin
 	default:
 		return model.BotRoleViewer

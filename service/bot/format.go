@@ -66,7 +66,7 @@ func FormatSnapshot(snap report.Snapshot, sections map[string]bool) string {
 			if i >= 10 {
 				break
 			}
-			b.WriteString(fmt.Sprintf("%s %.2f%% 离线 %s\n", Escape(row.Name), row.Percent, report.FormatDuration(row.OfflineSec)))
+			b.WriteString(fmt.Sprintf("%s %.2f%% 离线 %s 最长 %s\n", Escape(row.Name), row.Percent, report.FormatDuration(row.OfflineSec), report.FormatDuration(row.LongestSec)))
 		}
 	}
 	if wantSection(sections, "probes") {
@@ -101,45 +101,39 @@ func FormatHost(host report.HostRow) string {
 	if tag == "" {
 		tag = "default"
 	}
-	return fmt.Sprintf("%s %s\n分组 %s\n%s\nCPU %.0f%%　MEM %.0f%%　磁盘 %.0f%%\n入站 %s　出站 %s\n%s",
-		Bold(host.Name), Code(fmt.Sprintf("#%d", host.ID)),
-		Escape(tag), Escape(state),
-		host.CPU, host.MemPct, host.DiskPct,
-		report.FormatBytes(host.NetIn), report.FormatBytes(host.NetOut),
-		Escape(host.IP),
-	)
+	sys := strings.TrimSpace(host.Platform + " " + host.PlatformVer)
+	if sys == "" {
+		sys = "-"
+	}
+	ver := host.AgentVersion
+	if ver == "" {
+		ver = "-"
+	}
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("%s %s\n分组 %s　%s\n", Bold(host.Name), Code(fmt.Sprintf("#%d", host.ID)), Escape(tag), Escape(state)))
+	b.WriteString(fmt.Sprintf("CPU %.0f%%　MEM %.0f%%　磁盘 %.0f%%　负载 %.2f\n", host.CPU, host.MemPct, host.DiskPct, host.Load1))
+	b.WriteString(fmt.Sprintf("网速 ↓%s ↑%s\n", report.FormatBytes(host.NetInSpeed)+"/s", report.FormatBytes(host.NetOutSpeed)+"/s"))
+	b.WriteString(fmt.Sprintf("流量 ↓%s ↑%s\n", report.FormatBytes(host.NetIn), report.FormatBytes(host.NetOut)))
+	b.WriteString(fmt.Sprintf("系统 %s　探针 %s\n", Escape(sys), Escape(ver)))
+	if host.Uptime > 0 {
+		b.WriteString("在线 " + Escape(report.FormatDuration(host.Uptime)) + "\n")
+	}
+	return strings.TrimRight(b.String(), "\n")
 }
 
 func FormatServerPage(hosts []report.HostRow, page, size int) (string, int) {
 	if size <= 0 {
-		size = 8
+		size = 6
 	}
-	total := (len(hosts) + size - 1) / size
-	if total == 0 {
-		total = 1
-	}
-	if page < 1 {
-		page = 1
-	}
-	if page > total {
-		page = total
-	}
-	start := (page - 1) * size
-	end := start + size
-	if start > len(hosts) {
-		start = len(hosts)
-	}
-	if end > len(hosts) {
-		end = len(hosts)
-	}
+	pageHosts, page, total := pageSlice(hosts, page, size)
 	var b strings.Builder
 	b.WriteString(Bold("主机"))
 	b.WriteString(fmt.Sprintf(" %d/%d\n", page, total))
-	if start == end {
+	if len(pageHosts) == 0 {
 		b.WriteString("暂无主机")
 		return b.String(), total
 	}
-	for _, host := range hosts[start:end] {
+	for _, host := range pageHosts {
 		state := "离线"
 		if host.Online {
 			state = "在线"

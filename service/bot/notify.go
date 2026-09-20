@@ -24,6 +24,7 @@ func (h *Hub) forwardNotification(tag, desc string, server *model.Server) {
 	var markup *models.InlineKeyboardMarkup
 	if server != nil && server.ID != 0 {
 		markup = &models.InlineKeyboardMarkup{InlineKeyboard: [][]models.InlineKeyboardButton{{
+			{Text: "主机详情", CallbackData: fmt.Sprintf("h:%d", server.ID)},
 			{Text: "静音 1 小时", CallbackData: fmt.Sprintf("m:1h:%d", server.ID)},
 		}}}
 	}
