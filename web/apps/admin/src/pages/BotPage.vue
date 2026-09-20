@@ -134,8 +134,11 @@ async function saveSettings() {
 async function runTest() {
   testing.value = true
   try {
-    if (!await persistSettings(true)) return
-    const result = await testBot()
+    const body: { token?: string; api_endpoint?: string } = {}
+    const endpoint = (settings.api_endpoint || '').trim()
+    if (settings.token.trim()) body.token = settings.token.trim()
+    if (endpoint) body.api_endpoint = endpoint
+    const result = await testBot(Object.keys(body).length ? body : undefined)
     ElMessage.success(t('botTestOk', { name: result.username || 'bot' }))
     if (!settings.enabled) ElMessage.warning(t('botTestNeedEnable'))
   } catch (error) { notifyAPIError(error, t as never, te) }

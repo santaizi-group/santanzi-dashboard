@@ -33,7 +33,8 @@ http.interceptors.response.use(
   (error) => {
     const problem = error?.response?.data
     if (problem && typeof problem === 'object') {
-      const code = problem.code ?? (problem.error_code != null ? String(problem.error_code) : undefined)
+      const blocked = Number(problem.error_code) === 1010 || /Error 1010/i.test(String(problem.title || ''))
+      const code = blocked ? 'cloudflare_blocked' : (problem.code ?? (problem.error_code != null ? String(problem.error_code) : undefined))
       error.message = problem.detail || problem.description || problem.title || problem.message || error.message
       error.detail = problem.detail || problem.description || error.message
       if (code != null && code !== '') error.code = String(code)

@@ -1,4 +1,4 @@
-import { setCSRFToken } from './request'
+import { setCSRFToken, http } from './request'
 import { getSantaiziHTTPAPI } from './generated/santaizi'
 import type {
   AlertRule, AlertRuleWriteBody,   APIToken, APITokenPatchBody, APITokenWriteBody, AgentReliabilityRecord, CollectorCreated,
@@ -160,7 +160,8 @@ export const optimizeDatabase = () => api.optimizeDatabase().then(value => data<
 
 export const getBotSettings = () => api.getBotSettings().then(value => data<BotSettings>(value))
 export const updateBotSettings = (body: BotSettingsWrite) => api.updateBotSettings(body).then(value => data<BotSettings>(value))
-export const testBot = () => api.testBot().then(value => data<BotTest>(value))
+export const testBot = (body?: { token?: string; api_endpoint?: string }) =>
+  http.post('/api/v2/admin/bot/test', body).then(value => data<BotTest>(value.data))
 export const listBotChats = (params: ResourceQuery = {}) => api.listBotChats(params).then(value => list<BotChat>(value))
 export const updateBotChat = (id: number, body: BotChatWrite) => api.updateBotChat(id, body).then(value => data<BotChat>(value))
 export const deleteBotChat = (id: number) => api.deleteBotChat(id)
