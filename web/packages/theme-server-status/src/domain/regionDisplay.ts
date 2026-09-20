@@ -148,12 +148,3 @@ export function resolveRegionLabel(
 export function resolveFlagCode(flag: unknown, location?: unknown, countryCode?: unknown) {
   return normalizeFlagCode(flag) || resolveIso2(location) || resolveIso2(countryCode)
 }
-
-/** 世界地图 geojson 无 HK/MO/TW 独立面，热力并入 CN；`uk` → `GB`。 */
-export function choroplethIso2(location: unknown, countryCode?: unknown) {
-  const iso = resolveIso2(location) || resolveIso2(countryCode)
-  if (!iso) return ''
-  const upper = iso.slice(0, 2).toUpperCase()
-  if (upper === 'HK' || upper === 'MO' || upper === 'TW') return 'CN'
-  return upper
-}

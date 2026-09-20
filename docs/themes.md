@@ -16,7 +16,7 @@ Admin「设置 → 外观」可选择默认主题，并可开关「允许访客�
 
 公开站仍共用 Santaizi V2 API、WebSocket 和状态 store，但每个主题通过内部 `PublicThemeDefinition` 分别注册 Shell、首页、详情、服务状态和网络页面。同一时刻仅挂载一个 Shell，因此主题头部、背景、主体和页脚不会与另一主题叠加。Nazhua 的功能菜单集中提供主题、语言、明暗模式、服务状态、网络和后台入口。
 
-ServerStatus 使用 `@santaizi/design` 令牌（背景、表面、边框、状态色），站点 `primarycolor` 只驱动指标条等强调色，不改写管理后台的 `--sz-primary` 派生色。不再使用粒子背景或金色 accent。卡片国家/地区优先显示可读 `locationLabel`，否则把位置码（如 `HKG`）和 `CountryCode` 归一为当前语言的短地名与合法 ISO2 旗帜，不把裸码当芯片；世界地图按 geojson `iso_a2` 上色（香港/澳门/台湾并入中国热力）。页脚展示可选的 `footertext`，以及固定品牌名「三太子监控」（链接到面板仓库）与规范化版本号（bootstrap `version`）；上游哪吒版权只出现在 README / LICENSE / NOTICE，不出现在产品面。空页脚文案不再用站点名顶替。
+ServerStatus 使用 `@santaizi/design` 令牌（背景、表面、边框、状态色），站点 `primarycolor` 只驱动指标条等强调色，不改写管理后台的 `--sz-primary` 派生色。不再使用粒子背景或金色 accent。卡片国家/地区优先显示可读 `locationLabel`，否则把位置码（如 `HKG`）和 `CountryCode` 归一为当前语言的短地名与合法 ISO2 旗帜，不把裸码当芯片；世界地图弹层与 Admin 总览地球同画法（正射填海/陆地），主机按公开备注坐标 / IATA / 国家码落点。页脚展示可选的 `footertext`，以及固定品牌名「三太子监控」（链接到面板仓库）与规范化版本号（bootstrap `version`）；上游哪吒版权只出现在 README / LICENSE / NOTICE，不出现在产品面。空页脚文案不再用站点名顶替。
 
 Nazhua 的视觉和资产固定参考上游 commit `d08c973bb4446a24356f49b81d75d6773286596e`，并以在线原版同视口截图、DOM 尺寸和计算样式复核；来源和 MIT 许可见 `NOTICE` 与 `web/packages/theme-nazhua/LICENSE`。主题使用系统中文字体栈，不内置 Sarasa 字体文件。视觉取证、并排比较和可接受差异记录在 `design-qa.md`。
 

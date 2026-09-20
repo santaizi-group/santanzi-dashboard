@@ -12,6 +12,7 @@
   "dependencies": {
     "@santaizi/api": "workspace:*",
     "@santaizi/design": "workspace:*",
+    "@santaizi/geo": "workspace:*",
     "@santaizi/i18n": "workspace:*",
     "@santaizi/ui": "workspace:*",
     "axios": "1.19.0",

@@ -8,6 +8,10 @@
     "./theme.css": "./src/styles/theme.css",
     "./pages/*": "./src/pages/*"
   },
+  "dependencies": {
+    "@santaizi/geo": "workspace:*",
+    "d3-geo": "3.1.1"
+  },
   "peerDependencies": {
     "@santaizi/api": "workspace:*",
     "@santaizi/design": "workspace:*",
@@ -21,6 +25,7 @@
     "vue-router": ">=5.0.0"
   },
   "devDependencies": {
+    "@types/d3-geo": "3.1.1",
     "typescript": "6.0.3",
     "vue": "3.5.41"
   }

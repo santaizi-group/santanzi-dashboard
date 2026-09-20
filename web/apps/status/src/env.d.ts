@@ -12,6 +12,11 @@ declare module '*.svg?url' {
   export default url
 }
 
+declare module '*.json?url' {
+  const url: string
+  export default url
+}
+
 declare module 'd3-geo' {
   export interface GeoProjection {
     (coordinates: [number, number]): [number, number] | null

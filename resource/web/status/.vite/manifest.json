@@ -607,8 +607,12 @@
     "file": "assets/world-map-DHD_6-XG.svg",
     "src": "../../packages/theme-nazhua/src/assets/world-map.svg"
   },
+  "../../packages/theme-server-status/src/assets/land-dots.json": {
+    "file": "assets/land-dots-CI188LpM.json",
+    "src": "../../packages/theme-server-status/src/assets/land-dots.json"
+  },
   "index.html": {
-    "file": "assets/index-C8SIRi_s.js",
+    "file": "assets/index-DIfLnT7o.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -616,9 +620,10 @@
       "src/pages/ViewPasswordPage.vue"
     ],
     "css": [
-      "assets/index-CCUiV7N5.css"
+      "assets/index-fI4AQ2-p.css"
     ],
     "assets": [
+      "assets/land-dots-CI188LpM.json",
       "assets/bg-DFFmeEMX.webp",
       "assets/world-map-DHD_6-XG.svg",
       "assets/remixicon-B25hvfAs.eot",
@@ -774,7 +779,7 @@
     ]
   },
   "src/pages/ViewPasswordPage.vue": {
-    "file": "assets/ViewPasswordPage-uloaBPNZ.js",
+    "file": "assets/ViewPasswordPage-STUQSUz0.js",
     "name": "ViewPasswordPage",
     "src": "src/pages/ViewPasswordPage.vue",
     "isDynamicEntry": true,

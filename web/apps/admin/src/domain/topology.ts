@@ -1,5 +1,5 @@
 import { isHostOnline, type CollectorRecord, type ConnectionPath, type ServerRecord } from '@santaizi/api'
-import { DEFAULT_VIEW, locationKey, parseLocation, resolveServerGeo, sphericalMean, type GeoPoint } from './geo'
+import { DEFAULT_VIEW, locationKey, parseLocation, resolveServerGeo, sphericalMean, type GeoPoint } from '@santaizi/geo'
 
 export type MarkerKind = 'primary' | 'collector' | 'node'
 export type MarkerStatus = 'online' | 'offline' | 'mixed'

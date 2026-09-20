@@ -40,7 +40,6 @@ func TestSantaiziBrandAssets(t *testing.T) {
 
 	for _, name := range []string{
 		"theme-nazhua/maps/world.geo.json",
-		"theme-server-status/maps/santaizi.world.geo.json",
 		"theme-server-status/img/bg.jpg",
 	} {
 		if _, err := staticFS.ReadFile("static/" + name); err != nil {

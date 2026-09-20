@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  choroplethIso2,
   isRegionCode,
   normalizeFlagCode,
   regionDisplayName,
@@ -34,14 +33,5 @@ describe('regionDisplay', () => {
     expect(regionDisplayName('us', 'en-US')).toBe('United States')
     expect(resolveFlagCode('cn', 'HKG', 'us')).toBe('cn')
     expect(resolveFlagCode('', 'HKG', 'us')).toBe('hk')
-  })
-
-  it('folds HK/MO/TW into CN for the world choropleth', () => {
-    expect(choroplethIso2('HKG', 'US')).toBe('CN')
-    expect(choroplethIso2('', 'MO')).toBe('CN')
-    expect(choroplethIso2('', 'TW')).toBe('CN')
-    expect(choroplethIso2('', 'UK')).toBe('GB')
-    expect(choroplethIso2('', 'SG')).toBe('SG')
-    expect(choroplethIso2('', 'ZZZ')).toBe('')
   })
 })

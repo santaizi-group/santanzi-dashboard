@@ -669,6 +669,62 @@ test('ServerStatus shell uses a tokenized table without particle canvas', async 
   await expect(page.locator('.el-drawer .ss-detail')).not.toBeVisible()
 })
 
+test('ServerStatus world map opens an Admin-style globe and selects a host', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'status-desktop')
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  const probePaint = (mode: 'light' | 'dark') => page.locator('.status-globe__canvas').evaluate((node, theme) => {
+    const canvas = node as HTMLCanvasElement
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return { ocean: 0, land: 0 }
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    const near = (index: number, rgb: number[], slack: number) =>
+      Math.abs(data[index]! - rgb[0]!) + Math.abs(data[index + 1]! - rgb[1]!) + Math.abs(data[index + 2]! - rgb[2]!) < slack
+    const oceanRgb = theme === 'light' ? [0xd0, 0xe6, 0xfa] : [0x06, 0x12, 0x21]
+    const landRgb = theme === 'light' ? [0xee, 0xf6, 0xff] : [0x6b, 0x79, 0x8f]
+    let ocean = 0
+    let land = 0
+    for (let index = 0; index < data.length; index += 16) {
+      if (!data[index + 3]) continue
+      const pr = data[index] || 0
+      const pg = data[index + 1] || 0
+      const pb = data[index + 2] || 0
+      if (pg > pr + 30 && pg > pb + 10) continue
+      if (near(index, oceanRgb, theme === 'light' ? 48 : 40)) {
+        ocean += 1
+        continue
+      }
+      if (near(index, landRgb, theme === 'light' ? 70 : 55)) land += 1
+    }
+    return { ocean, land }
+  }, mode)
+  for (const mode of ['light', 'dark'] as const) {
+    await useServerStatus(page, mode)
+    await page.goto('/')
+    await page.getByRole('button', { name: '世界地图' }).click()
+    const globe = page.locator('.status-globe')
+    await expect(globe).toBeVisible()
+    await expect.poll(async () => globe.getAttribute('data-ready')).toBe('1')
+    await expect.poll(async () => Number(await globe.getAttribute('data-marker-count') || 0)).toBeGreaterThanOrEqual(2)
+    const painted = await probePaint(mode)
+    expect(painted.ocean, `${mode} ocean`).toBeGreaterThan(20)
+    expect(painted.land, `${mode} land`).toBeGreaterThan(20)
+    if (mode === 'light') await page.locator('.map-dialog button[aria-label="关闭"]').click()
+  }
+  const hit = await page.locator('.status-globe').evaluate(node => {
+    const hits = JSON.parse(node.getAttribute('data-hits') || '[]') as Array<{ x: number; y: number; id: number }>
+    return hits[0] || null
+  })
+  expect(hit).toBeTruthy()
+  await page.locator('.status-globe__canvas').click({ position: { x: hit!.x, y: hit!.y } })
+  const hosts = page.locator('.status-globe__hosts')
+  await expect(page.locator('.map-dialog')).toBeVisible()
+  await expect(hosts).toBeVisible()
+  await expect(page.locator('.el-drawer .ss-detail')).toHaveCount(0)
+  await hosts.getByRole('button').first().click()
+  await expect(page.locator('.el-drawer .ss-detail')).toBeVisible()
+  await expect(page.locator('.map-dialog')).toBeVisible()
+})
+
 test('ServerStatus mobile table does not require horizontal page scroll', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'status-mobile')
   await useServerStatus(page)

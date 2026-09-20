@@ -12,12 +12,14 @@
   "dependencies": {
     "@santaizi/api": "workspace:*",
     "@santaizi/design": "workspace:*",
+    "@santaizi/geo": "workspace:*",
     "@santaizi/i18n": "workspace:*",
     "@santaizi/status-core": "workspace:*",
     "@santaizi/theme-nazhua": "workspace:*",
     "@santaizi/theme-server-status": "workspace:*",
     "@santaizi/ui": "workspace:*",
     "@vitejs/plugin-vue": "6.0.8",
+    "d3-geo": "3.1.1",
     "echarts": "6.1.0",
     "element-plus": "2.14.4",
     "flag-icons": "7.5.0",
@@ -29,7 +31,7 @@
     "vue-router": "5.2.0"
   },
   "devDependencies": {
-    "@types/d3-geo": "^3.1.1",
+    "@types/d3-geo": "3.1.1",
     "@types/geojson": "^7946.0.16",
     "@types/node": "25.5.0",
     "typescript": "6.0.3",

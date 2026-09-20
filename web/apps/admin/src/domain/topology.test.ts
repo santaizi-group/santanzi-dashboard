@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CollectorRecord, ServerRecord } from '@santaizi/api'
 import type { ConnectionPath } from '@santaizi/api'
-import { DEFAULT_VIEW } from './geo'
+import { DEFAULT_VIEW } from '@santaizi/geo'
 import { allMarkers, buildTopology, layoutSite, primaryLatencyRows, siteClusterRadius, siteOffsets, visibleLinks } from './topology'
 
 function server(id: number, name: string, extra: { country?: string; note?: Record<string, unknown>; online?: boolean; telemetry?: ServerRecord['telemetry'] } = {}): ServerRecord {

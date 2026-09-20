@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { canonicalIata, locationOptions } from '@/domain/geo'
+import { canonicalIata, locationOptions } from '@santaizi/geo'
 
 const model = defineModel<string>({ default: '' })
 const { locale, t } = useI18n()

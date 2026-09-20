@@ -16,6 +16,17 @@
   --svc-spark-3: var(--sz-warning);
   --svc-spark-fill: color-mix(in srgb, var(--svc-spark-1) 18%, transparent);
   --svc-card-radius: var(--sz-radius);
+  --ss-globe-stage: #ffffff;
+  --ss-globe-stage-mid: #e8f4ff;
+  --ss-globe-stage-edge: #d0e6fa;
+  --ss-globe-stage-bg: radial-gradient(circle at 50% 44%, var(--ss-globe-stage) 0%, var(--ss-globe-stage-mid) 68%, var(--ss-globe-stage-edge) 100%);
+  --ss-globe-ocean: #d0e6fa;
+  --ss-globe-land: #eef6ff;
+  --ss-globe-land-stroke: rgba(96, 140, 184, .36);
+  --ss-globe-sphere-stroke: rgba(96, 140, 184, .45);
+  --ss-globe-graticule: rgba(96, 140, 184, .18);
+  --ss-globe-limb: rgba(168, 204, 234, .28);
+  --ss-globe-glow: rgba(168, 216, 255, .7);
   position: relative;
   isolation: isolate;
   min-height: 100vh;
@@ -25,6 +36,22 @@
   color: var(--sz-text);
 }
 .server-status-shell * { box-sizing: border-box; }
+html.dark .server-status-shell,
+[data-theme="dark"] .server-status-shell {
+  --ss-globe-stage: #07162b;
+  --ss-globe-stage-mid: #031020;
+  --ss-globe-stage-edge: #010814;
+  --ss-globe-stage-bg:
+    radial-gradient(circle at 50% 30%, rgba(56, 128, 220, .16) 0%, rgba(56, 128, 220, 0) 58%),
+    linear-gradient(180deg, var(--ss-globe-stage) 0%, var(--ss-globe-stage-mid) 52%, var(--ss-globe-stage-edge) 100%);
+  --ss-globe-ocean: #061221;
+  --ss-globe-land: #6b798f;
+  --ss-globe-land-stroke: rgba(136, 176, 205, .34);
+  --ss-globe-sphere-stroke: rgba(136, 176, 205, .45);
+  --ss-globe-graticule: rgba(140, 190, 255, .08);
+  --ss-globe-limb: rgba(125, 211, 252, 0);
+  --ss-globe-glow: rgba(155, 210, 255, .45);
+}
 .skip-link {
   position: fixed;
   z-index: 3000;
@@ -788,19 +815,29 @@
   background: color-mix(in srgb, var(--sz-muted) 35%, transparent);
 }
 
+.map-scrim {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  background: rgba(0, 0, 0, .56);
+}
 .map-dialog {
+  position: fixed;
   z-index: 60;
   inset: max(3vh, env(safe-area-inset-top, 0px)) max(3vw, env(safe-area-inset-right, 0px)) max(3vh, env(safe-area-inset-bottom, 0px)) max(3vw, env(safe-area-inset-left, 0px));
   width: auto;
   height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
   padding: 0;
+  overflow: hidden;
   border: 1px solid var(--sz-border);
   border-radius: var(--sz-radius);
-  background: var(--sz-surface);
+  background: var(--ss-globe-stage-bg);
   color: var(--sz-text);
   box-shadow: var(--shadow-overlay);
 }
-.map-dialog::backdrop { background: rgba(0, 0, 0, .56); }
 .map-dialog header {
   height: 58px;
   display: flex;
@@ -808,9 +845,10 @@
   justify-content: space-between;
   padding: 0 18px;
   border-bottom: 1px solid var(--sz-border);
+  background: var(--sz-surface);
 }
 .map-dialog h2 { margin: 0; font-size: 18px; }
-.map-dialog button {
+.map-dialog header button {
   width: var(--control-height);
   height: var(--control-height);
   border: 0;
@@ -818,7 +856,118 @@
   color: inherit;
   font-size: 20px;
 }
-.world-map { height: calc(94dvh - 60px); min-height: 240px; }
+.world-map {
+  display: grid;
+  place-items: center;
+  height: calc(94dvh - 60px);
+  min-height: 240px;
+  overflow: hidden;
+  background: var(--ss-globe-stage-bg);
+}
+.status-globe {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  --ss-globe-d: 0px;
+}
+.status-globe__halo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(var(--ss-globe-d), 100%);
+  height: min(var(--ss-globe-d), 100%);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  box-shadow: 0 0 22px 3px var(--ss-globe-glow);
+  pointer-events: none;
+}
+.status-globe__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+  filter: drop-shadow(0 10px 22px rgba(110, 170, 210, .28));
+}
+html.dark .status-globe__canvas,
+[data-theme="dark"] .status-globe__canvas { filter: none; }
+.status-globe__canvas:active { cursor: grabbing; }
+.status-globe__empty {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  pointer-events: none;
+  background: transparent;
+}
+.status-globe__note {
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  margin: 0;
+  color: var(--sz-text-muted);
+  font-size: 12px;
+  line-height: 1.3;
+  pointer-events: none;
+}
+.status-globe__tip {
+  position: absolute;
+  z-index: 2;
+  min-width: 72px;
+  padding: 6px 10px;
+  transform: translate(-50%, calc(-100% - 10px));
+  border: 1px solid var(--sz-border);
+  border-radius: var(--sz-radius);
+  background: var(--sz-surface);
+  color: var(--sz-text);
+  font-size: 12px;
+  line-height: 1.3;
+  pointer-events: none;
+  box-shadow: var(--shadow);
+}
+.status-globe__tip strong { display: block; font-size: 12px; }
+.status-globe__tip span { color: var(--sz-text-muted); }
+.status-globe__hosts {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  gap: 2px;
+  min-width: 140px;
+  max-width: min(240px, calc(100% - 24px));
+  max-height: min(240px, 42%);
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--sz-border);
+  border-radius: var(--sz-radius);
+  background: var(--sz-surface);
+  color: var(--sz-text);
+  font-size: 12px;
+  line-height: 1.3;
+  box-shadow: var(--shadow);
+}
+.status-globe__hosts strong { display: block; font-size: 12px; }
+.status-globe__hosts > span { color: var(--sz-text-muted); }
+.status-globe__host {
+  display: flex;
+  align-items: center;
+  gap: var(--icon-text-gap);
+  width: 100%;
+  min-height: 32px;
+  margin: 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--sz-radius);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1;
+  text-align: left;
+  cursor: pointer;
+}
+.status-globe__host:hover { background: color-mix(in srgb, var(--ss-accent) 8%, transparent); }
+.status-globe__host:focus-visible { box-shadow: var(--sz-focus); outline: none; }
 
 .service-panel { padding-bottom: 10px; }
 .service-list {
@@ -1054,6 +1203,7 @@
   .status-toolbar button.status-toolbar__page-action { display: none; }
   .server-status-shell .status-container { width: 100%; padding: 16px; }
   .status-toolbar button { min-height: 44px; }
+  .status-globe__host { min-height: 44px; }
   .ss-sort__order { width: 44px; height: 44px; }
   .buy-link { min-height: 44px; }
   .ss-table { overflow: visible; }

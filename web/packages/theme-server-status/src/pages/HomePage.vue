@@ -1,10 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import * as echarts from 'echarts/core'
-import { MapChart } from 'echarts/charts'
-import { TooltipComponent, VisualMapComponent } from 'echarts/components'
-import { CanvasRenderer } from 'echarts/renderers'
 import { listPublicCycleTransfer, type CycleTransfer } from '@santaizi/api'
 import { AppEmpty } from '@santaizi/ui'
 import {
@@ -13,26 +9,22 @@ import {
   useInjectedStatusStore,
   type ServerSortProp,
 } from '@santaizi/status-core'
-import { getPresentation } from '../domain/publicNoteView'
-import { choroplethIso2, regionDisplayName } from '../domain/regionDisplay'
 import { mapCycleTransfers, toServerStatusView } from '../domain/serverStatusView'
 import { resolveStatusNoteColumns, type StatusTableColumns } from '../domain/statusTableColumns'
 import { registerStatusPageActions } from '../composables/statusPageActions'
 import { useStatusSort } from '../composables/useStatusSort'
 import ServerDetailDrawer from '../components/ServerDetailDrawer.vue'
+import StatusGlobe from '../components/StatusGlobe.vue'
 import StatusTable from '../components/StatusTable.vue'
-
-echarts.use([MapChart, TooltipComponent, VisualMapComponent, CanvasRenderer])
 
 const { t, locale } = useI18n()
 const store = useInjectedStatusStore()
 const grouped = ref(localStorage.getItem('santaizi-status-grouped') !== '0')
 const selectedId = ref(0)
+const mapOpen = ref(false)
 const mapDialog = ref<HTMLDialogElement>()
-const mapNode = ref<HTMLElement>()
 const cycleRows = ref<CycleTransfer[]>([])
 const { sortProp, sortOrder, sortOption, setSortProp, toggleSort, toggleOrder } = useStatusSort()
-let chart: echarts.ECharts | undefined
 
 const cycles = computed(() => mapCycleTransfers(cycleRows.value))
 const sortedAll = computed(() => sortServers(store.servers, sortProp.value, sortOrder.value))
@@ -63,7 +55,7 @@ const emptyDescription = computed(() => {
 })
 const drawerOpen = computed({
   get: () => selectedId.value > 0,
-  set: (open: boolean) => {
+  set: (open) => {
     if (!open) selectedId.value = 0
   },
 })
@@ -92,56 +84,10 @@ async function loadCycles() {
   }
 }
 
-async function showMap() {
-  mapDialog.value?.showModal()
-  await nextTick()
-  if (!mapNode.value) return
-  try {
-    const response = await fetch('/static/theme-server-status/maps/santaizi.world.geo.json')
-    if (!response.ok) return
-    const geo = await response.json()
-    echarts.registerMap('santaizi-world', geo)
-    const counts = new Map<string, number>()
-    for (const row of store.servers) {
-      const location = getPresentation(row.public_note).location
-      const country = row.host?.CountryCode || ''
-      const code = choroplethIso2(location, country)
-      if (code) counts.set(code, (counts.get(code) || 0) + 1)
-    }
-    chart?.dispose()
-    chart = echarts.init(mapNode.value)
-    const accent = getComputedStyle(document.documentElement).getPropertyValue('--ss-accent').trim() || '#2563eb'
-    const soft = getComputedStyle(document.documentElement).getPropertyValue('--sz-primary-soft').trim() || '#dbeafe'
-    const mapLocale = locale.value
-    chart.setOption({
-      tooltip: {
-        trigger: 'item',
-        formatter: (params: { name?: string; value?: number }) => {
-          const iso = String(params.name || '')
-          const label = regionDisplayName(iso, mapLocale) || iso
-          const count = Number(params.value) || 0
-          return `${label} ${count}`
-        },
-      },
-      visualMap: {
-        min: 0,
-        max: Math.max(1, ...counts.values()),
-        left: 20,
-        bottom: 20,
-        inRange: { color: [soft, accent] },
-      },
-      series: [{
-        type: 'map',
-        map: 'santaizi-world',
-        nameProperty: 'iso_a2',
-        roam: true,
-        data: [...counts].map(([name, value]) => ({ name, value })),
-      }],
-    })
-  } catch {
-    chart?.dispose()
-    chart = undefined
-  }
+function showMap() {
+  mapOpen.value = true
+  const dialog = mapDialog.value
+  if (dialog && !dialog.open) dialog.show()
 }
 
 function closeMap() {
@@ -149,8 +95,22 @@ function closeMap() {
 }
 
 function onMapClosed() {
-  chart?.dispose()
-  chart = undefined
+  mapOpen.value = false
+}
+
+function onGlobeSelect(id: number) {
+  selectedId.value = id
+}
+
+function onMapEscape(event: KeyboardEvent) {
+  if (selectedId.value > 0) return
+  event.preventDefault()
+  closeMap()
+}
+
+function onScrimClick() {
+  if (selectedId.value > 0) return
+  closeMap()
 }
 
 onMounted(loadCycles)
@@ -258,12 +218,24 @@ registerStatusPageActions(() => [
       :show-availability="showAvailability"
     />
 
-    <dialog ref="mapDialog" class="map-dialog" @close="onMapClosed">
+    <div
+      v-if="mapOpen"
+      class="map-scrim"
+      @click="onScrimClick"
+    ></div>
+    <dialog ref="mapDialog" class="map-dialog" @close="onMapClosed" @keydown.esc="onMapEscape">
       <header>
         <h2 class="icon-text"><i class="ri-earth-line"></i>{{ t('worldMap') }}</h2>
         <button type="button" :aria-label="t('close')" @click="closeMap"><i class="ri-close-line"></i></button>
       </header>
-      <div ref="mapNode" class="world-map" />
+      <div class="world-map">
+        <StatusGlobe
+          v-if="mapOpen"
+          :servers="store.servers"
+          :locale="locale"
+          @select="onGlobeSelect"
+        />
+      </div>
     </dialog>
   </div>
 </template>
