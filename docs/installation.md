@@ -259,7 +259,7 @@ curl -fSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/ma
 curl -fSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade_agent.sh | bash -s -- v1.0.1
 ```
 
-英文脚本：`upgrade_agent_en.sh`。可用 `SANTAIZI_AGENT_REPO`、`SANTAIZI_AGENT_VERSION` 覆盖仓库与版本。
+同一条命令会按本机 systemd / 二进制识别 Go 或 Rust，从对应仓库换包，不会在升级时切换实现。英文脚本：`upgrade_agent_en.sh`。可用 `SANTAIZI_AGENT_REPO`、`SANTAIZI_AGENT_RS_REPO`、`SANTAIZI_AGENT_VERSION`、`SANTAIZI_AGENT_IMPL=go|rust` 覆盖仓库、版本或实现。
 
 Windows：
 

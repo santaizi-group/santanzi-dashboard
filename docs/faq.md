@@ -89,7 +89,7 @@ Dashboard 不具备远程或自动更新 Agent 的能力。已安装的探针在
 curl -fSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade_agent.sh | bash
 ```
 
-Windows 使用 `script/upgrade.ps1`。管理后台「主机管理」行内「升级探针」也可复制同一条命令。升级只换二进制并重启服务，不改配置和节点身份。协议破坏性升级时使用已确认的清洁安装，并先升级面板/从端。
+脚本会按本机识别 Go 或 Rust 并从对应仓库换包。Windows 使用 `script/upgrade.ps1`。管理后台「主机管理」行内「升级探针」也可复制同一条命令。升级只换二进制并重启服务，不改配置和节点身份。协议破坏性升级时使用已确认的清洁安装，并先升级面板/从端。
 
 ### Q: Agent 是否需要 root
 
