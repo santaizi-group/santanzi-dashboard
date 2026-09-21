@@ -3,6 +3,7 @@ package bot
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -350,7 +351,10 @@ func parseFilter(tok string) (Filter, bool, error) {
 		return Filter{Field: "ver", Op: op, Values: []string{numRaw}}, true, nil
 	}
 	if isBareName(tok) {
-		return Filter{Field: "name", Op: "~", Values: []string{tok}}, true, nil
+		if isAllDigits(tok) {
+			return Filter{Field: "id", Op: "=", Values: []string{tok}}, true, nil
+		}
+		return Filter{Field: "host", Op: "auto", Values: []string{tok}}, true, nil
 	}
 	return Filter{}, false, nil
 }
@@ -494,6 +498,19 @@ func applyOverlay(q Query, overlay string) Query {
 			}
 		case "m":
 			q.Metric = val
+		case "t":
+			tag, err := url.QueryUnescape(val)
+			if err != nil {
+				tag = val
+			}
+			tag = strings.TrimSpace(tag)
+			if tag == "" {
+				continue
+			}
+			q.GroupBy = ""
+			q.Kind = "servers"
+			q.Page = 1
+			q.Filters = replaceTagFilter(q.Filters, tag)
 		}
 	}
 	return q
@@ -538,16 +555,8 @@ func parseKindQuery(kind, arg string, now time.Time) (Query, error) {
 		}
 		return q, nil
 	case "chart":
-		var selector []string
-		if len(fields) > 0 {
-			selector = []string{fields[0]}
-			fields = fields[1:]
-		}
-		metric := "cpu"
-		if len(fields) > 0 && isMetricName(fields[0]) {
-			metric = strings.ToLower(fields[0])
-			fields = fields[1:]
-		}
+		selector, fields := takeSelector(fields)
+		metric, fields := peelMetric(fields)
 		q, err := ParseQuery(append(selector, fields...), now)
 		if err != nil {
 			return q, err
@@ -622,10 +631,53 @@ func parseKindQuery(kind, arg string, now time.Time) (Query, error) {
 }
 
 func takeSelector(fields []string) (sel, rest []string) {
-	if len(fields) == 0 {
-		return nil, nil
+	for i, tok := range fields {
+		if isSelectorMeta(tok) {
+			continue
+		}
+		sel = []string{tok}
+		rest = append(append([]string{}, fields[:i]...), fields[i+1:]...)
+		return sel, rest
 	}
-	return fields[:1], fields[1:]
+	return nil, fields
+}
+
+func peelMetric(fields []string) (metric string, rest []string) {
+	metric = "cpu"
+	rest = make([]string, 0, len(fields))
+	found := false
+	for _, tok := range fields {
+		if !found && isMetricName(tok) {
+			metric = strings.ToLower(tok)
+			found = true
+			continue
+		}
+		rest = append(rest, tok)
+	}
+	return metric, rest
+}
+
+func isSelectorMeta(tok string) bool {
+	lower := strings.ToLower(strings.TrimSpace(tok))
+	if lower == "today" || lower == "yesterday" || lower == "month" || lower == "24h" || isDaySpan(lower) || isHourSpan(lower) {
+		return true
+	}
+	if strings.Contains(tok, "..") || isDate(tok) {
+		return true
+	}
+	if strings.HasPrefix(lower, "sort=") || strings.HasPrefix(lower, "group=") || strings.HasPrefix(lower, "top=") || strings.HasPrefix(lower, "limit=") {
+		return true
+	}
+	if lower == "vs=prev" || lower == "compare=prev" {
+		return true
+	}
+	if lower == AggMax+":" || lower == AggAvg+":" || lower == AggMin+":" {
+		return true
+	}
+	if strings.HasPrefix(lower, AggMax+":") || strings.HasPrefix(lower, AggAvg+":") || strings.HasPrefix(lower, AggMin+":") {
+		return true
+	}
+	return isMetricName(lower)
 }
 
 func isMetricName(value string) bool {
@@ -634,4 +686,27 @@ func isMetricName(value string) bool {
 		return true
 	}
 	return false
+}
+
+func isAllDigits(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func replaceTagFilter(filters []Filter, tag string) []Filter {
+	out := make([]Filter, 0, len(filters)+1)
+	for _, filter := range filters {
+		if filter.Field == "tag" || (filter.Field == "host" && filter.Op == "auto") {
+			continue
+		}
+		out = append(out, filter)
+	}
+	return append(out, Filter{Field: "tag", Op: "=", Values: []string{tag}})
 }

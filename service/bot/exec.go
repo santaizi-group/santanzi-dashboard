@@ -30,10 +30,12 @@ func (h *Hub) evalQuery(q Query) ([]evalHost, int, error) {
 		now = inLoc(singletonNow())
 	}
 	hosts := report.AllHosts()
+	filters := resolveHostFilters(hosts, q.Filters)
+	q.Filters = filters
 	out := make([]evalHost, 0, len(hosts))
 	for _, host := range hosts {
 		item := evalHost{Host: host}
-		if !matchSnapshot(item, q.Filters) {
+		if !matchSnapshot(item, filters) {
 			continue
 		}
 		out = append(out, item)
@@ -179,15 +181,51 @@ func pctOf(used, total uint64) float64 {
 	return float64(used) * 100 / float64(total)
 }
 
+func resolveHostFilters(hosts []report.HostRow, filters []Filter) []Filter {
+	out := make([]Filter, 0, len(filters))
+	for _, filter := range filters {
+		if filter.Field != "host" || filter.Op != "auto" {
+			out = append(out, filter)
+			continue
+		}
+		for _, value := range filter.Values {
+			out = append(out, resolveAutoHost(hosts, value))
+		}
+	}
+	return out
+}
+
+func resolveAutoHost(hosts []report.HostRow, value string) Filter {
+	for _, host := range hosts {
+		if fmt.Sprintf("%d", host.ID) == value {
+			return Filter{Field: "id", Op: "=", Values: []string{value}}
+		}
+	}
+	for _, host := range hosts {
+		if strings.EqualFold(host.Name, value) {
+			return Filter{Field: "name", Op: "=", Values: []string{host.Name}}
+		}
+	}
+	for _, host := range hosts {
+		if strings.EqualFold(hostTag(host), value) {
+			return Filter{Field: "tag", Op: "=", Values: []string{hostTag(host)}}
+		}
+	}
+	return Filter{Field: "host", Op: "~", Values: []string{value}}
+}
+
+func hostTag(host report.HostRow) string {
+	if host.Tag == "" {
+		return "default"
+	}
+	return host.Tag
+}
+
 func matchSnapshot(item evalHost, filters []Filter) bool {
 	for _, filter := range filters {
 		switch filter.Field {
 		case "tag":
-			tag := item.Host.Tag
-			if tag == "" {
-				tag = "default"
-			}
-			if !matchAnyFold(tag, filter.Values) {
+			if !matchAnyFold(hostTag(item.Host), filter.Values) {
 				return false
 			}
 		case "name":
@@ -201,6 +239,10 @@ func matchSnapshot(item evalHost, filters []Filter) bool {
 				}
 			}
 			if !ok {
+				return false
+			}
+		case "host":
+			if !matchHostLoose(item.Host, filter.Values) {
 				return false
 			}
 		case "id":
@@ -277,6 +319,18 @@ func compareNum(value float64, op string, bound float64) bool {
 	default:
 		return true
 	}
+}
+
+func matchHostLoose(host report.HostRow, values []string) bool {
+	name := strings.ToLower(host.Name)
+	tag := strings.ToLower(hostTag(host))
+	for _, value := range values {
+		v := strings.ToLower(value)
+		if strings.Contains(name, v) || strings.Contains(tag, v) {
+			return true
+		}
+	}
+	return false
 }
 
 func matchAnyFold(got string, values []string) bool {

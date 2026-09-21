@@ -100,3 +100,82 @@ func TestApplyOverlayReplacesRangeSortGroupPage(t *testing.T) {
 		t.Fatal("clone must not mutate original")
 	}
 }
+
+func TestParseQueryBareDigitsAreID(t *testing.T) {
+	q, err := ParseQuery([]string{"12"}, time.Date(2026, 9, 20, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(q.Filters) != 1 || q.Filters[0].Field != "id" || q.Filters[0].Values[0] != "12" {
+		t.Fatalf("%#v", q.Filters)
+	}
+}
+
+func TestParseQueryBareNameIsHostAuto(t *testing.T) {
+	q, err := ParseQuery([]string{"hk-1"}, time.Date(2026, 9, 20, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(q.Filters) != 1 || q.Filters[0].Field != "host" || q.Filters[0].Op != "auto" {
+		t.Fatalf("%#v", q.Filters)
+	}
+}
+
+func TestParseKindQueryCmpSkipsRangeToken(t *testing.T) {
+	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
+	q, err := parseKindQuery("cmp", "7d hk-1 hk-2", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q.Range.Kind != "7d" {
+		t.Fatalf("range=%#v", q.Range)
+	}
+	if len(q.Left) != 1 || q.Left[0].Values[0] != "hk-1" {
+		t.Fatalf("left=%#v", q.Left)
+	}
+	if len(q.Right) != 1 || q.Right[0].Values[0] != "hk-2" {
+		t.Fatalf("right=%#v", q.Right)
+	}
+}
+
+func TestParseKindQueryChartSkipsRangeThenMetric(t *testing.T) {
+	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
+	q, err := parseKindQuery("chart", "24h id=1 cpu", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q.Metric != "cpu" || q.Range.Kind != "24h" {
+		t.Fatalf("%#v", q)
+	}
+	if len(q.Filters) != 1 || q.Filters[0].Field != "id" || q.Filters[0].Values[0] != "1" {
+		t.Fatalf("filters=%#v", q.Filters)
+	}
+}
+
+func TestParseKindQueryChartMetricIsNotHost(t *testing.T) {
+	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
+	q, err := parseKindQuery("chart", "cpu 24h", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q.Metric != "cpu" || q.Range.Kind != "24h" || len(q.Filters) != 0 {
+		t.Fatalf("%#v", q)
+	}
+}
+
+func TestApplyOverlayTagDrilldown(t *testing.T) {
+	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
+	q, err := ParseQuery([]string{"7d"}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	q.Kind = "groups"
+	q.GroupBy = "tag"
+	got := applyOverlay(q, "t=hk")
+	if got.Kind != "servers" || got.GroupBy != "" || got.Range.Kind != "7d" || got.Page != 1 {
+		t.Fatalf("%#v", got)
+	}
+	if len(got.Filters) != 1 || got.Filters[0].Field != "tag" || got.Filters[0].Values[0] != "hk" {
+		t.Fatalf("filters=%#v", got.Filters)
+	}
+}

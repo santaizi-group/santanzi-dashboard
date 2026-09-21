@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -106,7 +107,7 @@ func (h *Hub) renderGroups(ctx context.Context, q Query, groups []groupRow, toke
 	}
 	rows := make([][]models.InlineKeyboardButton, 0, len(groups)+1)
 	for _, row := range groups {
-		rows = append(rows, []models.InlineKeyboardButton{btn(row.Tag, "m:servers:"+row.Tag)})
+		rows = append(rows, []models.InlineKeyboardButton{btn(row.Tag, queryCallback(token, "t="+url.QueryEscape(row.Tag)))})
 	}
 	chips := resultChips(token, q, 1, 1)
 	if chips != nil {

@@ -49,7 +49,7 @@ Admin API **不回传 Token 原文**，只回 `token_set` 与末 4 位。yaml �
 
 列表型命令共用同一套语法。命令名只决定默认值。**有范围就是历史，没范围就是当前快照。** `/help query` 也可在 Bot 里查看。
 
-字段：`cpu` `mem` `disk` `net` `total` `uptime` `load`；状态 `online` `offline` `muted`；`tag=` `name~` `ver<` / `ver>`。同字段多值用 `tag=hk|jp`。空格取交集，不支持括号与 OR 嵌套。
+字段：`cpu` `mem` `disk` `net` `total` `uptime` `load`；状态 `online` `offline` `muted`；`tag=` `name~` `ver<` / `ver>`。同字段多值用 `tag=hk|jp`。空格取交集，不支持括号与 OR 嵌套。裸数字按主机 ID；其它裸词先精确名、再精确分组，最后才名字/分组子串。
 
 范围：`today` `yesterday` `7d` `30d` `month` `24h` `2026-09-01..2026-09-20`。日界用面板时区。历史筛选最长 30 天，流量合计最长 90 天。
 

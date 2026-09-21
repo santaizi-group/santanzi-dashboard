@@ -352,25 +352,43 @@ func FindServer(query string) *model.Server {
 	return nil
 }
 
+func HostByID(id uint64) (HostRow, bool) {
+	if id == 0 {
+		return HostRow{}, false
+	}
+	for _, host := range AllHosts() {
+		if host.ID == id {
+			return host, true
+		}
+	}
+	return HostRow{}, false
+}
+
 func FilterHosts(query string) []HostRow {
-	query = strings.TrimSpace(strings.ToLower(query))
+	query = strings.TrimSpace(query)
 	hosts := selectedHosts(model.RuleCoverAll, nil)
 	if query == "" {
 		return hosts
 	}
-	out := []HostRow{}
+	lower := strings.ToLower(query)
+	var exact []HostRow
+	var partial []HostRow
 	for _, host := range hosts {
-		if hostMatches(host, query) {
-			out = append(out, host)
+		if fmt.Sprintf("%d", host.ID) == query || strings.EqualFold(host.Name, query) {
+			exact = append(exact, host)
+			continue
+		}
+		if hostMatchesPartial(host, lower) {
+			partial = append(partial, host)
 		}
 	}
-	return out
+	if len(exact) > 0 {
+		return exact
+	}
+	return partial
 }
 
-func hostMatches(host HostRow, query string) bool {
-	if fmt.Sprintf("%d", host.ID) == query {
-		return true
-	}
+func hostMatchesPartial(host HostRow, query string) bool {
 	if strings.Contains(strings.ToLower(host.Name), query) || strings.Contains(strings.ToLower(host.Tag), query) {
 		return true
 	}

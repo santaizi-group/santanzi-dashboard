@@ -45,3 +45,34 @@ func TestDeltaLabelMissingPrev(t *testing.T) {
 		t.Fatal(deltaLabel(150, 100, 1))
 	}
 }
+
+func TestResolveAutoHostPrefersExactThenTagThenLoose(t *testing.T) {
+	hosts := []report.HostRow{
+		{ID: 1, Name: "hk-1", Tag: "hk"},
+		{ID: 12, Name: "edge-12", Tag: "jp"},
+		{ID: 3, Name: "web", Tag: ""},
+	}
+	got := resolveHostFilters(hosts, []Filter{{Field: "host", Op: "auto", Values: []string{"hk-1"}}})
+	if len(got) != 1 || got[0].Field != "name" || got[0].Op != "=" {
+		t.Fatalf("exact name %#v", got)
+	}
+	got = resolveHostFilters(hosts, []Filter{{Field: "host", Op: "auto", Values: []string{"hk"}}})
+	if len(got) != 1 || got[0].Field != "tag" || got[0].Values[0] != "hk" {
+		t.Fatalf("exact tag %#v", got)
+	}
+	got = resolveHostFilters(hosts, []Filter{{Field: "host", Op: "auto", Values: []string{"default"}}})
+	if len(got) != 1 || got[0].Field != "tag" || got[0].Values[0] != "default" {
+		t.Fatalf("empty tag %#v", got)
+	}
+	got = resolveHostFilters(hosts, []Filter{{Field: "host", Op: "auto", Values: []string{"edge"}}})
+	if len(got) != 1 || got[0].Field != "host" || got[0].Op != "~" {
+		t.Fatalf("loose %#v", got)
+	}
+	item := evalHost{Host: hosts[1]}
+	if !matchSnapshot(item, got) {
+		t.Fatal("loose should match edge-12")
+	}
+	if matchSnapshot(evalHost{Host: hosts[0]}, got) {
+		t.Fatal("loose should not match hk-1")
+	}
+}

@@ -279,8 +279,8 @@ func (h *Hub) cmdOffline(ctx context.Context, arg string) {
 }
 
 func (h *Hub) showOffline(ctx context.Context, id uint64) {
-	hosts := report.FilterHosts(fmt.Sprintf("%d", id))
-	if len(hosts) == 0 {
+	host, ok := report.HostByID(id)
+	if !ok {
 		h.respond(ctx, "未找到主机。", markup([]models.InlineKeyboardButton{navHome()}))
 		return
 	}
@@ -294,7 +294,7 @@ func (h *Hub) showOffline(ctx context.Context, id uint64) {
 		return
 	}
 	var b strings.Builder
-	b.WriteString(Bold(hosts[0].Name) + " 离线记录\n")
+	b.WriteString(Bold(host.Name) + " 离线记录\n")
 	if len(rows) == 0 {
 		b.WriteString("暂无离线记录。")
 		h.respond(ctx, b.String(), markup([]models.InlineKeyboardButton{btn("主机", fmt.Sprintf("h:%d", id)), navHome()}))

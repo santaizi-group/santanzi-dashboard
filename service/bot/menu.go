@@ -107,12 +107,11 @@ func pickHostMarkup(hosts []report.HostRow, prefix string) *models.InlineKeyboar
 }
 
 func (h *Hub) showHost(ctx context.Context, id uint64) {
-	hosts := report.FilterHosts(fmt.Sprintf("%d", id))
-	if len(hosts) == 0 {
+	host, ok := report.HostByID(id)
+	if !ok {
 		h.respond(ctx, "未找到主机。", markup([]models.InlineKeyboardButton{navHome()}))
 		return
 	}
-	host := hosts[0]
 	text := FormatHost(host)
 	if singleton.DB != nil {
 		summaries, err := trafficservice.Summaries(singleton.DB, []uint64{host.ID}, singletonNow())
