@@ -19,6 +19,7 @@ func registerBotRoutes(root gin.IRouter, admin *gin.RouterGroup) {
 	admin.GET("/bot/settings", v2GetBotSettings)
 	admin.PATCH("/bot/settings", v2PatchBotSettings)
 	admin.POST("/bot/test", v2TestBot)
+	admin.POST("/bot/ai/test", v2TestBotAI)
 	admin.GET("/bot/chats", v2ListBotChats)
 	admin.GET("/bot/chats/:id", v2GetBotChat)
 	admin.PATCH("/bot/chats/:id", v2PatchBotChat)
@@ -49,11 +50,21 @@ func botSettingsDTO() gin.H {
 		}
 	}
 	secretSet := strings.TrimSpace(conf.WebhookSecret) != ""
+	aiKeySet := strings.TrimSpace(conf.AI.APIKey) != ""
+	aiSuffix := ""
+	if aiKeySet {
+		key := conf.AI.APIKey
+		if len(key) > 4 {
+			aiSuffix = key[len(key)-4:]
+		}
+	}
 	return gin.H{
 		"enabled": conf.Enabled, "provider": conf.Provider, "mode": conf.Mode,
 		"api_endpoint": conf.APIEndpoint, "webhook_base_url": conf.WebhookBaseURL,
 		"charts": conf.Charts, "language": conf.Language, "rate_per_minute": conf.RatePerMinute,
 		"token_set": tokenSet, "token_suffix": suffix, "webhook_secret_set": secretSet,
+		"ai_enabled": conf.AI.Enabled, "ai_base_url": conf.AI.BaseURL, "ai_model": conf.AI.Model,
+		"ai_api_key_set": aiKeySet, "ai_api_key_suffix": aiSuffix,
 	}
 }
 
@@ -70,6 +81,10 @@ type botSettingsWrite struct {
 	Charts         *bool   `json:"charts"`
 	Language       *string `json:"language"`
 	RatePerMinute  *int    `json:"rate_per_minute"`
+	AIEnabled      *bool   `json:"ai_enabled"`
+	AIBaseURL      *string `json:"ai_base_url"`
+	AIModel        *string `json:"ai_model"`
+	AIAPIKey       *string `json:"ai_api_key"`
 }
 
 func v2PatchBotSettings(c *gin.Context) {
@@ -108,6 +123,18 @@ func v2PatchBotSettings(c *gin.Context) {
 	}
 	if body.RatePerMinute != nil {
 		conf.RatePerMinute = *body.RatePerMinute
+	}
+	if body.AIEnabled != nil {
+		conf.AI.Enabled = *body.AIEnabled
+	}
+	if body.AIBaseURL != nil {
+		conf.AI.BaseURL = strings.TrimSpace(*body.AIBaseURL)
+	}
+	if body.AIModel != nil {
+		conf.AI.Model = strings.TrimSpace(*body.AIModel)
+	}
+	if body.AIAPIKey != nil && strings.TrimSpace(*body.AIAPIKey) != "" {
+		conf.AI.APIKey = strings.TrimSpace(*body.AIAPIKey)
 	}
 	conf.Normalize(singleton.Conf.Language)
 	if conf.Mode == model.BotModeWebhook && conf.WebhookSecret == "" {
@@ -151,6 +178,20 @@ func v2TestBot(c *gin.Context) {
 		return
 	}
 	writeV2Data(c, 200, gin.H{"ok": true, "username": name})
+}
+
+func v2TestBotAI(c *gin.Context) {
+	conf := singleton.Conf.Bot.AI
+	if strings.TrimSpace(conf.BaseURL) == "" || strings.TrimSpace(conf.Model) == "" {
+		writeV2Problem(c, 400, "bot_ai_test_failed", "请先填写 base_url 与模型名")
+		return
+	}
+	elapsed, err := botservice.TestAI(c.Request.Context(), conf)
+	if err != nil {
+		writeV2Problem(c, 400, "bot_ai_test_failed", err.Error())
+		return
+	}
+	writeV2Data(c, 200, gin.H{"ok": true, "model": conf.Model, "elapsed_ms": elapsed})
 }
 
 func botChatDTO(row model.BotChat) gin.H {

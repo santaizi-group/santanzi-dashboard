@@ -25,4 +25,9 @@ export interface BotSettings {
   token_set: boolean;
   token_suffix?: string;
   webhook_secret_set: boolean;
+  ai_enabled: boolean;
+  ai_base_url?: string;
+  ai_model?: string;
+  ai_api_key_set: boolean;
+  ai_api_key_suffix?: string;
 }

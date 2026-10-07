@@ -19,6 +19,7 @@ import type {
   BatchServerDeleteWriteBody,
   BatchServerGroupWriteBody,
   BootstrapResponseResponse,
+  BotAITestResponseResponse,
   BotBindCodeListResponseResponse,
   BotBindCodeResponseResponse,
   BotBindCodeWriteBody,
@@ -1608,6 +1609,19 @@ const testBot = (
     }
 
 /**
+ * 用已保存配置向 base_url 发一次最小 chat completions 请求。
+ * @summary 测试 AI 大模型连通性
+ */
+const testBotAI = (
+
+ ) => {
+      return santaiziRequest<BotAITestResponseResponse>(
+      {url: `/api/v2/admin/bot/ai/test`, method: 'POST'
+    },
+      );
+    }
+
+/**
  * @summary 授权会话列表
  */
 const listBotChats = (
@@ -1776,7 +1790,7 @@ const runBotReport = (
       );
     }
 
-return {getSession,logout,getPublicBootstrap,createViewPasswordSession,listPublicServers,getPublicServer,listPublicServices,getPublicNetworkHistory,listPublicCycleTransfer,getPublicServerAvailability,getPublicMetrics,getAdminSummary,listServers,createServer,exportServers,previewServerImport,importServers,getServer,updateServer,deleteServer,listServerAvailability,updateServerDisplayIndex,listServerGroups,renameServerGroup,resetServerSecret,resetServerAvailability,getServerCredential,getServerInstallPreview,getServerUpgradePreview,getProbeCapabilities,listTrafficPolicies,createTrafficPolicy,getTrafficPolicy,updateTrafficPolicy,deleteTrafficPolicy,getServerTrafficHistory,getTrafficPolicyUsage,batchUpdateServerGroup,batchDeleteServers,listMonitors,createMonitor,getMonitor,updateMonitor,deleteMonitor,listMonitorHistory,listNotifications,createNotification,getNotification,updateNotification,deleteNotification,testNotification,listAlertRules,createAlertRule,getAlertRule,updateAlertRule,deleteAlertRule,listDDNSProviders,listDDNSProfiles,createDDNSProfile,getDDNSProfile,updateDDNSProfile,deleteDDNSProfile,listNATTunnels,createNATTunnel,getNATTunnel,updateNATTunnel,deleteNATTunnel,getSettings,updateSettings,getDatabase,optimizeDatabase,listScriptCommands,listApiTokens,createApiToken,getApiToken,patchApiToken,deleteApiToken,listOfflineHistory,deleteOfflineHistory,cleanupOfflineHistory,getTelemetryOverview,getConnectionSummary,listConnectionPaths,listConnectionLatency,getProbeSummary,listProbePaths,listProbeSamples,getProbeTrace,getProbeRoute,createProbeRoute,listCollectors,createCollector,getCollector,updateCollector,deleteCollector,rotateCollectorToken,getCollectorToken,revokeCollector,updateCollectorScope,getCollectorInstallPreview,listObserverAssignments,listAgentReliability,listIncidents,listIncidentRevisions,listTelemetryDataLoss,listTelemetryAlerts,telegramBotWebhook,getBotSettings,updateBotSettings,testBot,listBotChats,getBotChat,updateBotChat,deleteBotChat,listBotBindCodes,createBotBindCode,deleteBotBindCode,listBotReports,createBotReport,getBotReport,updateBotReport,deleteBotReport,runBotReport}};
+return {getSession,logout,getPublicBootstrap,createViewPasswordSession,listPublicServers,getPublicServer,listPublicServices,getPublicNetworkHistory,listPublicCycleTransfer,getPublicServerAvailability,getPublicMetrics,getAdminSummary,listServers,createServer,exportServers,previewServerImport,importServers,getServer,updateServer,deleteServer,listServerAvailability,updateServerDisplayIndex,listServerGroups,renameServerGroup,resetServerSecret,resetServerAvailability,getServerCredential,getServerInstallPreview,getServerUpgradePreview,getProbeCapabilities,listTrafficPolicies,createTrafficPolicy,getTrafficPolicy,updateTrafficPolicy,deleteTrafficPolicy,getServerTrafficHistory,getTrafficPolicyUsage,batchUpdateServerGroup,batchDeleteServers,listMonitors,createMonitor,getMonitor,updateMonitor,deleteMonitor,listMonitorHistory,listNotifications,createNotification,getNotification,updateNotification,deleteNotification,testNotification,listAlertRules,createAlertRule,getAlertRule,updateAlertRule,deleteAlertRule,listDDNSProviders,listDDNSProfiles,createDDNSProfile,getDDNSProfile,updateDDNSProfile,deleteDDNSProfile,listNATTunnels,createNATTunnel,getNATTunnel,updateNATTunnel,deleteNATTunnel,getSettings,updateSettings,getDatabase,optimizeDatabase,listScriptCommands,listApiTokens,createApiToken,getApiToken,patchApiToken,deleteApiToken,listOfflineHistory,deleteOfflineHistory,cleanupOfflineHistory,getTelemetryOverview,getConnectionSummary,listConnectionPaths,listConnectionLatency,getProbeSummary,listProbePaths,listProbeSamples,getProbeTrace,getProbeRoute,createProbeRoute,listCollectors,createCollector,getCollector,updateCollector,deleteCollector,rotateCollectorToken,getCollectorToken,revokeCollector,updateCollectorScope,getCollectorInstallPreview,listObserverAssignments,listAgentReliability,listIncidents,listIncidentRevisions,listTelemetryDataLoss,listTelemetryAlerts,telegramBotWebhook,getBotSettings,updateBotSettings,testBot,testBotAI,listBotChats,getBotChat,updateBotChat,deleteBotChat,listBotBindCodes,createBotBindCode,deleteBotBindCode,listBotReports,createBotReport,getBotReport,updateBotReport,deleteBotReport,runBotReport}};
 export type GetSessionResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['getSession']>>>
 export type LogoutResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['logout']>>>
 export type GetPublicBootstrapResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['getPublicBootstrap']>>>
@@ -1887,6 +1901,7 @@ export type TelegramBotWebhookResult = NonNullable<Awaited<ReturnType<ReturnType
 export type GetBotSettingsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['getBotSettings']>>>
 export type UpdateBotSettingsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['updateBotSettings']>>>
 export type TestBotResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['testBot']>>>
+export type TestBotAIResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['testBotAI']>>>
 export type ListBotChatsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['listBotChats']>>>
 export type GetBotChatResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['getBotChat']>>>
 export type UpdateBotChatResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSantaiziHTTPAPI>['updateBotChat']>>>

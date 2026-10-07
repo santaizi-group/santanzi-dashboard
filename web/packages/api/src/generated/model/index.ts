@@ -38,6 +38,8 @@ export * from './bootstrap';
 export * from './bootstrapLocale';
 export * from './bootstrapResponseResponse';
 export * from './bootstrapTheme';
+export * from './botAITest';
+export * from './botAITestResponseResponse';
 export * from './botBindCode';
 export * from './botBindCodeListResponseResponse';
 export * from './botBindCodeResponseResponse';

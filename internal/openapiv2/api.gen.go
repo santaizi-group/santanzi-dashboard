@@ -1994,6 +1994,13 @@ type BootstrapLocale string
 // BootstrapTheme defines model for Bootstrap.Theme.
 type BootstrapTheme string
 
+// BotAITest defines model for BotAITest.
+type BotAITest struct {
+	ElapsedMs *int64  `json:"elapsed_ms,omitempty"`
+	Model     *string `json:"model,omitempty"`
+	Ok        bool    `json:"ok"`
+}
+
 // BotBindCode defines model for BotBindCode.
 type BotBindCode struct {
 	Code         string     `json:"code"`
@@ -2096,6 +2103,11 @@ type BotRole string
 
 // BotSettings defines model for BotSettings.
 type BotSettings struct {
+	AiApiKeySet      bool            `json:"ai_api_key_set"`
+	AiApiKeySuffix   *string         `json:"ai_api_key_suffix,omitempty"`
+	AiBaseUrl        *string         `json:"ai_base_url,omitempty"`
+	AiEnabled        bool            `json:"ai_enabled"`
+	AiModel          *string         `json:"ai_model,omitempty"`
 	ApiEndpoint      *string         `json:"api_endpoint,omitempty"`
 	Charts           bool            `json:"charts"`
 	Enabled          bool            `json:"enabled"`
@@ -2114,6 +2126,10 @@ type BotSettingsMode string
 
 // BotSettingsWrite defines model for BotSettingsWrite.
 type BotSettingsWrite struct {
+	AiApiKey       *string               `json:"ai_api_key,omitempty"`
+	AiBaseUrl      *string               `json:"ai_base_url,omitempty"`
+	AiEnabled      *bool                 `json:"ai_enabled,omitempty"`
+	AiModel        *string               `json:"ai_model,omitempty"`
 	ApiEndpoint    *string               `json:"api_endpoint,omitempty"`
 	Charts         *bool                 `json:"charts,omitempty"`
 	Enabled        *bool                 `json:"enabled,omitempty"`
@@ -3576,6 +3592,11 @@ type BootstrapResponse struct {
 	Data Bootstrap `json:"data"`
 }
 
+// BotAITestResponse defines model for BotAITestResponse.
+type BotAITestResponse struct {
+	Data BotAITest `json:"data"`
+}
+
 // BotBindCodeListResponse defines model for BotBindCodeListResponse.
 type BotBindCodeListResponse struct {
 	Data []BotBindCode `json:"data"`
@@ -3941,6 +3962,12 @@ type DeleteApiTokenParams struct {
 
 // PatchApiTokenParams defines parameters for PatchApiToken.
 type PatchApiTokenParams struct {
+	// XCSRFToken Cookie 会话写操作时必填；Bearer Token 调用可省略
+	XCSRFToken *CsrfToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// TestBotAIParams defines parameters for TestBotAI.
+type TestBotAIParams struct {
 	// XCSRFToken Cookie 会话写操作时必填；Bearer Token 调用可省略
 	XCSRFToken *CsrfToken `json:"X-CSRF-Token,omitempty"`
 }
@@ -5223,6 +5250,9 @@ type ServerInterface interface {
 	// PatchApiToken 启用或禁用 API Token
 	// (PATCH /api/v2/admin/api-tokens/{id})
 	PatchApiToken(c *gin.Context, id Id, params PatchApiTokenParams)
+	// TestBotAI 测试 AI 大模型连通性
+	// (POST /api/v2/admin/bot/ai/test)
+	TestBotAI(c *gin.Context, params TestBotAIParams)
 	// ListBotBindCodes 绑定码列表
 	// (GET /api/v2/admin/bot/bind-codes)
 	ListBotBindCodes(c *gin.Context, params ListBotBindCodesParams)
@@ -5969,6 +5999,46 @@ func (siw *ServerInterfaceWrapper) PatchApiToken(c *gin.Context) {
 	}
 
 	siw.Handler.PatchApiToken(c, id, params)
+}
+
+// TestBotAI operation middleware
+func (siw *ServerInterfaceWrapper) TestBotAI(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params TestBotAIParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CsrfToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.TestBotAI(c, params)
 }
 
 // ListBotBindCodes operation middleware
@@ -10388,6 +10458,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v2/admin/bot/settings", wrapper.GetBotSettings)
 	router.PATCH(options.BaseURL+"/api/v2/admin/bot/settings", wrapper.UpdateBotSettings)
 	router.POST(options.BaseURL+"/api/v2/admin/bot/test", wrapper.TestBot)
+	router.POST(options.BaseURL+"/api/v2/admin/bot/ai/test", wrapper.TestBotAI)
 	router.GET(options.BaseURL+"/api/v2/admin/bot/chats", wrapper.ListBotChats)
 	router.DELETE(options.BaseURL+"/api/v2/admin/bot/chats/:id", wrapper.DeleteBotChat)
 	router.GET(options.BaseURL+"/api/v2/admin/bot/chats/:id", wrapper.GetBotChat)

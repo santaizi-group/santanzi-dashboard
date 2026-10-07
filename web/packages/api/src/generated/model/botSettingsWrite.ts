@@ -24,4 +24,8 @@ export interface BotSettingsWrite {
      * @maximum 60
      */
   rate_per_minute?: number;
+  ai_enabled?: boolean;
+  ai_base_url?: string;
+  ai_model?: string;
+  ai_api_key?: string;
 }

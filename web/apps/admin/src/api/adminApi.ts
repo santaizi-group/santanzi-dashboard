@@ -104,6 +104,7 @@ export const getSettings = api.getSettings
 export const getBotSettings = () => api.getBotSettings() as Promise<BotSettings>
 export const updateBotSettings = (body: BotSettingsWrite) => api.updateBotSettings(body) as Promise<BotSettings>
 export const testBot = api.testBot
+export const testBotAI = api.testBotAI
 export const listBotChats = (query: ResourceQuery = {}) => api.listBotChats(query) as Promise<api.ApiList<BotChatRecord>>
 export const updateBotChat = (id: number, body: BotChatWrite) => api.updateBotChat(id, body) as Promise<BotChatRecord>
 export const deleteBotChat = api.deleteBotChat

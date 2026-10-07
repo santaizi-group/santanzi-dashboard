@@ -2028,6 +2028,25 @@ paths:
           $ref: '#/components/responses/BotTestResponse'
         default:
           $ref: '#/components/responses/Problem'
+  /api/v2/admin/bot/ai/test:
+    post:
+      tags:
+      - Bot
+      summary: 测试 AI 大模型连通性
+      description: 用已保存配置向 base_url 发一次最小 chat completions 请求。
+      operationId: testBotAI
+      x-ui-route: /admin/bot
+      security:
+      - cookieAuth: []
+        csrfHeader: []
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '200':
+          $ref: '#/components/responses/BotAITestResponse'
+        default:
+          $ref: '#/components/responses/Problem'
   /api/v2/admin/bot/chats:
     get:
       tags:
@@ -3548,6 +3567,8 @@ components:
       - rate_per_minute
       - token_set
       - webhook_secret_set
+      - ai_enabled
+      - ai_api_key_set
       properties:
         enabled:
           type: boolean
@@ -3577,6 +3598,16 @@ components:
           type: string
         webhook_secret_set:
           type: boolean
+        ai_enabled:
+          type: boolean
+        ai_base_url:
+          type: string
+        ai_model:
+          type: string
+        ai_api_key_set:
+          type: boolean
+        ai_api_key_suffix:
+          type: string
     BotSettingsWrite:
       type: object
       properties:
@@ -3608,6 +3639,27 @@ components:
           format: int64
           minimum: 1
           maximum: 60
+        ai_enabled:
+          type: boolean
+        ai_base_url:
+          type: string
+        ai_model:
+          type: string
+        ai_api_key:
+          type: string
+          format: password
+    BotAITest:
+      type: object
+      required:
+      - ok
+      properties:
+        ok:
+          type: boolean
+        model:
+          type: string
+        elapsed_ms:
+          type: integer
+          format: int64
     BotTest:
       type: object
       required:
@@ -6171,6 +6223,17 @@ components:
             properties:
               data:
                 $ref: '#/components/schemas/BotTest'
+    BotAITestResponse:
+      description: AI 大模型连通性测试
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+            - data
+            properties:
+              data:
+                $ref: '#/components/schemas/BotAITest'
     BotChatResponse:
       description: Telegram Bot chat
       content:

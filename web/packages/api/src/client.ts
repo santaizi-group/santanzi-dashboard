@@ -9,7 +9,7 @@ import type {
   ServerGroupRenameWriteBody, ServerImportPreview, ServerImportResult, ServerImportWrite, ServerWriteBody, ScriptCommands, TelemetryAlertRecord, TelemetryDataLossRecord, TrafficPolicy,
   TrafficPolicyHistory, TrafficPolicyWriteBody, TrafficUsage, UpgradePreview, UpgradePreviewWriteBody,
   CycleTransfer, GetPublicMetricsParams, GetPublicServerAvailabilityParams, GetServerTrafficHistoryParams, MonitorHistory, PublicAvailability, PublicMetricPoint,
-  DatabaseStatus, BotSettings, BotSettingsWrite, BotChat, BotChatWrite, BotBindCode, BotBindCodeWrite, BotReport, BotReportWrite, BotTest,
+  DatabaseStatus, BotSettings, BotSettingsWrite, BotChat, BotChatWrite, BotBindCode, BotBindCodeWrite, BotReport, BotReportWrite, BotTest, BotAITest,
 } from './generated/model'
 import type {
   ApiData, ApiList, CollectorRecord, ResourceQuery, ResourceRecord, ServerRecord,
@@ -162,6 +162,7 @@ export const getBotSettings = () => api.getBotSettings().then(value => data<BotS
 export const updateBotSettings = (body: BotSettingsWrite) => api.updateBotSettings(body).then(value => data<BotSettings>(value))
 export const testBot = (body?: { token?: string; api_endpoint?: string }) =>
   http.post('/api/v2/admin/bot/test', body).then(value => data<BotTest>(value.data))
+export const testBotAI = () => http.post('/api/v2/admin/bot/ai/test').then(value => data<BotAITest>(value.data))
 export const listBotChats = (params: ResourceQuery = {}) => api.listBotChats(params).then(value => list<BotChat>(value))
 export const updateBotChat = (id: number, body: BotChatWrite) => api.updateBotChat(id, body).then(value => data<BotChat>(value))
 export const deleteBotChat = (id: number) => api.deleteBotChat(id)

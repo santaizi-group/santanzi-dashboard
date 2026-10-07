@@ -10,7 +10,7 @@ import CopyableText from '@/components/CopyableText.vue'
 import {
   createBotBindCode, deleteBotBindCode, deleteBotChat, deleteBotReport,
   getBotSettings, listBotBindCodes, listBotChats, listBotReports,
-  runBotReport, testBot, updateBotSettings,
+  runBotReport, testBot, testBotAI, updateBotSettings,
 } from '@/api/adminApi'
 import type { BotSettingsWrite } from '@santaizi/api'
 import { notifyAPIError } from '@/composables/notify'
@@ -21,7 +21,7 @@ import type { BotBindCodeRecord, BotChatRecord, BotReportRecord, BotRole, BotSet
 
 const { t, te, locale } = useI18n()
 const route = useRoute()
-const saving = ref(false), testing = ref(false), creatingCode = ref(false)
+const saving = ref(false), testing = ref(false), testingAI = ref(false), creatingCode = ref(false)
 const chatEditor = ref(false), reportEditor = ref(false)
 const chatsLoading = ref(false), codesLoading = ref(false), reportsLoading = ref(false)
 const chats = ref<BotChatRecord[]>([]), codes = ref<BotBindCodeRecord[]>([]), reports = ref<BotReportRecord[]>([])
@@ -34,12 +34,14 @@ const chatQuery = reactive({ page: 1, page_size: pageSize, q: '', sort: 'id', or
 const codeQuery = reactive({ page: 1, page_size: pageSize })
 const reportQuery = reactive({ page: 1, page_size: pageSize, q: '', sort: 'id', order: 'desc' as const })
 const bindForm = reactive<{ role: BotRole; ttl_minutes: number }>({ role: 'viewer', ttl_minutes: 10 })
-const settings = reactive<BotSettings & { token: string; webhook_secret: string }>({
+const settings = reactive<BotSettings & { token: string; webhook_secret: string; ai_api_key: string }>({
   enabled: false, provider: 'telegram', mode: 'polling', api_endpoint: '', webhook_base_url: '',
   charts: false, language: '', rate_per_minute: 20, token_set: false, token_suffix: '', webhook_secret_set: false,
-  token: '', webhook_secret: '',
+  ai_enabled: false, ai_base_url: '', ai_model: '', ai_api_key_set: false, ai_api_key_suffix: '',
+  token: '', webhook_secret: '', ai_api_key: '',
 })
 const tokenHint = computed(() => settings.token_set && settings.token_suffix ? t('botTokenSet', { suffix: settings.token_suffix }) : t('botTokenUnset'))
+const aiKeyHint = computed(() => settings.ai_api_key_set && settings.ai_api_key_suffix ? t('botTokenSet', { suffix: settings.ai_api_key_suffix }) : t('botTokenUnset'))
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number) {
   const next = Number(value)
@@ -114,11 +116,13 @@ async function persistSettings(quiet = false) {
       enabled: settings.enabled, provider: settings.provider, mode: settings.mode,
       api_endpoint: settings.api_endpoint, webhook_base_url: settings.webhook_base_url,
       charts: settings.charts, rate_per_minute: settings.rate_per_minute,
+      ai_enabled: settings.ai_enabled, ai_base_url: (settings.ai_base_url || '').trim(), ai_model: (settings.ai_model || '').trim(),
     }
     if (settings.token.trim()) payload.token = settings.token.trim()
     if (settings.webhook_secret.trim()) payload.webhook_secret = settings.webhook_secret.trim()
+    if (settings.ai_api_key.trim()) payload.ai_api_key = settings.ai_api_key.trim()
     const data = await updateBotSettings(payload)
-    Object.assign(settings, data, { token: '', webhook_secret: '' })
+    Object.assign(settings, data, { token: '', webhook_secret: '', ai_api_key: '' })
     if (!quiet) ElMessage.success(t('saveSuccess'))
     return true
   } catch (error) {
@@ -143,6 +147,16 @@ async function runTest() {
     if (!settings.enabled) ElMessage.warning(t('botTestNeedEnable'))
   } catch (error) { notifyAPIError(error, t as never, te) }
   finally { testing.value = false }
+}
+
+async function runAITest() {
+  testingAI.value = true
+  try {
+    const result = await testBotAI()
+    ElMessage.success(t('botAITestOk', { model: result.model || '', ms: result.elapsed_ms ?? 0 }))
+    if (!settings.ai_enabled) ElMessage.warning(t('botAITestNeedEnable'))
+  } catch (error) { notifyAPIError(error, t as never, te) }
+  finally { testingAI.value = false }
 }
 
 async function createCode() {
@@ -211,6 +225,7 @@ onMounted(() => { void loadSettings(); void loadChats(); void loadCodes(); void 
     <h1>{{ t('botPageTitle') }}</h1>
     <div class="page-actions">
       <el-button :loading="testing" @click="runTest"><i class="ri-link"></i>{{ t('botTest') }}</el-button>
+      <el-button :loading="testingAI" @click="runAITest"><i class="ri-sparkling-2-line"></i>{{ t('botAITest') }}</el-button>
       <el-button type="primary" :loading="saving" @click="saveSettings"><i class="ri-save-line"></i>{{ t('save') }}</el-button>
     </div>
   </div>
@@ -237,6 +252,24 @@ onMounted(() => { void loadSettings(); void loadChats(); void loadCodes(); void 
               <el-input v-model="settings.webhook_secret" type="password" show-password autocomplete="new-password" :placeholder="settings.webhook_secret_set ? t('botWebhookSecretSet') : ''" />
             </el-form-item>
           </template>
+        </div>
+      </el-form>
+    </section>
+
+    <section class="surface settings-section">
+      <div class="settings-heading"><i class="ri-sparkling-2-line"></i><div><h2>{{ t('botAISection') }}</h2></div></div>
+      <el-form :model="settings" label-position="top">
+        <div class="form-grid">
+          <el-form-item :label="t('botAIQuery')"><el-switch v-model="settings.ai_enabled" /></el-form-item>
+          <el-form-item class="span-2" :label="t('botAIBaseURL')">
+            <el-input v-model="settings.ai_base_url" placeholder="https://api.openai.com/v1" />
+          </el-form-item>
+          <el-form-item :label="t('botAIModel')">
+            <el-input v-model="settings.ai_model" placeholder="gpt-4o-mini" />
+          </el-form-item>
+          <el-form-item :label="t('botAIAPIKey')">
+            <el-input v-model="settings.ai_api_key" type="password" show-password autocomplete="new-password" :placeholder="aiKeyHint" />
+          </el-form-item>
         </div>
       </el-form>
     </section>
