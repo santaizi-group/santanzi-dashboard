@@ -15,6 +15,7 @@ import (
 	"golang.org/x/image/font/gofont/goregular"
 	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/math/fixed"
+	"golang.org/x/image/vector"
 
 	resfont "github.com/hi2shark/santaizi-dashboard/resource/font"
 )
@@ -59,6 +60,32 @@ func DarkPalette() Palette {
 	}
 }
 
+// seriesColors 返回按序可区分的 8 色；超过 8 条系列循环复用。
+func (p Palette) seriesColors() []color.RGBA {
+	return []color.RGBA{p.Primary, p.Success, p.Warning, p.Danger, p.extra1(), p.extra2(), p.extra3(), p.Muted}
+}
+
+func (p Palette) extra1() color.RGBA {
+	if p.Background.R > 0x80 { // 浅色主题
+		return color.RGBA{R: 0x7c, G: 0x3a, B: 0xed, A: 0xff} // 紫
+	}
+	return color.RGBA{R: 0xa7, G: 0x8b, B: 0xfa, A: 0xff}
+}
+
+func (p Palette) extra2() color.RGBA {
+	if p.Background.R > 0x80 {
+		return color.RGBA{R: 0x08, G: 0x91, B: 0xb2, A: 0xff} // 青
+	}
+	return color.RGBA{R: 0x22, G: 0xd3, B: 0xee, A: 0xff}
+}
+
+func (p Palette) extra3() color.RGBA {
+	if p.Background.R > 0x80 {
+		return color.RGBA{R: 0xdb, G: 0x27, B: 0x77, A: 0xff} // 品红
+	}
+	return color.RGBA{R: 0xf4, G: 0x72, B: 0xb6, A: 0xff}
+}
+
 type Series struct {
 	Name   string
 	Points []float64
@@ -70,6 +97,14 @@ type BarItem struct {
 	Value float64
 	Color color.RGBA
 }
+
+// AxisFormat 决定坐标轴与数值标签的格式化方式。
+type AxisFormat int
+
+const (
+	AxisNumber AxisFormat = iota // 智能位数
+	AxisBytes                    // 字节自动 KB/MB/GB
+)
 
 var (
 	faceOnce  sync.Once
@@ -91,10 +126,10 @@ func faces() (font.Face, font.Face) {
 }
 
 func Bar(title string, items []BarItem) ([]byte, error) {
-	return BarTheme(title, items, LightPalette())
+	return BarFormat(title, items, AxisNumber, LightPalette())
 }
 
-func BarTheme(title string, items []BarItem, p Palette) ([]byte, error) {
+func BarFormat(title string, items []BarItem, axis AxisFormat, p Palette) ([]byte, error) {
 	if len(items) == 0 {
 		return nil, nil
 	}
@@ -128,28 +163,36 @@ func BarTheme(title string, items []BarItem, p Palette) ([]byte, error) {
 			w = 2 * scale
 		}
 		rect(img, left, y, left+w, y+22*scale, fill)
-		drawString(img, label, p.Muted, left+w+8*scale, y+18*scale, formatNum(item.Value))
+		text := formatAxis(item.Value, axis)
+		textW := textWidth(label, text)
+		if left+w+8*scale+textW > right {
+			drawString(img, label, p.Surface, left+w-8*scale-textW, y+18*scale, text)
+		} else {
+			drawString(img, label, p.Muted, left+w+8*scale, y+18*scale, text)
+		}
 	}
 	return encode(img)
 }
 
 func Line(title string, series []Series, labels []string) ([]byte, error) {
-	return LineTheme(title, series, labels, LightPalette())
+	return LineFormat(title, series, labels, AxisNumber, LightPalette())
 }
 
-func LineTheme(title string, series []Series, labels []string, p Palette) ([]byte, error) {
+func LineFormat(title string, series []Series, labels []string, axis AxisFormat, p Palette) ([]byte, error) {
 	if len(series) == 0 {
 		return nil, nil
 	}
 	const scale = 2
-	width, height := 900*scale, 420*scale
+	width, height := 900*scale, 460*scale
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
 	draw.Draw(img, img.Bounds(), &image.Uniform{C: p.Background}, image.Point{}, draw.Src)
 	label, heading := faces()
 	drawString(img, heading, p.Text, 24*scale, 36*scale, displayText(title))
-	plot := image.Rect(80*scale, 60*scale, width-30*scale, height-50*scale)
+	legendRows := drawLegend(img, label, series, p, width, 56*scale)
+	plotTop := 56*scale + legendRows*26*scale + 10*scale
+	plot := image.Rect(80*scale, plotTop, width-30*scale, height-50*scale)
 	rect(img, plot.Min.X, plot.Min.Y, plot.Max.X, plot.Max.Y, p.Surface)
-	maxVal := 1.0
+	maxVal := 0.0
 	n := 0
 	for _, s := range series {
 		if len(s.Points) > n {
@@ -161,41 +204,144 @@ func LineTheme(title string, series []Series, labels []string, p Palette) ([]byt
 			}
 		}
 	}
+	maxVal *= 1.1 // 顶部留头，最大点不贴边
+	if maxVal <= 0 {
+		maxVal = 1
+	}
 	if n < 2 {
 		n = 2
 	}
 	for i := 0; i <= 4; i++ {
 		y := plot.Max.Y - i*(plot.Dy())/4
 		hline(img, plot.Min.X, plot.Max.X, y, p.Grid)
-		drawString(img, label, p.Muted, 16*scale, y+4*scale, formatNum(maxVal*float64(i)/4))
+		drawString(img, label, p.Muted, 16*scale, y+4*scale, formatAxis(maxVal*float64(i)/4, axis))
 	}
-	colors := []color.RGBA{p.Primary, p.Success, p.Warning, p.Danger}
-	for si, s := range series {
+	colors := p.seriesColors()
+	strokeW := 1.25 * scale
+	for si := range series {
+		s := &series[si]
 		col := s.Color
 		if col.A == 0 {
 			col = colors[si%len(colors)]
 		}
-		prev := image.Point{}
 		span := n - 1
 		if span < 1 {
 			span = 1
 		}
+		pts := make([]image.Point, 0, len(s.Points))
 		for i, v := range s.Points {
 			x := plot.Min.X + i*plot.Dx()/span
 			y := plot.Max.Y - int(float64(plot.Dy())*v/maxVal)
-			pt := image.Point{X: x, Y: y}
-			if i > 0 {
-				line(img, prev, pt, col)
-			}
-			prev = pt
+			pts = append(pts, image.Point{X: x, Y: y})
 		}
-		drawString(img, label, col, plot.Min.X+si*160*scale, height-18*scale, displayText(s.Name))
+		strokePolyline(img, pts, strokeW, col)
 	}
+	// 底部一行只放时间标签，与图例分离。
 	if len(labels) > 0 {
+		mid := labels[len(labels)/2]
+		last := labels[len(labels)-1]
 		drawString(img, label, p.Muted, plot.Min.X, height-18*scale, displayText(labels[0]))
-		drawString(img, label, p.Muted, plot.Max.X-120*scale, height-18*scale, displayText(labels[len(labels)-1]))
+		drawString(img, label, p.Muted, plot.Min.X+(plot.Dx()-textWidth(label, mid))/2, height-18*scale, displayText(mid))
+		drawString(img, label, p.Muted, plot.Max.X-textWidth(label, last), height-18*scale, displayText(last))
 	}
 	return encode(img)
+}
+
+// drawLegend 在标题下方绘制图例（色块 + 名称），返回占用行数；最多两行，放不下省略。
+func drawLegend(img *image.RGBA, face font.Face, series []Series, p Palette, width, y int) int {
+	colors := p.seriesColors()
+	const (
+		swatch = 14 * 2
+		gap    = 6 * 2
+		item   = 20 * 2
+	)
+	x := 24 * 2
+	maxX := width - 24*2
+	row := 1
+	drawSwatch(img, x, y, swatch, colorAt(colors, 0, series, 0))
+	x += swatch + gap
+	for si := range series {
+		name := truncate(displayText(series[si].Name), 18)
+		w := swatch + gap + textWidth(face, name)
+		if x+w > maxX {
+			if row >= 2 {
+				break
+			}
+			row++
+			y += 26 * 2
+			x = 24 * 2
+		}
+		drawSwatch(img, x, y, swatch, colorAt(colors, si, series, si))
+		x += swatch + gap
+		drawString(img, face, p.Text, x, y+swatch-8, name)
+		x += textWidth(face, name) + item
+	}
+	return row
+}
+
+func colorAt(colors []color.RGBA, fallback int, series []Series, si int) color.RGBA {
+	if series[si].Color.A != 0 {
+		return series[si].Color
+	}
+	return colors[fallback%len(colors)]
+}
+
+func drawSwatch(img *image.RGBA, x, y, size int, c color.RGBA) {
+	rect(img, x, y, x+size, y+size/2, c)
+}
+
+func strokePolyline(img *image.RGBA, pts []image.Point, width float64, c color.RGBA) {
+	if len(pts) == 0 {
+		return
+	}
+	if len(pts) == 1 {
+		fillCircle(img, pts[0], width/2, c)
+		return
+	}
+	r := &vector.Rasterizer{}
+	r.Reset(img.Bounds().Dx(), img.Bounds().Dy())
+	half := float32(width / 2)
+	for i := 1; i < len(pts); i++ {
+		a, b := pts[i-1], pts[i]
+		if a == b {
+			continue
+		}
+		dx, dy := float64(b.X-a.X), float64(b.Y-a.Y)
+		l := math.Hypot(dx, dy)
+		nx, ny := float32(-dy/l*float64(half)), float32(dx/l*float64(half))
+		r.MoveTo(float32(a.X)+nx, float32(a.Y)+ny)
+		r.LineTo(float32(b.X)+nx, float32(b.Y)+ny)
+		r.LineTo(float32(b.X)-nx, float32(b.Y)-ny)
+		r.LineTo(float32(a.X)-nx, float32(a.Y)-ny)
+		r.ClosePath()
+		r.MoveTo(float32(b.X)+half, float32(b.Y))
+		addCircle(r, float32(b.X), float32(b.Y), half)
+		r.ClosePath()
+	}
+	first := pts[0]
+	r.MoveTo(float32(first.X)+half, float32(first.Y))
+	addCircle(r, float32(first.X), float32(first.Y), half)
+	r.ClosePath()
+	r.Draw(img, img.Bounds(), image.NewUniform(c), image.Point{})
+}
+
+// addCircle 用四段三次贝塞尔近似整圆（路径须已 MoveTo 起点右侧；调用方负责 ClosePath）。
+func addCircle(r *vector.Rasterizer, cx, cy, radius float32) {
+	const k = 0.5522847498307936
+	ck := radius * k
+	r.CubeTo(cx+ck, cy+ck, cx+ck, cy+radius, cx, cy+radius)
+	r.CubeTo(cx-ck, cy+radius, cx-radius, cy+ck, cx-radius, cy)
+	r.CubeTo(cx-radius, cy-ck, cx-ck, cy-radius, cx, cy-radius)
+	r.CubeTo(cx+ck, cy-radius, cx+ck, cy-radius+ck, cx+radius, cy)
+}
+
+func fillCircle(img *image.RGBA, p image.Point, radius float64, c color.RGBA) {
+	r := &vector.Rasterizer{}
+	r.Reset(img.Bounds().Dx(), img.Bounds().Dy())
+	r.MoveTo(float32(p.X)+float32(radius), float32(p.Y))
+	addCircle(r, float32(p.X), float32(p.Y), float32(radius))
+	r.ClosePath()
+	r.Draw(img, img.Bounds(), image.NewUniform(c), image.Point{})
 }
 
 func encode(img *image.RGBA) ([]byte, error) {
@@ -219,48 +365,20 @@ func hline(img *image.RGBA, x0, x1, y int, c color.RGBA) {
 	}
 }
 
-func line(img *image.RGBA, a, b image.Point, c color.RGBA) {
-	dx := abs(b.X - a.X)
-	dy := abs(b.Y - a.Y)
-	sx, sy := 1, 1
-	if a.X > b.X {
-		sx = -1
-	}
-	if a.Y > b.Y {
-		sy = -1
-	}
-	err := dx - dy
-	x, y := a.X, a.Y
-	for {
-		img.SetRGBA(x, y, c)
-		if x == b.X && y == b.Y {
-			return
-		}
-		e2 := 2 * err
-		if e2 > -dy {
-			err -= dy
-			x += sx
-		}
-		if e2 < dx {
-			err += dx
-			y += sy
-		}
-	}
-}
-
-func abs(v int) int {
-	if v < 0 {
-		return -v
-	}
-	return v
-}
-
 func drawString(img *image.RGBA, face font.Face, c color.RGBA, x, y int, text string) {
 	if face == nil || text == "" {
 		return
 	}
 	d := &font.Drawer{Dst: img, Src: image.NewUniform(c), Face: face, Dot: fixed.P(x, y)}
 	d.DrawString(text)
+}
+
+func textWidth(face font.Face, text string) int {
+	if face == nil {
+		return 0
+	}
+	d := &font.Drawer{Face: face}
+	return d.MeasureString(text).Ceil()
 }
 
 func displayText(text string) string {
@@ -286,9 +404,36 @@ func truncate(s string, n int) string {
 	return string(runes[:n-1]) + "..."
 }
 
-func formatNum(v float64) string {
-	if math.Abs(v-math.Round(v)) < 0.05 {
-		return fmt.Sprintf("%.0f", v)
+// formatAxis 坐标轴数值：字节自动单位，其余按量级取位数。
+func formatAxis(v float64, axis AxisFormat) string {
+	if axis == AxisBytes {
+		return formatBytesAxis(v)
 	}
-	return fmt.Sprintf("%.1f", v)
+	abs := math.Abs(v)
+	switch {
+	case abs >= 1000:
+		return fmt.Sprintf("%.0f", v)
+	case abs >= 100:
+		return fmt.Sprintf("%.1f", v)
+	case abs >= 10:
+		return fmt.Sprintf("%.1f", v)
+	default:
+		return fmt.Sprintf("%.2f", v)
+	}
+}
+
+func formatBytesAxis(v float64) string {
+	units := []string{"B", "KB", "MB", "GB", "TB", "PB"}
+	u := 0
+	for v >= 1024 && u < len(units)-1 {
+		v /= 1024
+		u++
+	}
+	if u == 0 {
+		return fmt.Sprintf("%.0fB", v)
+	}
+	if v >= 100 {
+		return fmt.Sprintf("%.0f%s", v, units[u])
+	}
+	return fmt.Sprintf("%.1f%s", v, units[u])
 }

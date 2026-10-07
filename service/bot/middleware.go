@@ -61,7 +61,14 @@ func (h *Hub) authMiddleware(next tgbot.HandlerFunc) tgbot.HandlerFunc {
 		}
 		cmd, _ := commandName(text)
 		if isCallback {
-			cmd = callbackCommand(update.CallbackQuery.Data)
+			var ok bool
+			cmd, ok = callbackCommand(update.CallbackQuery.Data)
+			if !ok {
+				_, _ = b.AnswerCallbackQuery(ctx, &tgbot.AnswerCallbackQueryParams{
+					CallbackQueryID: update.CallbackQuery.ID, Text: "权限不足。",
+				})
+				return
+			}
 		}
 		rec := h.authz.Lookup(chatID)
 		if rec == nil || !rec.IsEnabled() {
@@ -146,20 +153,40 @@ func chatTitle(chat models.Chat) string {
 	return chat.Username
 }
 
-func callbackCommand(data string) string {
+// callbackCommand 把回调 data 映射回命令名用于角色门禁。
+// 未识别的前缀返回 ("", false)，由中间件拒绝——不允许默认按低角色放行。
+func callbackCommand(data string) (string, bool) {
 	switch {
-	case strings.HasPrefix(data, "c:mute"), strings.HasPrefix(data, "m:1h"):
-		return "mute"
-	case strings.HasPrefix(data, "c:unmute"):
-		return "unmute"
-	case strings.HasPrefix(data, "c:rule"):
-		return "rule"
-	case strings.HasPrefix(data, "au:"):
-		return "audit"
-	case strings.HasPrefix(data, "hl:"):
-		return "health"
+	case strings.HasPrefix(data, "c:mute:"):
+		return "mute", true
+	case strings.HasPrefix(data, "c:unmute:"):
+		return "unmute", true
+	case strings.HasPrefix(data, "c:rule:"):
+		return "rule", true
+	case strings.HasPrefix(data, "c:role:"):
+		return "role", true
+	case strings.HasPrefix(data, "c:revoke:"):
+		return "revoke", true
+	case strings.HasPrefix(data, "m:1h:"):
+		return "mute", true
+	case strings.HasPrefix(data, "m:"):
+		name, _, _ := strings.Cut(strings.TrimPrefix(data, "m:"), ":")
+		switch name {
+		case "home", "more":
+			return "menu", true
+		}
+		if spec := lookupCommand(name); spec != nil {
+			return spec.Name, true
+		}
+		return "", false
+	case strings.HasPrefix(data, "q:"), strings.HasPrefix(data, "h:"),
+		strings.HasPrefix(data, "u:"), strings.HasPrefix(data, "ch:"),
+		strings.HasPrefix(data, "cm:"), strings.HasPrefix(data, "up:"),
+		strings.HasPrefix(data, "of:"), strings.HasPrefix(data, "svc:"),
+		strings.HasPrefix(data, "x:"):
+		return "status", true
 	default:
-		return "status"
+		return "", false
 	}
 }
 

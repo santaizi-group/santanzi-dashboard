@@ -133,7 +133,7 @@ func ParseQuery(args []string, now time.Time) (Query, error) {
 			pendingAgg = ""
 		}
 		switch {
-		case lower == "today" || lower == "yesterday" || lower == "month" || lower == "24h" || isDaySpan(lower) || isHourSpan(lower):
+		case lower == "today" || lower == "yesterday" || lower == "month" || lower == "24h" || isDaySpan(lower) || isHourSpan(lower) || isMinuteSpan(lower):
 			rng, err := resolveRange(lower, "", now)
 			if err != nil {
 				return q, err
@@ -287,6 +287,9 @@ func resolveRange(kind, extra string, now time.Time) (TimeRange, error) {
 		}
 		return TimeRange{Kind: "custom", From: from, To: end}, nil
 	default:
+		if n, ok := parseSpan(kind, "m"); ok {
+			return TimeRange{Kind: kind, From: now.Add(-time.Duration(n) * time.Minute), To: now}, nil
+		}
 		if n, ok := parseSpan(kind, "d"); ok {
 			from := today.AddDate(0, 0, -(n - 1))
 			return TimeRange{Kind: kind, From: from, To: now}, nil
@@ -425,6 +428,11 @@ func isHourSpan(value string) bool {
 	return ok
 }
 
+func isMinuteSpan(value string) bool {
+	_, ok := parseSpan(value, "m")
+	return ok
+}
+
 func parseSpan(value, suffix string) (int, bool) {
 	if !strings.HasSuffix(value, suffix) {
 		return 0, false
@@ -498,6 +506,11 @@ func applyOverlay(q Query, overlay string) Query {
 			}
 		case "m":
 			q.Metric = val
+		case "f":
+			switch val {
+			case "all", "online", "offline":
+				q.Filters = replaceStatusFilter(q.Filters, val)
+			}
 		case "t":
 			tag, err := url.QueryUnescape(val)
 			if err != nil {
@@ -550,9 +563,6 @@ func parseKindQuery(kind, arg string, now time.Time) (Query, error) {
 		if q.Sort == "" {
 			q.Sort = "-" + metric
 		}
-		if q.Limit == 8 {
-			q.Limit = 8
-		}
 		return q, nil
 	case "chart":
 		selector, fields := takeSelector(fields)
@@ -591,9 +601,10 @@ func parseKindQuery(kind, arg string, now time.Time) (Query, error) {
 		q.Right = right.Filters
 		return q, nil
 	case "uptime":
+		// 裸数字统一表示主机 ID（与 /find /top 一致），天数需带 d 后缀。
 		if len(fields) == 1 {
-			if n, ok := parsePositiveInt(fields[0]); ok && n > 0 && n <= 90 {
-				fields[0] = fmt.Sprintf("%dd", n)
+			if _, ok := parsePositiveInt(fields[0]); ok {
+				fields[0] = "id=" + fields[0]
 			}
 		}
 	}
@@ -659,7 +670,7 @@ func peelMetric(fields []string) (metric string, rest []string) {
 
 func isSelectorMeta(tok string) bool {
 	lower := strings.ToLower(strings.TrimSpace(tok))
-	if lower == "today" || lower == "yesterday" || lower == "month" || lower == "24h" || isDaySpan(lower) || isHourSpan(lower) {
+	if lower == "today" || lower == "yesterday" || lower == "month" || lower == "24h" || isDaySpan(lower) || isHourSpan(lower) || isMinuteSpan(lower) {
 		return true
 	}
 	if strings.Contains(tok, "..") || isDate(tok) {
@@ -709,4 +720,20 @@ func replaceTagFilter(filters []Filter, tag string) []Filter {
 		out = append(out, filter)
 	}
 	return append(out, Filter{Field: "tag", Op: "=", Values: []string{tag}})
+}
+
+// replaceStatusFilter 换掉裸 online/offline/muted 状态过滤，保留其余条件。
+func replaceStatusFilter(filters []Filter, status string) []Filter {
+	out := make([]Filter, 0, len(filters)+1)
+	for _, filter := range filters {
+		switch filter.Field {
+		case "online", "offline", "muted":
+			continue
+		}
+		out = append(out, filter)
+	}
+	if status != "all" {
+		out = append(out, Filter{Field: status, Op: "="})
+	}
+	return out
 }

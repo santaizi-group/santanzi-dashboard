@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"fmt"
+	"image/color"
 	"log"
 	"net/http"
 	"strings"
@@ -20,17 +21,18 @@ import (
 )
 
 type Hub struct {
-	mu      sync.Mutex
-	cancel  context.CancelFunc
-	client  *tgbot.Bot
-	sender  *Sender
-	authz   *Authz
-	limiter *chatLimiter
-	queries *queryCache
+	mu        sync.Mutex
+	cancel    context.CancelFunc
+	client    *tgbot.Bot
+	sender    *Sender
+	authz     *Authz
+	limiter   *chatLimiter
+	aiLimiter *chatLimiter
+	queries   *queryCache
 }
 
 var (
-	sharedHub      = &Hub{authz: NewAuthz(), limiter: newChatLimiter(), queries: newQueryCache()}
+	sharedHub      = &Hub{authz: NewAuthz(), limiter: newChatLimiter(), aiLimiter: newChatLimiter(), queries: newQueryCache()}
 	processStarted = time.Now()
 )
 
@@ -275,6 +277,7 @@ func (h *Hub) SendReport(row *model.BotReport, force bool) error {
 }
 
 func snapshotChart(snap report.Snapshot) ([]byte, error) {
+	p := chart.LightPalette()
 	items := make([]chart.BarItem, 0, 10)
 	src := snap.Uptime
 	if len(src) == 0 {
@@ -284,42 +287,41 @@ func snapshotChart(snap report.Snapshot) ([]byte, error) {
 				break
 			}
 		}
-		return chart.Bar("CPU %", items)
+		return chart.BarFormat("CPU %", items, chart.AxisNumber, p)
 	}
 	for i, row := range src {
 		if i >= 10 {
 			break
 		}
-		items = append(items, chart.BarItem{Label: row.Name, Value: row.Percent})
+		items = append(items, chart.BarItem{Label: row.Name, Value: row.Percent, Color: uptimeColor(p, row.Percent)})
 	}
-	return chart.Bar("Uptime %", items)
+	return chart.BarFormat("Uptime %", items, chart.AxisNumber, p)
 }
 
-func defaultCommands() []models.BotCommand {
-	return []models.BotCommand{
-		{Command: "start", Description: "开始绑定"},
-		{Command: "bind", Description: "绑定授权码"},
-		{Command: "menu", Description: "主菜单"},
-		{Command: "help", Description: "命令说明"},
-		{Command: "status", Description: "面板总览"},
-		{Command: "servers", Description: "主机列表"},
-		{Command: "find", Description: "条件筛选"},
-		{Command: "top", Description: "排行"},
-		{Command: "usage", Description: "范围流量"},
-		{Command: "traffic", Description: "流量配额"},
-		{Command: "uptime", Description: "可用率"},
-		{Command: "groups", Description: "分组"},
-		{Command: "chart", Description: "历史曲线"},
-		{Command: "cmp", Description: "对比"},
-		{Command: "services", Description: "服务监控"},
-		{Command: "rules", Description: "告警规则"},
-		{Command: "collectors", Description: "从端"},
-		{Command: "agents", Description: "探针版本"},
-		{Command: "offline", Description: "离线记录"},
-		{Command: "probes", Description: "探针观察"},
-		{Command: "alerts", Description: "连通异常"},
-		{Command: "whoami", Description: "当前权限"},
+// uptimeColor 越低越坏：99.9 以上绿、95 以上琥珀、其余红。
+func uptimeColor(p chart.Palette, percent float64) color.RGBA {
+	switch {
+	case percent >= 99.9:
+		return p.Success
+	case percent >= 95:
+		return p.Warning
+	default:
+		return p.Danger
 	}
+}
+
+// defaultCommands 从命令注册表派生 Telegram 命令面板；
+// 只暴露 viewer 及以下可见的命令（start/bind 走绑定流程仍保留）。
+func defaultCommands() []models.BotCommand {
+	out := make([]models.BotCommand, 0, len(commandSpecs))
+	for i := range commandSpecs {
+		spec := &commandSpecs[i]
+		if spec.Hidden || spec.MinRole > model.BotRoleViewer {
+			continue
+		}
+		out = append(out, models.BotCommand{Command: spec.Name, Description: spec.Desc})
+	}
+	return out
 }
 
 func StartScheduler() {

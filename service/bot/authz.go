@@ -66,14 +66,8 @@ func (a *Authz) Subscribers(tag string) []*model.BotChat {
 }
 
 func commandMinRole(cmd string) uint8 {
-	switch cmd {
-	case "start", "bind":
-		return 0
-	case "mute", "unmute", "rule":
-		return model.BotRoleOperator
-	case "chats", "role", "revoke", "audit", "health":
-		return model.BotRoleAdmin
-	default:
-		return model.BotRoleViewer
+	if spec := lookupCommand(cmd); spec != nil {
+		return spec.MinRole
 	}
+	return model.BotRoleViewer
 }

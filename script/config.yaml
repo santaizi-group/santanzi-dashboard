@@ -50,3 +50,9 @@ bot:
   mode: polling
   charts: false
   rate_per_minute: 20
+  ai:
+    enabled: false
+    base_url: https://api.openai.com/v1
+    api_key: ""
+    model: gpt-4o-mini
+    rate_per_minute: 10

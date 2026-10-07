@@ -12,6 +12,7 @@ import (
 	"github.com/hi2shark/santaizi-dashboard/service/report"
 	"github.com/hi2shark/santaizi-dashboard/service/report/chart"
 	"github.com/hi2shark/santaizi-dashboard/service/singleton"
+	trafficservice "github.com/hi2shark/santaizi-dashboard/service/traffic"
 )
 
 func (h *Hub) runKind(ctx context.Context, kind, arg string) {
@@ -56,16 +57,14 @@ func (h *Hub) renderQuery(ctx context.Context, q Query) {
 		h.renderGroups(ctx, q, groupByTag(items), token, missing)
 		return
 	}
-	pageSize := 6
-	if q.Kind == "top" || q.Kind == "usage" {
-		pageSize = 8
-	}
-	pageItems, page, total := pageSlice(items, q.Page, pageSize)
+	pageItems, page, total := pageSlice(items, q.Page, 8)
 	text := formatEvalList(q, items, pageItems, page, total, missing)
 	rows := evalHostButtons(pageItems)
 	if q.Kind == "servers" || q.Kind == "find" {
 		rows = append([][]models.InlineKeyboardButton{{
-			btn("全部", "m:servers"), btn("在线", "m:servers:online"), btn("离线", "m:servers:offline"),
+			btn("全部", queryCallback(token, "f=all")),
+			btn("在线", queryCallback(token, "f=online")),
+			btn("离线", queryCallback(token, "f=offline")),
 		}}, rows...)
 	}
 	chips := resultChips(token, q, page, total)
@@ -172,9 +171,10 @@ func formatEvalLine(q Query, item evalHost) string {
 	if item.Host.Online {
 		state = "在线"
 	}
+	id := Code(fmt.Sprintf("#%d", item.Host.ID))
 	switch q.Kind {
 	case "usage":
-		line := fmt.Sprintf("%s %s %s", Escape(item.Host.Name), report.FormatBytes(item.Total), Escape(state))
+		line := fmt.Sprintf("%s %s %s %s", id, Escape(item.Host.Name), report.FormatBytes(item.Total), Escape(state))
 		if q.Compare == "prev" {
 			line += " " + Escape(deltaLabel(item.Total, item.PrevTotal, item.Prev.Samples))
 		}
@@ -184,11 +184,11 @@ func formatEvalLine(q Query, item evalHost) string {
 		if item.Uptime.LongestSec > 0 {
 			longest = " 最长 " + report.FormatDuration(item.Uptime.LongestSec)
 		}
-		return fmt.Sprintf("%s %.2f%% 离线 %s%s", Escape(item.Host.Name), item.Uptime.Percent, report.FormatDuration(item.Uptime.OfflineSec), longest)
+		return fmt.Sprintf("%s %s %.2f%% 离线 %s%s", id, Escape(item.Host.Name), item.Uptime.Percent, report.FormatDuration(item.Uptime.OfflineSec), longest)
 	case "top":
-		return fmt.Sprintf("%s %s %s", Escape(item.Host.Name), Escape(metricText(q.Metric, item)), Escape(state))
+		return fmt.Sprintf("%s %s %s %s", id, Escape(item.Host.Name), Escape(metricText(q.Metric, item)), Escape(state))
 	default:
-		return fmt.Sprintf("%s %s CPU %.0f%% MEM %.0f%% %s", Escape(item.Host.Name), Escape(state), item.Host.CPU, item.Host.MemPct, Escape(item.Host.Tag))
+		return fmt.Sprintf("%s %s %s CPU %.0f%% MEM %.0f%% %s", id, Escape(item.Host.Name), Escape(state), item.Host.CPU, item.Host.MemPct, Escape(item.Host.Tag))
 	}
 }
 
@@ -273,6 +273,10 @@ func (h *Hub) renderChart(ctx context.Context, q Query) {
 	if metric == "" {
 		metric = "cpu"
 	}
+	axis := chart.AxisNumber
+	if metric == "net" {
+		axis = chart.AxisBytes
+	}
 	var lines []chart.Series
 	var summary strings.Builder
 	summary.WriteString(Bold("曲线") + "　" + Escape(metric) + "　" + Escape(q.Range.Label()) + "\n")
@@ -281,23 +285,40 @@ func (h *Hub) renderChart(ctx context.Context, q Query) {
 	if len(nodes) > limit {
 		averaged = true
 	}
+	var labels []string
 	if averaged {
 		points := averageSeries(seriesMap, items, metric)
+		mn, avg, mx := minAvgMax(points)
+		if metric == "net" {
+			summary.WriteString(fmt.Sprintf("组内 %d 台平均 %s ~ %s，均值 %s\n", len(nodes),
+				report.FormatBytes(uint64(mn)), report.FormatBytes(uint64(mx)), report.FormatBytes(uint64(avg))))
+		} else {
+			summary.WriteString(fmt.Sprintf("组内 %d 台平均 min %.0f avg %.0f max %.0f\n", len(nodes), mn, avg, mx))
+		}
+		labels = rangeLabels(seriesMap)
 		points = downsample(points, 96)
 		lines = append(lines, chart.Series{Name: fmt.Sprintf("avg %d", len(nodes)), Points: points})
-		summary.WriteString(fmt.Sprintf("组内 %d 台平均\n", len(nodes)))
 	} else {
 		count := 0
 		for _, item := range items {
 			pts := seriesMap[string(item.Host.NodeUUID)]
 			values := metricSeries(pts, item, metric)
-			values = downsample(values, 96)
 			if len(values) == 0 {
 				continue
 			}
-			lines = append(lines, chart.Series{Name: item.Host.Name, Points: values})
+			// 摘要用原始序列，避免降采样的峰值保形把 avg 抬高。
 			mn, avg, mx := minAvgMax(values)
-			summary.WriteString(fmt.Sprintf("%s min %.0f avg %.0f max %.0f\n", Escape(item.Host.Name), mn, avg, mx))
+			if metric == "net" {
+				summary.WriteString(fmt.Sprintf("%s %s ~ %s，均值 %s\n", Escape(item.Host.Name),
+					report.FormatBytes(uint64(mn)), report.FormatBytes(uint64(mx)), report.FormatBytes(uint64(avg))))
+			} else {
+				summary.WriteString(fmt.Sprintf("%s min %.0f avg %.0f max %.0f\n", Escape(item.Host.Name), mn, avg, mx))
+			}
+			if len(labels) == 0 {
+				labels = rangeLabels(map[string][]report.SeriesPoint{string(item.Host.NodeUUID): pts})
+			}
+			values = downsample(values, 96)
+			lines = append(lines, chart.Series{Name: item.Host.Name, Points: values})
 			count++
 			if count >= limit {
 				break
@@ -306,13 +327,28 @@ func (h *Hub) renderChart(ctx context.Context, q Query) {
 	}
 	caption := strings.TrimRight(summary.String(), "\n")
 	if h.chartsOn() && len(lines) > 0 {
-		png, err := chart.Line("chart", lines, nil)
+		png, err := chart.LineFormat("chart", lines, labels, axis, chart.LightPalette())
 		if err == nil && len(png) > 0 {
 			h.respondPhoto(ctx, png, caption, markup([]models.InlineKeyboardButton{navHome()}))
 			return
 		}
 	}
 	h.respond(ctx, caption, markup([]models.InlineKeyboardButton{navHome()}))
+}
+
+// rangeLabels 取最长序列的首/中/尾时刻作时间轴标签。
+func rangeLabels(series map[string][]report.SeriesPoint) []string {
+	var longest []report.SeriesPoint
+	for _, pts := range series {
+		if len(pts) > len(longest) {
+			longest = pts
+		}
+	}
+	if len(longest) == 0 {
+		return nil
+	}
+	format := func(t time.Time) string { return t.In(singletonNow().Location()).Format("01-02 15:04") }
+	return []string{format(longest[0].Start), format(longest[len(longest)/2].Start), format(longest[len(longest)-1].Start)}
 }
 
 func (h *Hub) renderCmp(ctx context.Context, q Query) {
@@ -380,22 +416,12 @@ func formatCmpSide(label string, items []evalHost) string {
 func metricSeries(points []report.SeriesPoint, item evalHost, metric string) []float64 {
 	out := make([]float64, 0, len(points))
 	for _, point := range points {
-		switch metric {
-		case "mem":
-			out = append(out, pctOf(uint64(point.Mem), item.Host.MemTotal))
-		case "disk":
-			out = append(out, pctOf(uint64(point.Disk), item.Host.DiskTotal))
-		case "net":
-			out = append(out, point.NetInSpeed+point.NetOutSpeed)
-		case "load":
-			out = append(out, point.Load)
-		default:
-			out = append(out, point.CPU)
-		}
+		out = append(out, metricPointValue(point, item, metric))
 	}
 	return out
 }
 
+// averageSeries 按时间戳对齐各节点序列再求均值；节点样本起点/点数不一致时不会错位。
 func averageSeries(series map[string][]report.SeriesPoint, items []evalHost, metric string) []float64 {
 	var longest []report.SeriesPoint
 	for _, pts := range series {
@@ -406,42 +432,53 @@ func averageSeries(series map[string][]report.SeriesPoint, items []evalHost, met
 	if len(longest) == 0 {
 		return nil
 	}
-	sums := make([]float64, len(longest))
-	counts := make([]float64, len(longest))
 	byName := map[string]evalHost{}
 	for _, item := range items {
 		byName[string(item.Host.NodeUUID)] = item
 	}
+	type nodeValues map[string]map[int64]float64
+	values := make(nodeValues, len(series))
 	for key, pts := range series {
 		item := byName[key]
-		for i, point := range pts {
-			if i >= len(sums) {
-				break
-			}
-			var value float64
-			switch metric {
-			case "mem":
-				value = pctOf(uint64(point.Mem), item.Host.MemTotal)
-			case "disk":
-				value = pctOf(uint64(point.Disk), item.Host.DiskTotal)
-			case "net":
-				value = point.NetInSpeed + point.NetOutSpeed
-			default:
-				value = point.CPU
-			}
-			sums[i] += value
-			counts[i]++
+		m := make(map[int64]float64, len(pts))
+		for _, point := range pts {
+			m[point.Start.UnixNano()] = metricPointValue(point, item, metric)
 		}
+		values[key] = m
 	}
-	out := make([]float64, 0, len(sums))
-	for i, sum := range sums {
-		if counts[i] == 0 {
+	out := make([]float64, 0, len(longest))
+	for _, point := range longest {
+		ts := point.Start.UnixNano()
+		var sum float64
+		var count int
+		for _, m := range values {
+			if v, ok := m[ts]; ok {
+				sum += v
+				count++
+			}
+		}
+		if count == 0 {
 			out = append(out, 0)
 			continue
 		}
-		out = append(out, sum/counts[i])
+		out = append(out, sum/float64(count))
 	}
 	return out
+}
+
+func metricPointValue(point report.SeriesPoint, item evalHost, metric string) float64 {
+	switch metric {
+	case "mem":
+		return pctOf(uint64(point.Mem), item.Host.MemTotal)
+	case "disk":
+		return pctOf(uint64(point.Disk), item.Host.DiskTotal)
+	case "net":
+		return point.NetInSpeed + point.NetOutSpeed
+	case "load":
+		return point.Load
+	default:
+		return point.CPU
+	}
 }
 
 func downsample(values []float64, max int) []float64 {
@@ -458,16 +495,14 @@ func downsample(values []float64, max int) []float64 {
 		if end > len(values) {
 			end = len(values)
 		}
-		var sum float64
+		// 峰值保形：缩点后仍能看到毛刺。
 		peak := values[start]
 		for _, v := range values[start:end] {
-			sum += v
 			if v > peak {
 				peak = v
 			}
 		}
 		out[i] = peak
-		_ = sum
 	}
 	return out
 }
@@ -517,14 +552,11 @@ func (h *Hub) sendDailyUsageChart(ctx context.Context, q Query, items []evalHost
 	if err != nil || len(points) < 2 {
 		return
 	}
-	bars := make([]chart.BarItem, 0, len(points))
-	for _, point := range points {
-		if len(bars) >= 12 {
-			break
-		}
-		bars = append(bars, chart.BarItem{Label: point.Start.Format("01-02"), Value: float64(point.Bytes)})
+	bars := dailyTrafficBars(points)
+	if len(bars) == 0 {
+		return
 	}
-	png, err := chart.Bar("traffic", bars)
+	png, err := chart.BarFormat("traffic", bars, chart.AxisBytes, chart.LightPalette())
 	if err != nil || len(png) == 0 {
 		return
 	}
@@ -532,4 +564,38 @@ func (h *Hub) sendDailyUsageChart(ctx context.Context, q Query, items []evalHost
 	if chat != nil {
 		h.ReplyPhoto(chat.ChatID, png, "三太子监控 · 流量")
 	}
+}
+
+// dailyTrafficBars 把日流量点转成条形图；超过 16 天按周分桶，避免横轴拥挤或被截断。
+func dailyTrafficBars(points []trafficservice.Point) []chart.BarItem {
+	if len(points) > 16 {
+		type weekBucket struct {
+			start time.Time
+			bytes uint64
+		}
+		var buckets []weekBucket
+		for _, point := range points {
+			weekStart := point.Start.AddDate(0, 0, -int(point.Start.Weekday()))
+			if len(buckets) == 0 || !sameDay(buckets[len(buckets)-1].start, weekStart) {
+				buckets = append(buckets, weekBucket{start: weekStart})
+			}
+			buckets[len(buckets)-1].bytes += point.Bytes
+		}
+		bars := make([]chart.BarItem, 0, len(buckets))
+		for _, bucket := range buckets {
+			bars = append(bars, chart.BarItem{Label: bucket.start.Format("01-02"), Value: float64(bucket.bytes)})
+		}
+		return bars
+	}
+	bars := make([]chart.BarItem, 0, len(points))
+	for _, point := range points {
+		bars = append(bars, chart.BarItem{Label: point.Start.Format("01-02"), Value: float64(point.Bytes)})
+	}
+	return bars
+}
+
+func sameDay(a, b time.Time) bool {
+	ay, am, ad := a.Date()
+	by, bm, bd := b.Date()
+	return ay == by && am == bm && ad == bd
 }

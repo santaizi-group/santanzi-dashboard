@@ -121,28 +121,6 @@ func FormatHost(host report.HostRow) string {
 	return strings.TrimRight(b.String(), "\n")
 }
 
-func FormatServerPage(hosts []report.HostRow, page, size int) (string, int) {
-	if size <= 0 {
-		size = 6
-	}
-	pageHosts, page, total := pageSlice(hosts, page, size)
-	var b strings.Builder
-	b.WriteString(Bold("主机"))
-	b.WriteString(fmt.Sprintf(" %d/%d\n", page, total))
-	if len(pageHosts) == 0 {
-		b.WriteString("暂无主机")
-		return b.String(), total
-	}
-	for _, host := range pageHosts {
-		state := "离线"
-		if host.Online {
-			state = "在线"
-		}
-		b.WriteString(fmt.Sprintf("%s %s %s CPU %.0f%%\n", Code(fmt.Sprintf("%d", host.ID)), Escape(host.Name), Escape(state), host.CPU))
-	}
-	return strings.TrimRight(b.String(), "\n"), total
-}
-
 func wantSection(sections map[string]bool, name string) bool {
 	if len(sections) == 0 {
 		return true

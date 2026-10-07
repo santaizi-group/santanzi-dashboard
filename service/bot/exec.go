@@ -514,7 +514,7 @@ type groupRow struct {
 
 func pageSlice[T any](items []T, page, size int) ([]T, int, int) {
 	if size <= 0 {
-		size = 6
+		size = 8
 	}
 	total := (len(items) + size - 1) / size
 	if total == 0 {

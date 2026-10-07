@@ -136,6 +136,11 @@ SANTAIZI_GEOIP_DB=/var/lib/santaizi-dashboard/ipinfo_lite.mmdb
 | `bot.charts` | `false` | 允许周期报告附带 PNG |
 | `bot.language` | 跟随 `language` | 预留 |
 | `bot.rate_per_minute` | `20` | 每会话命令上限，最大 60 |
+| `bot.ai.enabled` | `false` | 私聊自由文本走 AI 解析成查询命令 |
+| `bot.ai.base_url` | `https://api.openai.com/v1` | OpenAI 兼容 chat completions 根地址 |
+| `bot.ai.api_key` | `""` | API Key；本地服务（Ollama 等）可留空 |
+| `bot.ai.model` | `gpt-4o-mini` | 模型名 |
+| `bot.ai.rate_per_minute` | `10` | 每 会话 AI 解析上限，最大 60 |
 
 ```yaml
 bot:
@@ -148,6 +153,12 @@ bot:
   webhook_secret: ""
   charts: false
   rate_per_minute: 20
+  ai:
+    enabled: false
+    base_url: https://api.openai.com/v1
+    api_key: ""
+    model: gpt-4o-mini
+    rate_per_minute: 10
 ```
 
 命令、绑定码、周期报告与告警转发见 [Telegram 机器人](bot.md)。
@@ -473,6 +484,8 @@ bot:
   mode: polling
   charts: false
   rate_per_minute: 20
+  ai:
+    enabled: false
 
 rollup:
   enabled: true

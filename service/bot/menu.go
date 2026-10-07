@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-telegram/bot/models"
 
-	"github.com/hi2shark/santaizi-dashboard/model"
 	"github.com/hi2shark/santaizi-dashboard/service/report"
 	"github.com/hi2shark/santaizi-dashboard/service/singleton"
 	trafficservice "github.com/hi2shark/santaizi-dashboard/service/traffic"
@@ -22,25 +21,32 @@ func (h *Hub) cmdMenu(ctx context.Context) {
 }
 
 func menuKeyboard(role uint8, more bool) *models.InlineKeyboardMarkup {
+	page := "main"
 	if more {
-		rows := [][]models.InlineKeyboardButton{
-			{btn("规则", "m:rules"), btn("从端", "m:collectors")},
-			{btn("探针版本", "m:agents"), btn("帮助", "m:help")},
-		}
-		if role >= model.BotRoleAdmin {
-			rows = append(rows, []models.InlineKeyboardButton{btn("操作日志", "m:audit"), btn("自检", "m:health")})
-			rows = append(rows, []models.InlineKeyboardButton{btn("会话", "m:chats")})
-		}
-		rows = append(rows, []models.InlineKeyboardButton{btn("返回", "m:home")})
-		return markup(rows...)
+		page = "more"
 	}
-	return markup(
-		[]models.InlineKeyboardButton{btn("总览", "m:status"), btn("主机", "m:servers")},
-		[]models.InlineKeyboardButton{btn("统计", "m:usage"), btn("服务监控", "m:services")},
-		[]models.InlineKeyboardButton{btn("排行", "m:top"), btn("分组", "m:groups")},
-		[]models.InlineKeyboardButton{btn("可用率", "m:uptime"), btn("探针", "m:probes")},
-		[]models.InlineKeyboardButton{btn("连通异常", "m:alerts"), btn("更多", "m:more")},
-	)
+	var items []models.InlineKeyboardButton
+	for i := range commandSpecs {
+		spec := &commandSpecs[i]
+		if spec.Menu == "" || spec.MenuPage != page {
+			continue
+		}
+		if spec.MinRole > role {
+			continue
+		}
+		items = append(items, btn(spec.Menu, "m:"+spec.Name))
+	}
+	rows := make([][]models.InlineKeyboardButton, 0, len(items)/2+2)
+	for i := 0; i < len(items); i += 2 {
+		end := min(i+2, len(items))
+		rows = append(rows, items[i:end])
+	}
+	if more {
+		rows = append(rows, []models.InlineKeyboardButton{btn("返回", "m:home")})
+	} else {
+		rows = append(rows, []models.InlineKeyboardButton{btn("更多", "m:more")})
+	}
+	return markup(rows...)
 }
 
 func (h *Hub) cmdServers(ctx context.Context, arg string, page int) {
@@ -66,6 +72,9 @@ func (h *Hub) cmdServer(ctx context.Context, query string) {
 	if strings.TrimSpace(query) == "" || len(hosts) == 0 {
 		h.respond(ctx, "未找到主机。", markup([]models.InlineKeyboardButton{navHome()}))
 		return
+	}
+	if len(hosts) > 8 {
+		hosts = hosts[:8]
 	}
 	if len(hosts) > 1 {
 		h.respond(ctx, pickHostText(hosts), pickHostMarkup(hosts, "h"))
@@ -128,6 +137,7 @@ func hostKeyboard(id uint64) *models.InlineKeyboardMarkup {
 	return markup(
 		[]models.InlineKeyboardButton{btn("曲线", fmt.Sprintf("ch:%d:cpu:24h", id)), btn("统计", fmt.Sprintf("u:today:%d", id))},
 		[]models.InlineKeyboardButton{btn("可用率", fmt.Sprintf("up:%d", id)), btn("离线记录", fmt.Sprintf("of:%d", id))},
+		[]models.InlineKeyboardButton{btn("静音 1 小时", fmt.Sprintf("m:1h:%d", id)), btn("恢复告警", fmt.Sprintf("c:unmute:%d", id))},
 		[]models.InlineKeyboardButton{btn("对比", fmt.Sprintf("cm:%d", id)), btn("返回列表", "m:servers")},
 		[]models.InlineKeyboardButton{navHome()},
 	)

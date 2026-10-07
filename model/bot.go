@@ -36,6 +36,34 @@ type BotConfig struct {
 	Charts         bool   `koanf:"charts" yaml:"charts"`
 	Language       string `koanf:"language" yaml:"language"`
 	RatePerMinute  int    `koanf:"rate_per_minute" yaml:"rate_per_minute"`
+	AI             AIConfig `koanf:"ai" yaml:"ai"`
+}
+
+// AIConfig 描述 OpenAI 兼容的大模型接入（chat completions）。
+// APIKey 存 yaml（Save() 0600）；为空时不带 Authorization 头，便于本地 Ollama。
+type AIConfig struct {
+	Enabled       bool   `koanf:"enabled" yaml:"enabled"`
+	BaseURL       string `koanf:"base_url" yaml:"base_url"`
+	APIKey        string `koanf:"api_key" yaml:"api_key"`
+	Model         string `koanf:"model" yaml:"model"`
+	RatePerMinute int    `koanf:"rate_per_minute" yaml:"rate_per_minute"`
+}
+
+func (c *AIConfig) Normalize() {
+	c.BaseURL = strings.TrimRight(strings.TrimSpace(c.BaseURL), "/")
+	if c.BaseURL == "" {
+		c.BaseURL = "https://api.openai.com/v1"
+	}
+	c.Model = strings.TrimSpace(c.Model)
+	if c.Model == "" {
+		c.Model = "gpt-4o-mini"
+	}
+	if c.RatePerMinute <= 0 {
+		c.RatePerMinute = 10
+	}
+	if c.RatePerMinute > 60 {
+		c.RatePerMinute = 60
+	}
 }
 
 func (c *BotConfig) Normalize(fallbackLanguage string) {
@@ -57,6 +85,7 @@ func (c *BotConfig) Normalize(fallbackLanguage string) {
 	if strings.TrimSpace(c.Language) == "" {
 		c.Language = fallbackLanguage
 	}
+	c.AI.Normalize()
 }
 
 func BotRoleName(role uint8) string {

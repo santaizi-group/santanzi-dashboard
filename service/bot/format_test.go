@@ -36,8 +36,26 @@ func TestParseKindQueryTopAndUptimeDays(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if u.Range.Kind != "14d" {
-		t.Fatalf("%#v", u.Range)
+	// 裸数字统一为主机 ID；天数须带 d。
+	if u.Filters == nil || len(u.Filters) != 1 || u.Filters[0].Field != "id" || u.Filters[0].Values[0] != "14" {
+		t.Fatalf("uptime bare number should resolve to host id filter: %#v", u.Filters)
+	}
+	if u.Range.Kind != "7d" {
+		t.Fatalf("uptime default range = %#v", u.Range)
+	}
+	d, err := parseKindQuery("uptime", "14d", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.Range.Kind != "14d" {
+		t.Fatalf("%#v", d.Range)
+	}
+	m, err := parseKindQuery("find", "cpu>50 90m", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.Range.Kind != "90m" || !m.Range.To.After(m.Range.From) {
+		t.Fatalf("minute span: %#v", m.Range)
 	}
 }
 
