@@ -68,7 +68,8 @@ func ServerConsensusOffline(db *gorm.DB, serverID uint64) (offline bool, ok bool
 		return false, false, nil
 	}
 	var bucket AvailabilityBucket
-	err = db.Select("host_state").Where("node_uuid = ?", rt.CurrentNodeUUID).
+	// window_end<=now：进行中的桶可能还没有任何证据，不能作为离线共识依据。
+	err = db.Select("host_state").Where("node_uuid = ? AND window_end <= ?", rt.CurrentNodeUUID, time.Now().UnixNano()).
 		Order("bucket_start DESC").Limit(1).First(&bucket).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

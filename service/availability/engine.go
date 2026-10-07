@@ -62,12 +62,19 @@ func (e *Engine) RecordPrimaryHealth(ctx context.Context, sampledAt time.Time) e
 			return err
 		}
 		for _, assignment := range assignments {
-			queue := model.AvailabilityRecomputeQueue{NodeUUID: assignment.NodeUUID, BucketStart: bucketStart, Reason: "primary_health"}
-			if err := tx.Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "node_uuid"}, {Name: "bucket_start"}},
-				DoUpdates: clause.Assignments(map[string]any{"reason": queue.Reason, "updated_at": sampledAt}),
-			}).Create(&queue).Error; err != nil {
-				return err
+			// 当前桶随健康行即时重算；上一桶此刻已封窗，这是它获得终结重算的机会，
+			// 否则证据只落在上一桶的节点会一直停在 unknown。
+			for _, bucket := range []int64{bucketStart, bucketStart - e.bucketSize} {
+				if bucket <= 0 {
+					continue
+				}
+				queue := model.AvailabilityRecomputeQueue{NodeUUID: assignment.NodeUUID, BucketStart: bucket, Reason: "primary_health"}
+				if err := tx.Clauses(clause.OnConflict{
+					Columns:   []clause.Column{{Name: "node_uuid"}, {Name: "bucket_start"}},
+					DoUpdates: clause.Assignments(map[string]any{"reason": queue.Reason, "updated_at": sampledAt}),
+				}).Create(&queue).Error; err != nil {
+					return err
+				}
 			}
 		}
 		return nil
@@ -150,7 +157,10 @@ func (e *Engine) Recompute(ctx context.Context, nodeUUID []byte, bucketStart int
 			}
 			evidence = append(evidence, observerEvidence{ObserverID: observerID, Healthy: isHealthy, Seen: isSeen})
 		}
-		hostState, connectivity := classify(healthy, seen, e.minimum)
+		// 窗口未结束不得判离线：健康行常先于证据落桶（健康 ticker 每 30s 为全部节点入队重算），
+		// 桶刚开头时 seen=0 只是「尚未看到」而不是「确认失联」。
+		windowClosed := bucketStart+e.bucketSize <= recalculatedAt.UnixNano()
+		hostState, connectivity := classify(healthy, seen, e.minimum, windowClosed)
 		summary, _ := json.Marshal(evidence)
 		var existing model.AvailabilityBucket
 		err := tx.Where("node_uuid = ? AND bucket_start = ?", nodeUUID, bucketStart).First(&existing).Error
@@ -197,7 +207,7 @@ func (e *Engine) Recompute(ctx context.Context, nodeUUID []byte, bucketStart int
 	})
 }
 
-func classify(healthy, seen, minimum uint32) (string, string) {
+func classify(healthy, seen, minimum uint32, windowClosed bool) (string, string) {
 	host := model.HostStateUnknown
 	connectivity := model.ConnectivityUnknown
 	if seen > 0 {
@@ -207,7 +217,7 @@ func classify(healthy, seen, minimum uint32) (string, string) {
 		} else {
 			connectivity = model.ConnectivityPartial
 		}
-	} else if healthy >= minimum {
+	} else if windowClosed && healthy >= minimum {
 		host = model.HostStateOffline
 		connectivity = model.ConnectivityUnavailable
 	}
@@ -237,7 +247,9 @@ func reviseIncident(tx *gorm.DB, bucket model.AvailabilityBucket, bucketSize int
 	if err != nil {
 		return err
 	}
-	if classification == "HEALTHY" {
+	// HEALTHY 与 EVIDENCE_UNKNOWN 都不是事件：unknown（含窗口未完结的空证据桶）
+	// 只关闭仍开着的事件，绝不新开，否则每个新桶都会制造一张无人消费的事件行。
+	if classification == "HEALTHY" || classification == "EVIDENCE_UNKNOWN" {
 		if !found {
 			return nil
 		}

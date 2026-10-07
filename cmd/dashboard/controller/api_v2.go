@@ -99,7 +99,8 @@ func runtimeForServer(server model.Server) runtimeServerResponse {
 		recovering = runtime.Status == model.ServerRuntimeStatusRecovering
 	}
 	var availability model.AvailabilityBucket
-	if !recovering && response.NodeUUID != "" && singleton.DB.Where("node_uuid = ?", runtime.CurrentNodeUUID).Order("bucket_start DESC").First(&availability).Error == nil {
+	// 只认已完结桶：进行中的桶可能尚未收到任何证据，拿它展示会把在线节点判成离线。
+	if !recovering && response.NodeUUID != "" && singleton.DB.Where("node_uuid = ? AND window_end <= ?", runtime.CurrentNodeUUID, time.Now().UnixNano()).Order("bucket_start DESC").First(&availability).Error == nil {
 		response.HostState = availability.HostState
 		response.Connectivity = availability.ConnectivityState
 		response.Coverage = coverageLabel(availability)

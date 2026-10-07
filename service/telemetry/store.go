@@ -99,13 +99,13 @@ func (s *Store) Replicate(ctx context.Context, batch *pb.ReplicationBatch, recei
 			meta, ok := byEventID[string(observation.GetEventId())]
 			if !ok {
 				var row model.TelemetryEvent
-				if err := tx.Select("node_uuid", "collected_at", "clock_untrusted", "event_type").First(&row, "event_id = ?", observation.GetEventId()).Error; err != nil {
+				if err := tx.Select("node_uuid", "event_type").First(&row, "event_id = ?", observation.GetEventId()).Error; err != nil {
 					if errors.Is(err, gorm.ErrRecordNotFound) {
 						continue
 					}
 					return fmt.Errorf("replicated observation references unknown event: %w", err)
 				}
-				meta = hotEventMeta{nodeUUID: row.NodeUUID, collectedAt: row.CollectedAt, clockUntrusted: row.ClockUntrusted, persist: persistTelemetryEvent(pb.TelemetryEventType(row.EventType))}
+				meta = hotEventMeta{nodeUUID: row.NodeUUID, persist: persistTelemetryEvent(pb.TelemetryEventType(row.EventType))}
 			}
 			if meta.persist {
 				row := model.TelemetryObservation{
@@ -116,11 +116,7 @@ func (s *Store) Replicate(ctx context.Context, batch *pb.ReplicationBatch, recei
 					return err
 				}
 			}
-			evidenceAt := meta.collectedAt
-			if meta.clockUntrusted {
-				evidenceAt = observation.GetReceivedAtUnixNano()
-			}
-			if err := s.recordPathEvidence(tx, meta.nodeUUID, observation.GetObserverId(), evidenceAt, time.Unix(0, observation.GetReceivedAtUnixNano())); err != nil {
+			if err := s.recordPathEvidence(tx, meta.nodeUUID, observation.GetObserverId(), observationReceivedAt(observation, receivedAt), receivedAt); err != nil {
 				return err
 			}
 		}
@@ -158,6 +154,10 @@ func (s *Store) Replicate(ctx context.Context, batch *pb.ReplicationBatch, recei
 				if err := enqueueAvailability(tx, assignment.NodeUUID, bucketStart, "observer_health"); err != nil {
 					return err
 				}
+				// 上一个桶此刻已封窗，需要随健康样本触发终结重算，否则该帧证据迟到的桶永远停在 unknown。
+				if err := enqueueAvailability(tx, assignment.NodeUUID, bucketStart-bucketSeconds, "observer_health_closed"); err != nil {
+					return err
+				}
 			}
 		}
 		for _, fact := range batch.GetDataLoss() {
@@ -186,6 +186,9 @@ func (s *Store) Replicate(ctx context.Context, batch *pb.ReplicationBatch, recei
 	return committed, err
 }
 
+// recordPathEvidence 落观测点对某节点的「看到」证据与健康行。
+// evidenceAt 必须是观测方接收钟（直连=主面板接收时刻，复制=从端接收时刻）：
+// 探针钟漂移不可控，用它对齐桶会让证据与健康行落进不同桶，最新桶无证据而被判离线。
 func (s *Store) recordPathEvidence(tx *gorm.DB, nodeUUID []byte, observerID string, evidenceAt int64, receivedAt time.Time) error {
 	bucketStart := evidenceAt / s.bucketSize * s.bucketSize
 	health := model.ObserverHealthBucket{ObserverID: observerID, BucketStart: bucketStart, Healthy: true, Revision: 1}
@@ -210,7 +213,19 @@ func (s *Store) recordPathEvidence(tx *gorm.DB, nodeUUID []byte, observerID stri
 	return enqueueAvailability(tx, nodeUUID, bucketStart, "observation")
 }
 
+// observationReceivedAt 取从端看到该事件的时刻；脏数据（≤0）回退主面板接收时刻，
+// 避免证据落进 0 号桶触发不可重算的队列项。
+func observationReceivedAt(observation *pb.TelemetryObservation, receivedAt time.Time) int64 {
+	if at := observation.GetReceivedAtUnixNano(); at > 0 {
+		return at
+	}
+	return receivedAt.UnixNano()
+}
+
 func enqueueAvailability(tx *gorm.DB, nodeUUID []byte, bucketStart int64, reason string) error {
+	if bucketStart <= 0 {
+		return nil
+	}
 	return tx.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "node_uuid"}, {Name: "bucket_start"}},
 		DoUpdates: clause.Assignments(map[string]any{
@@ -252,11 +267,9 @@ func (s *Store) Ingest(ctx context.Context, batch *pb.TelemetryBatch, observerID
 						return err
 					}
 				}
-				evidenceAt := event.GetCollectedAtUnixNano()
-				if meta.clockUntrusted {
-					evidenceAt = receivedAt.UnixNano()
-				}
-				if err := s.recordPathEvidence(tx, event.GetNodeUuid(), observerID, evidenceAt, receivedAt); err != nil {
+				// 证据桶键必须用观测方接收钟：探针钟漂移不可控（±5 分钟内还被视为可信），
+				// 拿它对齐健康桶会让证据落错桶，最新桶永远无证据而被判离线。
+				if err := s.recordPathEvidence(tx, event.GetNodeUuid(), observerID, receivedAt.UnixNano(), receivedAt); err != nil {
 					return err
 				}
 				key := sessionKey(event.GetNodeUuid(), event.GetSessionId())

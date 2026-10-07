@@ -178,7 +178,7 @@ func toUnifiedServerListItem(s *model.Server, withToken bool) *unifiedServerList
 			online = false
 		} else {
 			var bucket model.AvailabilityBucket
-			if singleton.DB.Where("node_uuid = ?", binding.NodeUUID).Order("bucket_start DESC").First(&bucket).Error == nil {
+			if singleton.DB.Where("node_uuid = ? AND window_end <= ?", binding.NodeUUID, time.Now().UnixNano()).Order("bucket_start DESC").First(&bucket).Error == nil {
 				online = bucket.ConnectivityState == model.ConnectivityFull || bucket.ConnectivityState == model.ConnectivityPartial
 			}
 		}

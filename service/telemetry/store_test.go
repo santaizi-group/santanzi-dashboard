@@ -317,3 +317,90 @@ func TestReplicateSkipsObservationWhenEventGone(t *testing.T) {
 		t.Fatalf("observations=%d", observations)
 	}
 }
+
+// 探针钟偏 90s 仍在「可信」区间（±5min），但证据桶必须落接收钟，否则证据
+// 与健康行错桶，最新桶永远无证据而被判离线——线上 0/3 幻影离线的直接回归。
+func TestIngestEvidenceBucketsOnReceiveClockEvenWhenAgentClockTrusted(t *testing.T) {
+	_, db := newTelemetryStore(t)
+	store := NewStoreWithBucketSize(db, 10*time.Second)
+	received := time.Unix(1_800_000_057, 0)
+	collected := received.Add(-90 * time.Second)
+	node, session := bytes.Repeat([]byte{0x81}, 16), bytes.Repeat([]byte{0x82}, 16)
+	if _, err := store.Ingest(context.Background(), &pb.TelemetryBatch{Records: []*pb.TelemetryRecord{{
+		Record: &pb.TelemetryRecord_Event{Event: event(t, node, session, 1, collected)},
+	}}}, "primary", received); err != nil {
+		t.Fatal(err)
+	}
+	var path model.ObserverPathBucket
+	if err := db.First(&path, "node_uuid = ? AND observer_id = ?", node, "primary").Error; err != nil {
+		t.Fatal(err)
+	}
+	expected := received.UnixNano() / int64(10*time.Second) * int64(10*time.Second)
+	if path.BucketStart != expected {
+		t.Fatalf("path bucket=%d want receive-time bucket %d", path.BucketStart, expected)
+	}
+	var health model.ObserverHealthBucket
+	if err := db.First(&health, "observer_id = ? AND bucket_start = ?", "primary", expected).Error; err != nil {
+		t.Fatal(err)
+	}
+}
+
+// 复制证据桶键跟从端接收钟同帧（与从端健康采样一致），探针 collectedAt 任意偏移都不参与对齐。
+func TestReplicateEvidenceBucketsOnObserverReceiveClock(t *testing.T) {
+	_, db := newTelemetryStore(t)
+	store := NewStoreWithBucketSize(db, 10*time.Second)
+	node, session := bytes.Repeat([]byte{0x91}, 16), bytes.Repeat([]byte{0x92}, 16)
+	collected := time.Unix(1_800_000_003, 0)
+	observed := time.Unix(1_800_000_028, 0)
+	fact := event(t, node, session, 1, collected)
+	batch := &pb.ReplicationBatch{
+		CollectorUuid: "collector-a", ReplicationSession: bytes.Repeat([]byte{0x93}, 16),
+		BatchSequence: 1, SpoolThroughId: 3, Events: []*pb.TelemetryEvent{fact},
+		Observations: []*pb.TelemetryObservation{{
+			EventId: fact.GetEventId(), ObserverId: "collector-a", ReceivedAtUnixNano: observed.UnixNano(),
+		}},
+	}
+	if _, err := store.Replicate(context.Background(), batch, observed.Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	expected := observed.UnixNano() / int64(10*time.Second) * int64(10*time.Second)
+	var path model.ObserverPathBucket
+	if err := db.First(&path, "node_uuid = ? AND observer_id = ?", node, "collector-a").Error; err != nil {
+		t.Fatal(err)
+	}
+	if path.BucketStart != expected || path.LastSeenAt != observed.UnixNano() {
+		t.Fatalf("path bucket=%d last_seen=%d want bucket=%d last_seen=%d", path.BucketStart, path.LastSeenAt, expected, observed.UnixNano())
+	}
+	var health model.ObserverHealthBucket
+	if err := db.First(&health, "observer_id = ? AND bucket_start = ?", "collector-a", expected).Error; err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestReplicateHealthEnqueuesCurrentAndPreviousBucket(t *testing.T) {
+	_, db := newTelemetryStore(t)
+	store := NewStoreWithBucketSize(db, 10*time.Second)
+	node := bytes.Repeat([]byte{0xa1}, 16)
+	sampled := time.Unix(1_800_000_043, 0)
+	if err := db.Create(&model.ObserverAssignment{NodeUUID: node, ObserverID: "collector-a", ValidFrom: sampled.Add(-time.Minute).UnixNano(), Generation: 1, ConfigVersion: 1}).Error; err != nil {
+		t.Fatal(err)
+	}
+	batch := &pb.ReplicationBatch{
+		CollectorUuid: "collector-a", ReplicationSession: bytes.Repeat([]byte{0xa2}, 16),
+		BatchSequence: 1, SpoolThroughId: 1,
+		Health: []*pb.ObserverHealthSample{{
+			ObserverId: "collector-a", SampledAtUnixNano: sampled.UnixNano(), Healthy: true, ProcessSession: "session-a",
+		}},
+	}
+	if _, err := store.Replicate(context.Background(), batch, sampled.Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	current := sampled.UnixNano() / int64(10*time.Second) * int64(10*time.Second)
+	var starts []int64
+	if err := db.Model(&model.AvailabilityRecomputeQueue{}).Where("node_uuid = ?", node).Order("bucket_start ASC").Pluck("bucket_start", &starts).Error; err != nil {
+		t.Fatal(err)
+	}
+	if len(starts) != 2 || starts[0] != current-int64(10*time.Second) || starts[1] != current {
+		t.Fatalf("queue starts=%v want [%d %d]", starts, current-int64(10*time.Second), current)
+	}
+}
