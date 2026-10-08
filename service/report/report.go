@@ -66,6 +66,7 @@ type UptimeRow struct {
 	Percent    float64
 	OfflineSec uint64
 	LongestSec uint64
+	HasData    bool
 }
 
 type AlertRow struct {
@@ -149,6 +150,12 @@ func Collect(opts Options) (Snapshot, error) {
 		}
 		if want(opts.Sections, "uptime") {
 			snap.Uptime = CollectUptime(hosts, windowStart, windowEnd)
+			if n := len(snap.Uptime); n > 0 {
+				if n > 10 {
+					n = 10
+				}
+				FillUptimeLongest(snap.Uptime[:n], windowStart, windowEnd)
+			}
 		}
 		if want(opts.Sections, "alerts") {
 			snap.Alerts = collectAlerts(now)
@@ -231,23 +238,6 @@ func collectTraffic(hosts []HostRow, now time.Time) []TrafficRow {
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Percent > out[j].Percent })
-	return out
-}
-
-func CollectUptime(hosts []HostRow, start, end time.Time) []UptimeRow {
-	out := make([]UptimeRow, 0, len(hosts))
-	period := end.Sub(start).Seconds()
-	if period <= 0 {
-		return out
-	}
-	for _, host := range hosts {
-		var histories []model.ServerOfflineHistory
-		_ = singleton.DB.Where("server_id = ? AND started_at < ? AND (ended_at IS NULL OR ended_at > ?)", host.ID, end, start).Find(&histories).Error
-		offline, longest := singleton.SummarizeOfflineIntervals(histories, start, end)
-		pct := singleton.FormatAvailabilityPercent((period - float64(offline)) * 100 / period)
-		out = append(out, UptimeRow{ServerID: host.ID, Name: host.Name, Percent: pct, OfflineSec: offline, LongestSec: longest})
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Percent < out[j].Percent })
 	return out
 }
 

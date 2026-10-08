@@ -54,6 +54,13 @@ func TestCallbackCommandExplicitMapping(t *testing.T) {
 		{"q:ab12cd:", "status", true},
 		{"h:5", "status", true},
 		{"x:rule", "status", true},
+		{"pg:svc:2", "services", true},
+		{"pg:rules:1", "rules", true},
+		{"pg:col:3", "collectors", true},
+		{"pg:agents:1", "agents", true},
+		{"pg:audit:2", "audit", true},
+		{"pg:nope:1", "", false},
+		{"pg:svc:", "", false},
 		{"au:1", "", false},
 		{"hl:1", "", false},
 		{"evil:payload", "", false},
@@ -68,7 +75,7 @@ func TestCallbackCommandExplicitMapping(t *testing.T) {
 
 // 观察角色点管理菜单按钮必须被拦，而不是拿到 admin 数据。
 func TestMenuCallbackRejectsUnderprivileged(t *testing.T) {
-	h := &Hub{sender: &Sender{ch: make(chan outbound, 8)}}
+	h := &Hub{sender: &Sender{}}
 	ctx := context.WithValue(context.Background(), ctxChat, &model.BotChat{ChatID: 42, Role: model.BotRoleViewer})
 
 	h.onMenuCallback(ctx, "m:audit")
@@ -76,7 +83,7 @@ func TestMenuCallbackRejectsUnderprivileged(t *testing.T) {
 }
 
 func TestDispatchCommandResolvesAliases(t *testing.T) {
-	h := &Hub{sender: &Sender{ch: make(chan outbound, 8)}}
+	h := &Hub{sender: &Sender{}}
 	ctx := context.WithValue(context.Background(), ctxChat, &model.BotChat{ChatID: 42, Role: model.BotRoleViewer})
 
 	if !h.dispatchCommand(ctx, "whoami", "") {
@@ -116,16 +123,22 @@ func TestDefaultCommandsListings(t *testing.T) {
 }
 
 func TestHelpTextFromRegistry(t *testing.T) {
-	h := &Hub{sender: &Sender{ch: make(chan outbound, 8)}}
+	h := &Hub{sender: &Sender{}}
 	viewer := context.WithValue(context.Background(), ctxChat, &model.BotChat{ChatID: 42, Role: model.BotRoleViewer})
 	h.cmdHelp(viewer, "")
-	msg := <-h.sender.ch
+	msg, ok := h.sender.Next()
+	if !ok {
+		t.Fatal("expected viewer help")
+	}
 	if !strings.Contains(msg.text, "/status 面板总览") || strings.Contains(msg.text, "/chats") {
 		t.Fatalf("viewer help wrong: %q", msg.text)
 	}
 	admin := context.WithValue(context.Background(), ctxChat, &model.BotChat{ChatID: 42, Role: model.BotRoleAdmin})
 	h.cmdHelp(admin, "")
-	msg = <-h.sender.ch
+	msg, ok = h.sender.Next()
+	if !ok {
+		t.Fatal("expected admin help")
+	}
 	if !strings.Contains(msg.text, "/chats") || !strings.Contains(msg.text, "/revoke") {
 		t.Fatalf("admin help missing admin commands: %q", msg.text)
 	}

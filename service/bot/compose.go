@@ -58,6 +58,16 @@ func (h *Hub) renderQuery(ctx context.Context, q Query) {
 		return
 	}
 	pageItems, page, total := pageSlice(items, q.Page, 8)
+	if q.Kind == "uptime" && len(pageItems) > 0 {
+		rows := make([]report.UptimeRow, len(pageItems))
+		for i := range pageItems {
+			rows[i] = pageItems[i].Uptime
+		}
+		report.FillUptimeLongest(rows, q.Range.From, q.Range.To)
+		for i := range pageItems {
+			pageItems[i].Uptime.LongestSec = rows[i].LongestSec
+		}
+	}
 	text := formatEvalList(q, items, pageItems, page, total, missing)
 	rows := evalHostButtons(pageItems)
 	if q.Kind == "servers" || q.Kind == "find" {
@@ -180,11 +190,14 @@ func formatEvalLine(q Query, item evalHost) string {
 		}
 		return line
 	case "uptime":
+		if !item.Uptime.HasData {
+			return fmt.Sprintf("%s %s 无数据", id, Escape(item.Host.Name))
+		}
 		longest := ""
 		if item.Uptime.LongestSec > 0 {
 			longest = " 最长 " + report.FormatDuration(item.Uptime.LongestSec)
 		}
-		return fmt.Sprintf("%s %s %.2f%% 离线 %s%s", id, Escape(item.Host.Name), item.Uptime.Percent, report.FormatDuration(item.Uptime.OfflineSec), longest)
+		return fmt.Sprintf("%s %s %.2f%% 不可用 %s%s", id, Escape(item.Host.Name), item.Uptime.Percent, report.FormatDuration(item.Uptime.OfflineSec), longest)
 	case "top":
 		return fmt.Sprintf("%s %s %s %s", id, Escape(item.Host.Name), Escape(metricText(q.Metric, item)), Escape(state))
 	default:
@@ -230,7 +243,7 @@ func barFor(q Query, items []evalHost) ([]byte, error) {
 	if title == "" {
 		title = "cpu"
 	}
-	return chart.Bar(title, bars)
+	return chart.BarFormat(title, bars, chart.AxisNumber, chartPalette())
 }
 
 func (h *Hub) renderChart(ctx context.Context, q Query) {
@@ -327,7 +340,7 @@ func (h *Hub) renderChart(ctx context.Context, q Query) {
 	}
 	caption := strings.TrimRight(summary.String(), "\n")
 	if h.chartsOn() && len(lines) > 0 {
-		png, err := chart.LineFormat("chart", lines, labels, axis, chart.LightPalette())
+		png, err := chart.LineFormat("chart", lines, labels, axis, chartPalette())
 		if err == nil && len(png) > 0 {
 			h.respondPhoto(ctx, png, caption, markup([]models.InlineKeyboardButton{navHome()}))
 			return
@@ -390,6 +403,7 @@ func formatCmpSide(label string, items []evalHost) string {
 	var cpu, mem, disk float64
 	var net, total uint64
 	var uptime float64
+	var uptimeN int
 	online := 0
 	for _, item := range items {
 		cpu += item.Host.CPU
@@ -397,7 +411,10 @@ func formatCmpSide(label string, items []evalHost) string {
 		disk += item.Host.DiskPct
 		net += item.Host.NetInSpeed + item.Host.NetOutSpeed
 		total += item.Total
-		uptime += item.Uptime.Percent
+		if item.Uptime.HasData {
+			uptime += item.Uptime.Percent
+			uptimeN++
+		}
 		if item.Host.Online {
 			online++
 		}
@@ -407,10 +424,13 @@ func formatCmpSide(label string, items []evalHost) string {
 	if len(items) > 1 {
 		name = fmt.Sprintf("%d 台", len(items))
 	}
-	up := uptime / n
-	return fmt.Sprintf("%s %s\n在线 %d/%d CPU %.0f%% MEM %.0f%% 磁盘 %.0f%%\n网速 %s/s 流量 %s 可用率 %.2f%%",
+	upText := "无数据"
+	if uptimeN > 0 {
+		upText = fmt.Sprintf("%.2f%%", uptime/float64(uptimeN))
+	}
+	return fmt.Sprintf("%s %s\n在线 %d/%d CPU %.0f%% MEM %.0f%% 磁盘 %.0f%%\n网速 %s/s 流量 %s 可用率 %s",
 		label, Escape(name), online, len(items), cpu/n, mem/n, disk/n,
-		report.FormatBytes(net/uint64(len(items))), report.FormatBytes(total), up)
+		report.FormatBytes(net/uint64(len(items))), report.FormatBytes(total), upText)
 }
 
 func metricSeries(points []report.SeriesPoint, item evalHost, metric string) []float64 {
@@ -556,7 +576,7 @@ func (h *Hub) sendDailyUsageChart(ctx context.Context, q Query, items []evalHost
 	if len(bars) == 0 {
 		return
 	}
-	png, err := chart.BarFormat("traffic", bars, chart.AxisBytes, chart.LightPalette())
+	png, err := chart.BarFormat("traffic", bars, chart.AxisBytes, chartPalette())
 	if err != nil || len(png) == 0 {
 		return
 	}

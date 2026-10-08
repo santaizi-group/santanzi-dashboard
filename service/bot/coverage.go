@@ -17,7 +17,7 @@ import (
 	"github.com/hi2shark/santaizi-dashboard/service/telemetry"
 )
 
-func (h *Hub) cmdServices(ctx context.Context) {
+func (h *Hub) cmdServices(ctx context.Context, page int) {
 	if singleton.ServiceSentinelShared == nil {
 		h.respond(ctx, "暂无服务监控。", markup([]models.InlineKeyboardButton{navHome()}))
 		return
@@ -32,10 +32,15 @@ func (h *Hub) cmdServices(ctx context.Context) {
 		ids = append(ids, id)
 	}
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	pageIDs, pageNo, total := pageSlice(ids, page, 8)
 	var b strings.Builder
-	b.WriteString(Bold("服务监控") + "\n")
-	rows := make([][]models.InlineKeyboardButton, 0, len(ids)+1)
-	for _, id := range ids {
+	b.WriteString(Bold("服务监控"))
+	if total > 1 {
+		b.WriteString(fmt.Sprintf("　%d/%d", pageNo, total))
+	}
+	b.WriteByte('\n')
+	rows := make([][]models.InlineKeyboardButton, 0, len(pageIDs)+1)
+	for _, id := range pageIDs {
 		item := stats[id]
 		name := fmt.Sprintf("#%d", id)
 		if item.Monitor != nil && item.Monitor.Name != "" {
@@ -45,7 +50,7 @@ func (h *Hub) cmdServices(ctx context.Context) {
 			Escape(name), item.TotalUptime(), avgDelay(item), item.CurrentUp, item.CurrentDown))
 		rows = append(rows, []models.InlineKeyboardButton{btn(name, fmt.Sprintf("svc:%d", id))})
 	}
-	rows = append(rows, []models.InlineKeyboardButton{navHome()})
+	rows = append(rows, pageNav("svc", pageNo, total))
 	h.respond(ctx, strings.TrimRight(b.String(), "\n"), markup(rows...))
 }
 
@@ -100,7 +105,7 @@ func (h *Hub) showService(ctx context.Context, id uint64) {
 		for _, d := range item.Delay {
 			points = append(points, float64(d))
 		}
-		png, err := chart.Line("delay", []chart.Series{{Name: "ms", Points: points}}, nil)
+		png, err := chart.LineFormat("delay", []chart.Series{{Name: "ms", Points: points}}, nil, chart.AxisNumber, chartPalette())
 		if err == nil && len(png) > 0 {
 			h.respondPhoto(ctx, png, caption, back)
 			return
@@ -109,13 +114,13 @@ func (h *Hub) showService(ctx context.Context, id uint64) {
 	h.respond(ctx, caption, back)
 }
 
-func (h *Hub) cmdRules(ctx context.Context) {
+func (h *Hub) cmdRules(ctx context.Context, page int) {
 	if singleton.DB == nil {
 		h.respond(ctx, "读取失败。", markup([]models.InlineKeyboardButton{navHome()}))
 		return
 	}
 	var rows []model.AlertRule
-	if singleton.DB.Order("id asc").Limit(30).Find(&rows).Error != nil {
+	if singleton.DB.Order("id asc").Find(&rows).Error != nil {
 		h.respond(ctx, "读取规则失败。", markup([]models.InlineKeyboardButton{navHome()}))
 		return
 	}
@@ -123,9 +128,14 @@ func (h *Hub) cmdRules(ctx context.Context) {
 		h.respond(ctx, "暂无告警规则。", markup([]models.InlineKeyboardButton{navHome()}))
 		return
 	}
+	pageRows, pageNo, total := pageSlice(rows, page, 8)
 	var b strings.Builder
-	b.WriteString(Bold("告警规则") + "\n")
-	for _, row := range rows {
+	b.WriteString(Bold("告警规则"))
+	if total > 1 {
+		b.WriteString(fmt.Sprintf("　%d/%d", pageNo, total))
+	}
+	b.WriteByte('\n')
+	for _, row := range pageRows {
 		state := "停用"
 		if row.Enabled() {
 			state = "启用"
@@ -140,10 +150,10 @@ func (h *Hub) cmdRules(ctx context.Context) {
 		}
 		b.WriteString(fmt.Sprintf("%s %s %s\n%s　%s\n", Code(fmt.Sprintf("%d", row.ID)), Escape(row.Name), Escape(state), Escape(summary), Escape(tag)))
 	}
-	h.respond(ctx, strings.TrimRight(b.String(), "\n"), markup([]models.InlineKeyboardButton{navHome()}))
+	h.respond(ctx, strings.TrimRight(b.String(), "\n"), markup(pageNav("rules", pageNo, total)))
 }
 
-func (h *Hub) cmdCollectors(ctx context.Context) {
+func (h *Hub) cmdCollectors(ctx context.Context, page int) {
 	if singleton.DB == nil {
 		h.respond(ctx, "读取失败。", markup([]models.InlineKeyboardButton{navHome()}))
 		return
@@ -168,9 +178,14 @@ func (h *Hub) cmdCollectors(ctx context.Context) {
 	for _, runtime := range runtimes {
 		seen[runtime.CollectorUUID] = runtime.LastSeen
 	}
+	pageRows, pageNo, total := pageSlice(collectors, page, 8)
 	var b strings.Builder
-	b.WriteString(Bold("从端") + "\n")
-	for _, collector := range collectors {
+	b.WriteString(Bold("从端"))
+	if total > 1 {
+		b.WriteString(fmt.Sprintf("　%d/%d", pageNo, total))
+	}
+	b.WriteByte('\n')
+	for _, collector := range pageRows {
 		kind := "观测型"
 		if collector.IsProbe() {
 			kind = "探测型"
@@ -182,7 +197,7 @@ func (h *Hub) cmdCollectors(ctx context.Context) {
 		}
 		b.WriteString(fmt.Sprintf("%s %s %s　%s\n", Escape(collector.Name), Escape(kind), Escape(status), Escape(last)))
 	}
-	h.respond(ctx, strings.TrimRight(b.String(), "\n"), markup([]models.InlineKeyboardButton{navHome()}))
+	h.respond(ctx, strings.TrimRight(b.String(), "\n"), markup(pageNav("col", pageNo, total)))
 }
 
 func statusLabel(status string) string {
@@ -196,7 +211,7 @@ func statusLabel(status string) string {
 	}
 }
 
-func (h *Hub) cmdAgents(ctx context.Context) {
+func (h *Hub) cmdAgents(ctx context.Context, page int) {
 	hosts := report.AllHosts()
 	if len(hosts) == 0 {
 		h.respond(ctx, "暂无主机。", markup([]models.InlineKeyboardButton{navHome()}))
@@ -225,10 +240,9 @@ func (h *Hub) cmdAgents(ctx context.Context) {
 		vers = append(vers, ver)
 	}
 	sort.Slice(vers, func(i, j int) bool { return compareVer(vers[i], vers[j]) > 0 })
-	var b strings.Builder
-	b.WriteString(Bold("探针版本") + "\n")
+	lines := make([]string, 0, len(vers)+len(byOS)+2)
 	for _, ver := range vers {
-		b.WriteString(fmt.Sprintf("%s　%d 台\n", Escape(ver), len(byVer[ver])))
+		lines = append(lines, fmt.Sprintf("%s　%d 台", Escape(ver), len(byVer[ver])))
 	}
 	if latest != "" && latest != "未知" {
 		var behind []string
@@ -241,19 +255,32 @@ func (h *Hub) cmdAgents(ctx context.Context) {
 			if len(behind) > 8 {
 				behind = behind[:8]
 			}
-			b.WriteString("落后 " + Escape(strings.Join(behind, "、")) + "\n")
+			lines = append(lines, "落后 "+Escape(strings.Join(behind, "、")))
 		}
 	}
-	b.WriteString(Bold("系统") + "\n")
 	oss := make([]string, 0, len(byOS))
 	for os := range byOS {
 		oss = append(oss, os)
 	}
 	sort.Strings(oss)
-	for _, os := range oss {
-		b.WriteString(fmt.Sprintf("%s　%d\n", Escape(os), byOS[os]))
+	if len(oss) > 0 {
+		lines = append(lines, Bold("系统"))
 	}
-	h.respond(ctx, strings.TrimRight(b.String(), "\n"), markup([]models.InlineKeyboardButton{navHome()}))
+	for _, os := range oss {
+		lines = append(lines, fmt.Sprintf("%s　%d", Escape(os), byOS[os]))
+	}
+	pageLines, pageNo, total := pageSlice(lines, page, 8)
+	var b strings.Builder
+	b.WriteString(Bold("探针版本"))
+	if total > 1 {
+		b.WriteString(fmt.Sprintf("　%d/%d", pageNo, total))
+	}
+	b.WriteByte('\n')
+	for _, line := range pageLines {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	h.respond(ctx, strings.TrimRight(b.String(), "\n"), markup(pageNav("agents", pageNo, total)))
 }
 
 func (h *Hub) cmdOffline(ctx context.Context, arg string) {
@@ -397,22 +424,38 @@ func (h *Hub) cmdAlerts(ctx context.Context) {
 	h.respond(ctx, FormatSnapshot(snap, map[string]bool{"alerts": true}), markup([]models.InlineKeyboardButton{navHome()}))
 }
 
-func (h *Hub) cmdAudit(ctx context.Context) {
+func (h *Hub) cmdAudit(ctx context.Context, page int) {
 	if singleton.DB == nil {
 		h.respond(ctx, "读取失败。", markup([]models.InlineKeyboardButton{navHome()}))
 		return
 	}
-	var rows []model.BotAuditLog
-	if singleton.DB.Order("id desc").Limit(10).Find(&rows).Error != nil {
+	var total int64
+	if singleton.DB.Model(&model.BotAuditLog{}).Count(&total).Error != nil {
 		h.respond(ctx, "读取操作日志失败。", markup([]models.InlineKeyboardButton{navHome()}))
 		return
 	}
-	if len(rows) == 0 {
+	if total == 0 {
 		h.respond(ctx, "暂无操作日志。", markup([]models.InlineKeyboardButton{navHome()}))
 		return
 	}
+	pages := int((total + 7) / 8)
+	if page < 1 {
+		page = 1
+	}
+	if page > pages {
+		page = pages
+	}
+	var rows []model.BotAuditLog
+	if singleton.DB.Order("id desc").Offset((page-1)*8).Limit(8).Find(&rows).Error != nil {
+		h.respond(ctx, "读取操作日志失败。", markup([]models.InlineKeyboardButton{navHome()}))
+		return
+	}
 	var b strings.Builder
-	b.WriteString(Bold("操作日志") + "\n")
+	b.WriteString(Bold("操作日志"))
+	if pages > 1 {
+		b.WriteString(fmt.Sprintf("　%d/%d", page, pages))
+	}
+	b.WriteByte('\n')
 	for _, row := range rows {
 		b.WriteString(fmt.Sprintf("%s %s %s %s %s\n",
 			Escape(row.CreatedAt.Format("01-02 15:04")),
@@ -421,7 +464,7 @@ func (h *Hub) cmdAudit(ctx context.Context) {
 			Escape(row.Command),
 			Escape(row.Result)))
 	}
-	h.respond(ctx, strings.TrimRight(b.String(), "\n"), markup([]models.InlineKeyboardButton{navHome()}))
+	h.respond(ctx, strings.TrimRight(b.String(), "\n"), markup(pageNav("audit", page, pages)))
 }
 
 func (h *Hub) cmdHealth(ctx context.Context) {

@@ -31,6 +31,18 @@ func navHome() models.InlineKeyboardButton {
 	return btn("菜单", "m:home")
 }
 
+func pageNav(kind string, page, total int) []models.InlineKeyboardButton {
+	var row []models.InlineKeyboardButton
+	if page > 1 {
+		row = append(row, btn("上一页", fmt.Sprintf("pg:%s:%d", kind, page-1)))
+	}
+	if page < total {
+		row = append(row, btn("下一页", fmt.Sprintf("pg:%s:%d", kind, page+1)))
+	}
+	row = append(row, navHome())
+	return row
+}
+
 func queryCallback(token, overlay string) string {
 	if overlay == "" {
 		return "q:" + token

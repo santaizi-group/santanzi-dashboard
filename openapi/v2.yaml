@@ -3564,6 +3564,7 @@ components:
       - provider
       - mode
       - charts
+      - chart_theme
       - rate_per_minute
       - token_set
       - webhook_secret_set
@@ -3585,6 +3586,11 @@ components:
           type: string
         charts:
           type: boolean
+        chart_theme:
+          type: string
+          enum:
+          - light
+          - dark
         language:
           type: string
         rate_per_minute:
@@ -3632,6 +3638,11 @@ components:
           format: password
         charts:
           type: boolean
+        chart_theme:
+          type: string
+          enum:
+          - light
+          - dark
         language:
           type: string
         rate_per_minute:

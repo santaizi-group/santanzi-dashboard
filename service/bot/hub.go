@@ -29,6 +29,8 @@ type Hub struct {
 	limiter   *chatLimiter
 	aiLimiter *chatLimiter
 	queries   *queryCache
+	aiMu      sync.Mutex
+	aiTurns   map[int64]aiTurn
 }
 
 var (
@@ -138,13 +140,7 @@ func (h *Hub) Reply(chatID int64, text string) {
 }
 
 func (h *Hub) ReplyMarkup(chatID int64, text string, markup *models.InlineKeyboardMarkup) {
-	h.mu.Lock()
-	sender := h.sender
-	h.mu.Unlock()
-	if sender == nil {
-		return
-	}
-	sender.Enqueue(outbound{chatID: chatID, text: text, markup: markup})
+	h.enqueue(outbound{chatID: chatID, text: text, markup: markup})
 }
 
 func (h *Hub) ReplyPhoto(chatID int64, png []byte, caption string) {
@@ -152,24 +148,48 @@ func (h *Hub) ReplyPhoto(chatID int64, png []byte, caption string) {
 }
 
 func (h *Hub) ReplyPhotoMarkup(chatID int64, messageID int, png []byte, caption string, markup *models.InlineKeyboardMarkup, edit bool) {
-	h.mu.Lock()
-	sender := h.sender
-	h.mu.Unlock()
-	if sender == nil || len(png) == 0 {
+	if len(png) == 0 {
 		return
 	}
-	sender.Enqueue(outbound{chatID: chatID, messageID: messageID, photo: png, caption: caption, markup: markup, edit: edit})
+	h.enqueue(outbound{chatID: chatID, messageID: messageID, photo: png, caption: caption, markup: markup, edit: edit})
 }
 
 func (h *Hub) EditMarkup(chatID int64, messageID int, text string, markup *models.InlineKeyboardMarkup) {
-	h.mu.Lock()
-	sender := h.sender
-	h.mu.Unlock()
-	if sender == nil || messageID <= 0 {
+	if messageID <= 0 {
 		h.ReplyMarkup(chatID, text, markup)
 		return
 	}
-	sender.Enqueue(outbound{chatID: chatID, messageID: messageID, text: text, markup: markup, edit: true})
+	h.enqueue(outbound{chatID: chatID, messageID: messageID, text: text, markup: markup, edit: true})
+}
+
+func (h *Hub) enqueue(msg outbound) {
+	if h == nil {
+		return
+	}
+	msg.group = h.pacedGroup(msg.chatID)
+	h.mu.Lock()
+	sender := h.sender
+	h.mu.Unlock()
+	if sender == nil {
+		return
+	}
+	sender.Enqueue(msg)
+}
+
+func (h *Hub) pacedGroup(chatID int64) bool {
+	if h == nil || h.authz == nil {
+		return false
+	}
+	rec := h.authz.Lookup(chatID)
+	if rec == nil {
+		return false
+	}
+	switch rec.Kind {
+	case model.BotChatGroup, model.BotChatSupergroup, model.BotChatChannel:
+		return true
+	default:
+		return false
+	}
 }
 
 func (h *Hub) respond(ctx context.Context, text string, markup *models.InlineKeyboardMarkup) {
@@ -193,11 +213,22 @@ func (h *Hub) respondPhoto(ctx context.Context, png []byte, caption string, mark
 		return
 	}
 	id := messageIDFrom(ctx)
-	h.ReplyPhotoMarkup(chat.ChatID, id, png, caption, markup, id > 0)
+	head, rest := splitCaption(caption)
+	h.ReplyPhotoMarkup(chat.ChatID, id, png, head, markup, id > 0)
+	if rest != "" {
+		h.Reply(chat.ChatID, rest)
+	}
 }
 
 func (h *Hub) chartsOn() bool {
 	return singleton.Conf != nil && singleton.Conf.Bot.Charts
+}
+
+func chartPalette() chart.Palette {
+	if singleton.Conf != nil && singleton.Conf.Bot.ChartTheme == model.BotChartThemeLight {
+		return chart.LightPalette()
+	}
+	return chart.DarkPalette()
 }
 
 func (h *Hub) Authz() *Authz { return h.authz }
@@ -277,7 +308,7 @@ func (h *Hub) SendReport(row *model.BotReport, force bool) error {
 }
 
 func snapshotChart(snap report.Snapshot) ([]byte, error) {
-	p := chart.LightPalette()
+	p := chartPalette()
 	items := make([]chart.BarItem, 0, 10)
 	src := snap.Uptime
 	if len(src) == 0 {

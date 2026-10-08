@@ -12,10 +12,10 @@ const (
 	BotRoleOperator uint8 = 2
 	BotRoleAdmin    uint8 = 3
 
-	BotChatPrivate     = "private"
-	BotChatGroup       = "group"
-	BotChatSupergroup  = "supergroup"
-	BotChatChannel     = "channel"
+	BotChatPrivate    = "private"
+	BotChatGroup      = "group"
+	BotChatSupergroup = "supergroup"
+	BotChatChannel    = "channel"
 
 	BotPeriodDaily   = "daily"
 	BotPeriodWeekly  = "weekly"
@@ -23,19 +23,23 @@ const (
 
 	BotModePolling = "polling"
 	BotModeWebhook = "webhook"
+
+	BotChartThemeLight = "light"
+	BotChartThemeDark  = "dark"
 )
 
 type BotConfig struct {
-	Enabled        bool   `koanf:"enabled" yaml:"enabled"`
-	Provider       string `koanf:"provider" yaml:"provider"`
-	Token          string `koanf:"token" yaml:"token"`
-	APIEndpoint    string `koanf:"api_endpoint" yaml:"api_endpoint"`
-	Mode           string `koanf:"mode" yaml:"mode"`
-	WebhookBaseURL string `koanf:"webhook_base_url" yaml:"webhook_base_url"`
-	WebhookSecret  string `koanf:"webhook_secret" yaml:"webhook_secret"`
-	Charts         bool   `koanf:"charts" yaml:"charts"`
-	Language       string `koanf:"language" yaml:"language"`
-	RatePerMinute  int    `koanf:"rate_per_minute" yaml:"rate_per_minute"`
+	Enabled        bool     `koanf:"enabled" yaml:"enabled"`
+	Provider       string   `koanf:"provider" yaml:"provider"`
+	Token          string   `koanf:"token" yaml:"token"`
+	APIEndpoint    string   `koanf:"api_endpoint" yaml:"api_endpoint"`
+	Mode           string   `koanf:"mode" yaml:"mode"`
+	WebhookBaseURL string   `koanf:"webhook_base_url" yaml:"webhook_base_url"`
+	WebhookSecret  string   `koanf:"webhook_secret" yaml:"webhook_secret"`
+	Charts         bool     `koanf:"charts" yaml:"charts"`
+	ChartTheme     string   `koanf:"chart_theme" yaml:"chart_theme"`
+	Language       string   `koanf:"language" yaml:"language"`
+	RatePerMinute  int      `koanf:"rate_per_minute" yaml:"rate_per_minute"`
 	AI             AIConfig `koanf:"ai" yaml:"ai"`
 }
 
@@ -84,6 +88,12 @@ func (c *BotConfig) Normalize(fallbackLanguage string) {
 	}
 	if strings.TrimSpace(c.Language) == "" {
 		c.Language = fallbackLanguage
+	}
+	switch strings.ToLower(strings.TrimSpace(c.ChartTheme)) {
+	case BotChartThemeLight:
+		c.ChartTheme = BotChartThemeLight
+	default:
+		c.ChartTheme = BotChartThemeDark
 	}
 	c.AI.Normalize()
 }
@@ -239,7 +249,7 @@ type BotAuditLog struct {
 	Role      uint8
 	Command   string `gorm:"size:64"`
 	Target    string
-	Result    string `gorm:"size:32"`
+	Result    string    `gorm:"size:32"`
 	CreatedAt time.Time `gorm:"index"`
 }
 

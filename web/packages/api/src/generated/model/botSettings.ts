@@ -7,6 +7,7 @@
  *
  * OpenAPI spec version: 2.0.0
  */
+import type { BotSettingsChartTheme } from './botSettingsChartTheme';
 import type { BotSettingsMode } from './botSettingsMode';
 
 export interface BotSettings {
@@ -16,6 +17,7 @@ export interface BotSettings {
   api_endpoint?: string;
   webhook_base_url?: string;
   charts: boolean;
+  chart_theme: BotSettingsChartTheme;
   language?: string;
   /**
      * @minimum 1

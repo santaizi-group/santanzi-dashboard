@@ -103,6 +103,8 @@ func (h *Hub) authMiddleware(next tgbot.HandlerFunc) tgbot.HandlerFunc {
 				_, _ = b.AnswerCallbackQuery(ctx, &tgbot.AnswerCallbackQueryParams{
 					CallbackQueryID: update.CallbackQuery.ID, Text: "操作过于频繁，请稍后再试。",
 				})
+			} else {
+				h.Reply(chatID, "操作过于频繁，请稍后再试。")
 			}
 			return
 		}
@@ -185,6 +187,29 @@ func callbackCommand(data string) (string, bool) {
 		strings.HasPrefix(data, "of:"), strings.HasPrefix(data, "svc:"),
 		strings.HasPrefix(data, "x:"):
 		return "status", true
+	case strings.HasPrefix(data, "pg:"):
+		return coverageCallbackCommand(data)
+	default:
+		return "", false
+	}
+}
+
+func coverageCallbackCommand(data string) (string, bool) {
+	parts := strings.Split(data, ":")
+	if len(parts) < 3 || parts[2] == "" {
+		return "", false
+	}
+	switch parts[1] {
+	case "svc":
+		return "services", true
+	case "rules":
+		return "rules", true
+	case "col":
+		return "collectors", true
+	case "agents":
+		return "agents", true
+	case "audit":
+		return "audit", true
 	default:
 		return "", false
 	}

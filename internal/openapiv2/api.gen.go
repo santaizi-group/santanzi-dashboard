@@ -373,6 +373,24 @@ func (e BotRole) Valid() bool {
 	}
 }
 
+// Defines values for BotSettingsChartTheme.
+const (
+	BotSettingsChartThemeDark  BotSettingsChartTheme = "dark"
+	BotSettingsChartThemeLight BotSettingsChartTheme = "light"
+)
+
+// Valid indicates whether the value is a known member of the BotSettingsChartTheme enum.
+func (e BotSettingsChartTheme) Valid() bool {
+	switch e {
+	case BotSettingsChartThemeDark:
+		return true
+	case BotSettingsChartThemeLight:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for BotSettingsMode.
 const (
 	BotSettingsModePolling BotSettingsMode = "polling"
@@ -385,6 +403,24 @@ func (e BotSettingsMode) Valid() bool {
 	case BotSettingsModePolling:
 		return true
 	case BotSettingsModeWebhook:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BotSettingsWriteChartTheme.
+const (
+	BotSettingsWriteChartThemeDark  BotSettingsWriteChartTheme = "dark"
+	BotSettingsWriteChartThemeLight BotSettingsWriteChartTheme = "light"
+)
+
+// Valid indicates whether the value is a known member of the BotSettingsWriteChartTheme enum.
+func (e BotSettingsWriteChartTheme) Valid() bool {
+	switch e {
+	case BotSettingsWriteChartThemeDark:
+		return true
+	case BotSettingsWriteChartThemeLight:
 		return true
 	default:
 		return false
@@ -2103,44 +2139,52 @@ type BotRole string
 
 // BotSettings defines model for BotSettings.
 type BotSettings struct {
-	AiApiKeySet      bool            `json:"ai_api_key_set"`
-	AiApiKeySuffix   *string         `json:"ai_api_key_suffix,omitempty"`
-	AiBaseUrl        *string         `json:"ai_base_url,omitempty"`
-	AiEnabled        bool            `json:"ai_enabled"`
-	AiModel          *string         `json:"ai_model,omitempty"`
-	ApiEndpoint      *string         `json:"api_endpoint,omitempty"`
-	Charts           bool            `json:"charts"`
-	Enabled          bool            `json:"enabled"`
-	Language         *string         `json:"language,omitempty"`
-	Mode             BotSettingsMode `json:"mode"`
-	Provider         string          `json:"provider"`
-	RatePerMinute    int64           `json:"rate_per_minute"`
-	TokenSet         bool            `json:"token_set"`
-	TokenSuffix      *string         `json:"token_suffix,omitempty"`
-	WebhookBaseUrl   *string         `json:"webhook_base_url,omitempty"`
-	WebhookSecretSet bool            `json:"webhook_secret_set"`
+	AiApiKeySet      bool                  `json:"ai_api_key_set"`
+	AiApiKeySuffix   *string               `json:"ai_api_key_suffix,omitempty"`
+	AiBaseUrl        *string               `json:"ai_base_url,omitempty"`
+	AiEnabled        bool                  `json:"ai_enabled"`
+	AiModel          *string               `json:"ai_model,omitempty"`
+	ApiEndpoint      *string               `json:"api_endpoint,omitempty"`
+	ChartTheme       BotSettingsChartTheme `json:"chart_theme"`
+	Charts           bool                  `json:"charts"`
+	Enabled          bool                  `json:"enabled"`
+	Language         *string               `json:"language,omitempty"`
+	Mode             BotSettingsMode       `json:"mode"`
+	Provider         string                `json:"provider"`
+	RatePerMinute    int64                 `json:"rate_per_minute"`
+	TokenSet         bool                  `json:"token_set"`
+	TokenSuffix      *string               `json:"token_suffix,omitempty"`
+	WebhookBaseUrl   *string               `json:"webhook_base_url,omitempty"`
+	WebhookSecretSet bool                  `json:"webhook_secret_set"`
 }
+
+// BotSettingsChartTheme defines model for BotSettings.ChartTheme.
+type BotSettingsChartTheme string
 
 // BotSettingsMode defines model for BotSettings.Mode.
 type BotSettingsMode string
 
 // BotSettingsWrite defines model for BotSettingsWrite.
 type BotSettingsWrite struct {
-	AiApiKey       *string               `json:"ai_api_key,omitempty"`
-	AiBaseUrl      *string               `json:"ai_base_url,omitempty"`
-	AiEnabled      *bool                 `json:"ai_enabled,omitempty"`
-	AiModel        *string               `json:"ai_model,omitempty"`
-	ApiEndpoint    *string               `json:"api_endpoint,omitempty"`
-	Charts         *bool                 `json:"charts,omitempty"`
-	Enabled        *bool                 `json:"enabled,omitempty"`
-	Language       *string               `json:"language,omitempty"`
-	Mode           *BotSettingsWriteMode `json:"mode,omitempty"`
-	Provider       *string               `json:"provider,omitempty"`
-	RatePerMinute  *int64                `json:"rate_per_minute,omitempty"`
-	Token          *string               `json:"token,omitempty"`
-	WebhookBaseUrl *string               `json:"webhook_base_url,omitempty"`
-	WebhookSecret  *string               `json:"webhook_secret,omitempty"`
+	AiApiKey       *string                     `json:"ai_api_key,omitempty"`
+	AiBaseUrl      *string                     `json:"ai_base_url,omitempty"`
+	AiEnabled      *bool                       `json:"ai_enabled,omitempty"`
+	AiModel        *string                     `json:"ai_model,omitempty"`
+	ApiEndpoint    *string                     `json:"api_endpoint,omitempty"`
+	ChartTheme     *BotSettingsWriteChartTheme `json:"chart_theme,omitempty"`
+	Charts         *bool                       `json:"charts,omitempty"`
+	Enabled        *bool                       `json:"enabled,omitempty"`
+	Language       *string                     `json:"language,omitempty"`
+	Mode           *BotSettingsWriteMode       `json:"mode,omitempty"`
+	Provider       *string                     `json:"provider,omitempty"`
+	RatePerMinute  *int64                      `json:"rate_per_minute,omitempty"`
+	Token          *string                     `json:"token,omitempty"`
+	WebhookBaseUrl *string                     `json:"webhook_base_url,omitempty"`
+	WebhookSecret  *string                     `json:"webhook_secret,omitempty"`
 }
+
+// BotSettingsWriteChartTheme defines model for BotSettingsWrite.ChartTheme.
+type BotSettingsWriteChartTheme string
 
 // BotSettingsWriteMode defines model for BotSettingsWrite.Mode.
 type BotSettingsWriteMode string

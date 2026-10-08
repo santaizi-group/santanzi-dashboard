@@ -177,6 +177,7 @@ export interface BotSettings {
   api_endpoint?: string
   webhook_base_url?: string
   charts: boolean
+  chart_theme: 'light' | 'dark'
   language?: string
   rate_per_minute: number
   token_set: boolean

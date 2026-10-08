@@ -36,7 +36,7 @@ const reportQuery = reactive({ page: 1, page_size: pageSize, q: '', sort: 'id', 
 const bindForm = reactive<{ role: BotRole; ttl_minutes: number }>({ role: 'viewer', ttl_minutes: 10 })
 const settings = reactive<BotSettings & { token: string; webhook_secret: string; ai_api_key: string }>({
   enabled: false, provider: 'telegram', mode: 'polling', api_endpoint: '', webhook_base_url: '',
-  charts: false, language: '', rate_per_minute: 20, token_set: false, token_suffix: '', webhook_secret_set: false,
+  charts: false, chart_theme: 'dark', language: '', rate_per_minute: 20, token_set: false, token_suffix: '', webhook_secret_set: false,
   ai_enabled: false, ai_base_url: '', ai_model: '', ai_api_key_set: false, ai_api_key_suffix: '',
   token: '', webhook_secret: '', ai_api_key: '',
 })
@@ -115,7 +115,7 @@ async function persistSettings(quiet = false) {
     const payload: BotSettingsWrite = {
       enabled: settings.enabled, provider: settings.provider, mode: settings.mode,
       api_endpoint: settings.api_endpoint, webhook_base_url: settings.webhook_base_url,
-      charts: settings.charts, rate_per_minute: settings.rate_per_minute,
+      charts: settings.charts, chart_theme: settings.chart_theme === 'light' ? 'light' : 'dark', rate_per_minute: settings.rate_per_minute,
       ai_enabled: settings.ai_enabled, ai_base_url: (settings.ai_base_url || '').trim(), ai_model: (settings.ai_model || '').trim(),
     }
     if (settings.token.trim()) payload.token = settings.token.trim()
@@ -236,6 +236,12 @@ onMounted(() => { void loadSettings(); void loadChats(); void loadCodes(); void 
         <div class="form-grid">
           <el-form-item :label="t('enabled')"><el-switch v-model="settings.enabled" /></el-form-item>
           <el-form-item :label="t('botCharts')"><el-switch v-model="settings.charts" /></el-form-item>
+          <el-form-item :label="t('botChartTheme')">
+            <el-select v-model="settings.chart_theme" class="field-full">
+              <el-option :label="t('botChartThemeDark')" value="dark" />
+              <el-option :label="t('botChartThemeLight')" value="light" />
+            </el-select>
+          </el-form-item>
           <el-form-item class="span-2" :label="t('botToken')">
             <el-input v-model="settings.token" type="password" show-password autocomplete="new-password" :placeholder="tokenHint" />
           </el-form-item>

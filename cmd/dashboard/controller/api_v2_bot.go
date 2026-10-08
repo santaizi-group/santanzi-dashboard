@@ -61,7 +61,7 @@ func botSettingsDTO() gin.H {
 	return gin.H{
 		"enabled": conf.Enabled, "provider": conf.Provider, "mode": conf.Mode,
 		"api_endpoint": conf.APIEndpoint, "webhook_base_url": conf.WebhookBaseURL,
-		"charts": conf.Charts, "language": conf.Language, "rate_per_minute": conf.RatePerMinute,
+		"charts": conf.Charts, "chart_theme": conf.ChartTheme, "language": conf.Language, "rate_per_minute": conf.RatePerMinute,
 		"token_set": tokenSet, "token_suffix": suffix, "webhook_secret_set": secretSet,
 		"ai_enabled": conf.AI.Enabled, "ai_base_url": conf.AI.BaseURL, "ai_model": conf.AI.Model,
 		"ai_api_key_set": aiKeySet, "ai_api_key_suffix": aiSuffix,
@@ -79,6 +79,7 @@ type botSettingsWrite struct {
 	WebhookBaseURL *string `json:"webhook_base_url"`
 	WebhookSecret  *string `json:"webhook_secret"`
 	Charts         *bool   `json:"charts"`
+	ChartTheme     *string `json:"chart_theme"`
 	Language       *string `json:"language"`
 	RatePerMinute  *int    `json:"rate_per_minute"`
 	AIEnabled      *bool   `json:"ai_enabled"`
@@ -117,6 +118,9 @@ func v2PatchBotSettings(c *gin.Context) {
 	}
 	if body.Charts != nil {
 		conf.Charts = *body.Charts
+	}
+	if body.ChartTheme != nil {
+		conf.ChartTheme = strings.TrimSpace(*body.ChartTheme)
 	}
 	if body.Language != nil {
 		conf.Language = strings.TrimSpace(*body.Language)
@@ -239,11 +243,11 @@ func v2GetBotChat(c *gin.Context) {
 }
 
 type botChatWrite struct {
-	Role           string   `json:"role"`
-	AllowedUserIDs *[]int64 `json:"allowed_user_ids"`
+	Role           string    `json:"role"`
+	AllowedUserIDs *[]int64  `json:"allowed_user_ids"`
 	SubscribeTags  *[]string `json:"subscribe_tags"`
-	Note           *string  `json:"note"`
-	Enabled        *bool    `json:"enabled"`
+	Note           *string   `json:"note"`
+	Enabled        *bool     `json:"enabled"`
 }
 
 func v2PatchBotChat(c *gin.Context) {
@@ -337,8 +341,8 @@ func v2ListBotBindCodes(c *gin.Context) {
 }
 
 type botBindWrite struct {
-	Role           string `json:"role"`
-	TTLSeconds     int    `json:"ttl_seconds"`
+	Role       string `json:"role"`
+	TTLSeconds int    `json:"ttl_seconds"`
 }
 
 func v2CreateBotBindCode(c *gin.Context) {
@@ -380,7 +384,7 @@ func botReportDTO(row model.BotReport) gin.H {
 		"period": row.Period, "hour_local": row.HourLocal, "minute": row.Minute,
 		"weekday": row.Weekday, "day_of_month": row.DayOfMonth,
 		"sections": model.ParseStringCSV(row.Sections),
-		"cover": coverName(row.Cover, row.Ignore), "ignore_ids": model.ParseUint64CSV(row.Ignore),
+		"cover":    coverName(row.Cover, row.Ignore), "ignore_ids": model.ParseUint64CSV(row.Ignore),
 		"with_charts": row.ChartsEnabled(), "enabled": row.IsEnabled(),
 		"last_period_key": row.LastPeriodKey, "last_run_at": lastRun, "last_status": row.LastStatus,
 		"created_at": row.CreatedAt.Format(time.RFC3339), "updated_at": row.UpdatedAt.Format(time.RFC3339),
@@ -430,18 +434,18 @@ func v2GetBotReport(c *gin.Context) {
 }
 
 type botReportWrite struct {
-	Name        string   `json:"name" binding:"required"`
-	ChatIDs     []int64  `json:"chat_ids"`
-	Period      string   `json:"period"`
-	HourLocal   int      `json:"hour_local"`
-	Minute      int      `json:"minute"`
-	Weekday     int      `json:"weekday"`
-	DayOfMonth  int      `json:"day_of_month"`
-	Sections    []string `json:"sections"`
-	Cover       string   `json:"cover"`
-	IgnoreIDs   []uint64 `json:"ignore_ids"`
-	WithCharts  bool     `json:"with_charts"`
-	Enabled     bool     `json:"enabled"`
+	Name       string   `json:"name" binding:"required"`
+	ChatIDs    []int64  `json:"chat_ids"`
+	Period     string   `json:"period"`
+	HourLocal  int      `json:"hour_local"`
+	Minute     int      `json:"minute"`
+	Weekday    int      `json:"weekday"`
+	DayOfMonth int      `json:"day_of_month"`
+	Sections   []string `json:"sections"`
+	Cover      string   `json:"cover"`
+	IgnoreIDs  []uint64 `json:"ignore_ids"`
+	WithCharts bool     `json:"with_charts"`
+	Enabled    bool     `json:"enabled"`
 }
 
 func applyBotReportWrite(row *model.BotReport, body botReportWrite) error {

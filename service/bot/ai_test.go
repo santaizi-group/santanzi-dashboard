@@ -2,10 +2,13 @@ package bot
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hi2shark/santaizi-dashboard/model"
+	"github.com/hi2shark/santaizi-dashboard/service/report"
 	"github.com/hi2shark/santaizi-dashboard/service/singleton"
 )
 
@@ -40,7 +43,7 @@ func TestParseAIResponseNoopAndEmpty(t *testing.T) {
 
 // AI 只能映射注册表 AI=true 的只读命令，写操作与越权一律拒绝。
 func TestApplyAIDecisionGuardrails(t *testing.T) {
-	h := &Hub{sender: &Sender{ch: make(chan outbound, 8)}}
+	h := &Hub{sender: &Sender{}}
 	viewer := context.WithValue(context.Background(), ctxChat, &model.BotChat{ChatID: 42, Role: model.BotRoleViewer})
 
 	if h.applyAIDecision(viewer, aiDecision{Command: "mute", Args: "hk-1"}) {
@@ -160,5 +163,58 @@ func TestParseAIStreamLongContentTruncated(t *testing.T) {
 	}
 	if runeCount := len([]rune(d.Hint)); runeCount > 161 {
 		t.Fatalf("hint length %d not truncated", runeCount)
+	}
+}
+
+func TestHostCatalogOmitsMetrics(t *testing.T) {
+	text := formatHostCatalog([]report.HostRow{{Name: "hk-1", Tag: "hk", CPU: 99, Note: "secret"}})
+	if !strings.Contains(text, "hk-1") || !strings.Contains(text, "tag=hk") {
+		t.Fatal(text)
+	}
+	if strings.Contains(text, "99") || strings.Contains(text, "secret") {
+		t.Fatal(text)
+	}
+	many := make([]report.HostRow, aiCatalogLimit+1)
+	for i := range many {
+		many[i] = report.HostRow{Name: fmt.Sprintf("n%d", i)}
+	}
+	text = formatHostCatalog(many)
+	if !strings.Contains(text, "未列全") || strings.Contains(text, fmt.Sprintf("n%d", aiCatalogLimit)) {
+		t.Fatal(text)
+	}
+}
+
+func TestAIMessagesIncludePreviousCommand(t *testing.T) {
+	catalog := formatHostCatalog([]report.HostRow{{Name: "hk-1", Tag: "hk", CPU: 88}})
+	msgs := aiMessages("那内存呢", catalog, "find", "tag=hk cpu>80")
+	if len(msgs) != 4 {
+		t.Fatalf("msgs=%d", len(msgs))
+	}
+	if !strings.Contains(msgs[0].Content, "hk-1") || strings.Contains(msgs[0].Content, "88") {
+		t.Fatal(msgs[0].Content)
+	}
+	if msgs[1].Content != "上一句已执行：/find tag=hk cpu>80" || msgs[3].Content != "那内存呢" {
+		t.Fatalf("%#v", msgs)
+	}
+}
+
+func TestNoteAITurnPrivateOnly(t *testing.T) {
+	h := &Hub{}
+	h.noteAITurn(&model.BotChat{ChatID: 1, Kind: model.BotChatGroup}, "find", "cpu>1")
+	if _, _, ok := h.lastAITurn(1); ok {
+		t.Fatal("group should not remember")
+	}
+	h.noteAITurn(&model.BotChat{ChatID: 1, Kind: model.BotChatPrivate}, "find", "cpu>1")
+	cmd, args, ok := h.lastAITurn(1)
+	if !ok || cmd != "find" || args != "cpu>1" {
+		t.Fatalf("%s %s %v", cmd, args, ok)
+	}
+	h.aiMu.Lock()
+	turn := h.aiTurns[1]
+	turn.expire = time.Now().Add(-time.Second)
+	h.aiTurns[1] = turn
+	h.aiMu.Unlock()
+	if _, _, ok := h.lastAITurn(1); ok {
+		t.Fatal("expired turn should be dropped")
 	}
 }

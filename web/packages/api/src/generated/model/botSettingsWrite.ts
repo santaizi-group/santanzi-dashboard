@@ -7,6 +7,7 @@
  *
  * OpenAPI spec version: 2.0.0
  */
+import type { BotSettingsWriteChartTheme } from './botSettingsWriteChartTheme';
 import type { BotSettingsWriteMode } from './botSettingsWriteMode';
 
 export interface BotSettingsWrite {
@@ -18,6 +19,7 @@ export interface BotSettingsWrite {
   webhook_base_url?: string;
   webhook_secret?: string;
   charts?: boolean;
+  chart_theme?: BotSettingsWriteChartTheme;
   language?: string;
   /**
      * @minimum 1

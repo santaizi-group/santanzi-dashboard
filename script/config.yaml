@@ -49,6 +49,7 @@ bot:
   token: ""
   mode: polling
   charts: false
+  chart_theme: dark
   rate_per_minute: 20
   ai:
     enabled: false

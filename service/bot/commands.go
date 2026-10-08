@@ -442,6 +442,8 @@ func (h *Hub) onCallback(ctx context.Context, b *tgbot.Bot, update *models.Updat
 		h.respond(ctx, "已取消。", nil)
 	case strings.HasPrefix(data, "q:"):
 		h.onQueryCallback(ctx, data)
+	case strings.HasPrefix(data, "pg:"):
+		h.onCoveragePage(ctx, data)
 	case strings.HasPrefix(data, "m:"):
 		h.onMenuCallback(ctx, data)
 	case strings.HasPrefix(data, "h:"):
@@ -480,6 +482,26 @@ func (h *Hub) onCallback(ctx context.Context, b *tgbot.Bot, update *models.Updat
 		}
 	case strings.HasPrefix(data, "c:revoke:"):
 		h.applyRevoke(ctx, parseID(strings.TrimPrefix(data, "c:revoke:")))
+	}
+}
+
+func (h *Hub) onCoveragePage(ctx context.Context, data string) {
+	parts := strings.Split(data, ":")
+	if len(parts) < 3 {
+		return
+	}
+	page, _ := strconv.Atoi(parts[2])
+	switch parts[1] {
+	case "svc":
+		h.cmdServices(ctx, page)
+	case "rules":
+		h.cmdRules(ctx, page)
+	case "col":
+		h.cmdCollectors(ctx, page)
+	case "agents":
+		h.cmdAgents(ctx, page)
+	case "audit":
+		h.cmdAudit(ctx, page)
 	}
 }
 

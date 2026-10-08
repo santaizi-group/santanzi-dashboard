@@ -66,7 +66,11 @@ func FormatSnapshot(snap report.Snapshot, sections map[string]bool) string {
 			if i >= 10 {
 				break
 			}
-			b.WriteString(fmt.Sprintf("%s %.2f%% 离线 %s 最长 %s\n", Escape(row.Name), row.Percent, report.FormatDuration(row.OfflineSec), report.FormatDuration(row.LongestSec)))
+			if !row.HasData {
+				b.WriteString(fmt.Sprintf("%s 无数据\n", Escape(row.Name)))
+				continue
+			}
+			b.WriteString(fmt.Sprintf("%s %.2f%% 不可用 %s 最长 %s\n", Escape(row.Name), row.Percent, report.FormatDuration(row.OfflineSec), report.FormatDuration(row.LongestSec)))
 		}
 	}
 	if wantSection(sections, "probes") {

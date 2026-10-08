@@ -134,6 +134,7 @@ SANTAIZI_GEOIP_DB=/var/lib/santaizi-dashboard/ipinfo_lite.mmdb
 | `bot.webhook_base_url` | `""` | webhook 模式下的公网根，实际路径为 `{base}/api/v2/bot/telegram/webhook` |
 | `bot.webhook_secret` | `""` | `X-Telegram-Bot-Api-Secret-Token`；webhook 且为空时后台会生成 |
 | `bot.charts` | `false` | 允许周期报告附带 PNG |
+| `bot.chart_theme` | `dark` | 图表配色，`dark` 或 `light` |
 | `bot.language` | 跟随 `language` | 预留 |
 | `bot.rate_per_minute` | `20` | 每会话命令上限，最大 60 |
 | `bot.ai.enabled` | `false` | 私聊自由文本走 AI 解析成查询命令 |
@@ -152,6 +153,7 @@ bot:
   webhook_base_url: ""
   webhook_secret: ""
   charts: false
+  chart_theme: dark
   rate_per_minute: 20
   ai:
     enabled: false
@@ -483,6 +485,7 @@ bot:
   token: ""
   mode: polling
   charts: false
+  chart_theme: dark
   rate_per_minute: 20
   ai:
     enabled: false

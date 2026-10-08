@@ -8,7 +8,7 @@ import (
 )
 
 func TestBindAndStartReplyWhenUnauthorized(t *testing.T) {
-	h := &Hub{sender: &Sender{ch: make(chan outbound, 8)}}
+	h := &Hub{sender: &Sender{}}
 	ctx := context.WithValue(context.Background(), ctxChat, &model.BotChat{ChatID: 42, Kind: model.BotChatPrivate})
 
 	h.cmdStart(ctx, 42, "")
@@ -23,12 +23,11 @@ func TestBindAndStartReplyWhenUnauthorized(t *testing.T) {
 
 func assertReply(t *testing.T, h *Hub, want string) {
 	t.Helper()
-	select {
-	case msg := <-h.sender.ch:
-		if msg.text != want {
-			t.Fatalf("reply=%q want %q", msg.text, want)
-		}
-	default:
+	msg, ok := h.sender.Next()
+	if !ok {
 		t.Fatal("expected a reply")
+	}
+	if msg.text != want {
+		t.Fatalf("reply=%q want %q", msg.text, want)
 	}
 }

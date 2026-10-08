@@ -17,6 +17,7 @@ import (
 
 	"github.com/hi2shark/santaizi-dashboard/model"
 	"github.com/hi2shark/santaizi-dashboard/pkg/utils"
+	"github.com/hi2shark/santaizi-dashboard/service/report"
 	"github.com/hi2shark/santaizi-dashboard/service/singleton"
 )
 
@@ -24,7 +25,15 @@ const (
 	// aiRequestTimeout 覆盖思考模型（DeepSeek-R1/GLM-Z1 等）的长耗时；流式期间有字节持续到达，网关不易掐断。
 	aiRequestTimeout = 120 * time.Second
 	aiTestTimeout    = 30 * time.Second
+	aiTurnTTL        = 30 * time.Minute
+	aiCatalogLimit   = 80
 )
+
+type aiTurn struct {
+	command string
+	args    string
+	expire  time.Time
+}
 
 // aiDecision 是 LLM 对一条自然语言的解析结果。
 type aiDecision struct {
@@ -120,7 +129,8 @@ func (h *Hub) handleAIQuery(ctx context.Context, text string) {
 	// 思考模型可能耗时较长：等待期间持续发「输入中」状态。
 	stop := make(chan struct{})
 	go h.typingLoop(ctx, chat.ChatID, stop)
-	decision, err := h.aiResolve(ctx, text)
+	prevCmd, prevArgs, _ := h.lastAITurn(chat.ChatID)
+	decision, err := h.aiResolve(ctx, text, prevCmd, prevArgs)
 	close(stop)
 	if err != nil {
 		log.Println("SANTAIZI>> bot ai:", err)
@@ -133,6 +143,7 @@ func (h *Hub) handleAIQuery(ctx context.Context, text string) {
 
 // typingLoop 每 4 秒发一次 typing（Telegram 单次只显示 5 秒），直到 stop。
 func (h *Hub) typingLoop(ctx context.Context, chatID int64, stop <-chan struct{}) {
+	h.sendTyping(ctx, chatID)
 	ticker := time.NewTicker(4 * time.Second)
 	defer ticker.Stop()
 	for {
@@ -142,15 +153,19 @@ func (h *Hub) typingLoop(ctx context.Context, chatID int64, stop <-chan struct{}
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			h.mu.Lock()
-			client := h.client
-			h.mu.Unlock()
-			if client == nil {
-				return
-			}
-			_, _ = client.SendChatAction(ctx, &tgbot.SendChatActionParams{ChatID: chatID, Action: models.ChatActionTyping})
+			h.sendTyping(ctx, chatID)
 		}
 	}
+}
+
+func (h *Hub) sendTyping(ctx context.Context, chatID int64) {
+	h.mu.Lock()
+	client := h.client
+	h.mu.Unlock()
+	if client == nil {
+		return
+	}
+	_, _ = client.SendChatAction(ctx, &tgbot.SendChatActionParams{ChatID: chatID, Action: models.ChatActionTyping})
 }
 
 // applyAIDecision 校验并执行 LLM 给出的指令映射。
@@ -170,8 +185,39 @@ func (h *Hub) applyAIDecision(ctx context.Context, d aiDecision) bool {
 		return false
 	}
 	h.audit(ctx, "ai", strings.TrimSpace(d.Command+" "+d.Args), "ok")
+	h.noteAITurn(chat, d.Command, d.Args)
 	h.dispatchCommand(ctx, d.Command, d.Args)
 	return true
+}
+
+func (h *Hub) noteAITurn(chat *model.BotChat, command, args string) {
+	if h == nil || chat == nil || chat.Kind != model.BotChatPrivate {
+		return
+	}
+	command = strings.TrimSpace(command)
+	if command == "" {
+		return
+	}
+	h.aiMu.Lock()
+	defer h.aiMu.Unlock()
+	if h.aiTurns == nil {
+		h.aiTurns = map[int64]aiTurn{}
+	}
+	h.aiTurns[chat.ChatID] = aiTurn{command: command, args: strings.TrimSpace(args), expire: time.Now().Add(aiTurnTTL)}
+}
+
+func (h *Hub) lastAITurn(chatID int64) (string, string, bool) {
+	if h == nil {
+		return "", "", false
+	}
+	h.aiMu.Lock()
+	defer h.aiMu.Unlock()
+	turn, ok := h.aiTurns[chatID]
+	if !ok || !turn.expire.After(time.Now()) {
+		delete(h.aiTurns, chatID)
+		return "", "", false
+	}
+	return turn.command, turn.args, true
 }
 
 func (d aiDecision) hintOr(fallback string) string {
@@ -182,16 +228,13 @@ func (d aiDecision) hintOr(fallback string) string {
 }
 
 // aiResolve 调用 OpenAI 兼容 chat completions（SSE 流式），要求模型通过工具调用回传指令映射。
-// 流式让思考模型的 reasoning 分片持续到达，长耗时下连接不被网关掐断；
-// 请求只含系统提示、用户文本与指令目录，不携带任何主机数据。
-func (h *Hub) aiResolve(ctx context.Context, text string) (aiDecision, error) {
+// 流式让思考模型的 reasoning 分片持续到达，长耗时下连接不被网关掐断。
+// 请求含系统提示、主机名称与分组、上一句命令和用户文本，不携带指标或地址。
+func (h *Hub) aiResolve(ctx context.Context, text, prevCmd, prevArgs string) (aiDecision, error) {
 	ai := singleton.Conf.Bot.AI
 	payload := aiChatRequest{
-		Model: ai.Model,
-		Messages: []aiMessage{
-			{Role: "system", Content: aiSystemPrompt()},
-			{Role: "user", Content: text},
-		},
+		Model:       ai.Model,
+		Messages:    aiMessages(text, formatHostCatalog(report.AllHosts()), prevCmd, prevArgs),
 		Tools:       aiTools(),
 		ToolChoice:  "auto",
 		Temperature: 0.1,
@@ -451,12 +494,67 @@ func aiTools() []aiTool {
 	}
 }
 
+func formatHostCatalog(hosts []report.HostRow) string {
+	if len(hosts) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("主机名录（仅名称与分组，无指标）：\n")
+	n := len(hosts)
+	if n > aiCatalogLimit {
+		n = aiCatalogLimit
+	}
+	for i := 0; i < n; i++ {
+		host := hosts[i]
+		name := oneLine(host.Name)
+		if name == "" {
+			continue
+		}
+		if tag := oneLine(host.Tag); tag != "" {
+			fmt.Fprintf(&b, "- %s tag=%s\n", name, tag)
+		} else {
+			fmt.Fprintf(&b, "- %s\n", name)
+		}
+	}
+	if len(hosts) > aiCatalogLimit {
+		fmt.Fprintf(&b, "共 %d 台，未列全。不确定时用 tag= 或 name~。\n", len(hosts))
+	}
+	return b.String()
+}
+
+func oneLine(value string) string {
+	value = strings.ReplaceAll(value, "\r", " ")
+	value = strings.ReplaceAll(value, "\n", " ")
+	return strings.TrimSpace(value)
+}
+
+func aiMessages(text, catalog, prevCmd, prevArgs string) []aiMessage {
+	system := aiSystemPrompt()
+	if strings.TrimSpace(catalog) != "" {
+		system += "\n" + catalog
+	}
+	msgs := []aiMessage{{Role: "system", Content: system}}
+	if cmd := strings.TrimSpace(prevCmd); cmd != "" {
+		line := "/" + cmd
+		if args := strings.TrimSpace(prevArgs); args != "" {
+			line += " " + args
+		}
+		msgs = append(msgs,
+			aiMessage{Role: "user", Content: "上一句已执行：" + line},
+			aiMessage{Role: "assistant", Content: "已执行。"},
+		)
+	}
+	msgs = append(msgs, aiMessage{Role: "user", Content: text})
+	return msgs
+}
+
 func aiSystemPrompt() string {
 	var b strings.Builder
 	b.WriteString("你是三太子监控 Telegram Bot 的意图解析器。把用户的一句话转换为至多一条监控查询命令：")
 	b.WriteString("只能映射下方目录中列出的只读查询命令，禁止构造写操作或目录外命令。")
 	b.WriteString("args 遵循目录中的参数语法；范围只能用 today/yesterday/month/24h/Nd/Nh 或 2026-01-02 形式。")
-	b.WriteString("无法识别或超出目录时调用 noop。不要编造主机名，不确定主机时优先用 tag 或 name~ 之类宽松条件。\n\n指令目录：\n")
+	b.WriteString("无法识别或超出目录时调用 noop。不要编造主机名，不确定主机时优先用 tag 或 name~ 之类宽松条件。")
+	b.WriteString("若用户承接上一句（那、再、改成），参照上一句命令只改参数，仍只输出一条命令。上一句不含查询结果。\n\n指令目录：\n")
 	for i := range commandSpecs {
 		spec := &commandSpecs[i]
 		if !spec.AI {

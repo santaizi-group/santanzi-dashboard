@@ -413,6 +413,9 @@ func sortEval(items []evalHost, q Query) {
 			}
 			return items[i].Host.Name < items[j].Host.Name
 		}
+		if key == "uptime" && items[i].Uptime.HasData != items[j].Uptime.HasData {
+			return items[i].Uptime.HasData
+		}
 		if vi == vj {
 			return items[i].Host.Name < items[j].Host.Name
 		}

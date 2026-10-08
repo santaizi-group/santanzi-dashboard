@@ -7,7 +7,10 @@ import (
 	"unicode/utf8"
 )
 
-const telegramTextLimit = 3900
+const (
+	telegramTextLimit    = 3900
+	telegramCaptionLimit = 1000
+)
 
 func Escape(s string) string {
 	return html.EscapeString(s)
@@ -40,6 +43,42 @@ func SplitChunks(text string) []string {
 		chunks = append(chunks, strings.TrimRight(b.String(), "\n"))
 	}
 	return chunks
+}
+
+// splitCaption 把图片说明截到 1000 字。超长时前半留在图片上，其余另发文字。
+func splitCaption(text string) (head, rest string) {
+	if utf8.RuneCountInString(text) <= telegramCaptionLimit {
+		return text, ""
+	}
+	lines := strings.Split(text, "\n")
+	var b strings.Builder
+	used := 0
+	i := 0
+	for ; i < len(lines); i++ {
+		line := lines[i]
+		extra := utf8.RuneCountInString(line)
+		if b.Len() > 0 {
+			extra++
+		}
+		if used+extra > telegramCaptionLimit {
+			break
+		}
+		if b.Len() > 0 {
+			b.WriteByte('\n')
+		}
+		b.WriteString(line)
+		used += extra
+	}
+	if i == 0 {
+		runes := []rune(lines[0])
+		head = string(runes[:telegramCaptionLimit]) + "…"
+		rest = string(runes[telegramCaptionLimit:])
+		if len(lines) > 1 {
+			rest += "\n" + strings.Join(lines[1:], "\n")
+		}
+		return head, rest
+	}
+	return b.String(), strings.Join(lines[i:], "\n")
 }
 
 func commandName(text string) (cmd, arg string) {
