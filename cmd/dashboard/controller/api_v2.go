@@ -88,26 +88,34 @@ func v2RuntimeServer(c *gin.Context) {
 func runtimeForServer(server model.Server) runtimeServerResponse {
 	response := runtimeServerResponse{ID: server.ID, Name: server.Name, HostState: model.HostStateUnknown, Connectivity: model.ConnectivityUnknown, Coverage: "unknown"}
 	var runtime model.ServerRuntime
-	recovering := false
 	if err := singleton.DB.First(&runtime, "server_id = ?", server.ID).Error; err == nil {
 		response.NodeUUID = hex.EncodeToString(runtime.CurrentNodeUUID)
 		response.Protocol = runtime.Protocol
-		response.HostState = runtime.HostState
-		response.Connectivity = runtime.ConnectivityState
 		response.LastCollectedAt = runtime.LastCollectedAt
 		response.LastReceivedAt = runtime.LastReceivedAt
-		recovering = runtime.Status == model.ServerRuntimeStatusRecovering
-	}
-	var availability model.AvailabilityBucket
-	// 只认已完结桶：进行中的桶可能尚未收到任何证据，拿它展示会把在线节点判成离线。
-	if !recovering && response.NodeUUID != "" && singleton.DB.Where("node_uuid = ? AND window_end <= ?", runtime.CurrentNodeUUID, time.Now().UnixNano()).Order("bucket_start DESC").First(&availability).Error == nil {
-		response.HostState = availability.HostState
-		response.Connectivity = availability.ConnectivityState
-		response.Coverage = coverageLabel(availability)
-		if availability.ConnectivityState != model.ConnectivityUnknown {
-			available := availability.ConnectivityState == model.ConnectivityFull || availability.ConnectivityState == model.ConnectivityPartial
-			response.Availability = &available
+		// V1 没有可用性桶，沿用运行态。V2 只认已结束的桶，避免 recovering 或重启前的旧状态冒充在线。
+		if runtime.Protocol != "v2" {
+			if runtime.HostState != "" {
+				response.HostState = runtime.HostState
+			}
+			if runtime.ConnectivityState != "" {
+				response.Connectivity = runtime.ConnectivityState
+			}
 		}
+	}
+	if runtime.Protocol != "v2" || len(runtime.CurrentNodeUUID) != 16 {
+		return response
+	}
+	availability, found, err := model.LatestClosedAvailabilityBucket(singleton.DB, runtime.CurrentNodeUUID, time.Now())
+	if err != nil || !found {
+		return response
+	}
+	response.HostState = availability.HostState
+	response.Connectivity = availability.ConnectivityState
+	response.Coverage = coverageLabel(availability)
+	if availability.ConnectivityState != model.ConnectivityUnknown {
+		available := availability.ConnectivityState == model.ConnectivityFull || availability.ConnectivityState == model.ConnectivityPartial
+		response.Availability = &available
 	}
 	return response
 }

@@ -79,7 +79,7 @@ func detectV2OfflineServers(now time.Time, threshold time.Duration, batch *[]off
 func inspectV2Consensus(nodeUUID []byte, now time.Time, bucket time.Duration, limit int) v2Consensus {
 	// 只在已完结桶上做共识：进行中的桶 seen=0 不代表失联。
 	var buckets []model.AvailabilityBucket
-	if err := DB.Where("node_uuid = ? AND window_end <= ?", nodeUUID, now.UnixNano()).Order("bucket_start DESC").Limit(limit).Find(&buckets).Error; err != nil {
+	if err := DB.Where("node_uuid = ? AND window_end <= ?", nodeUUID, now.UnixNano()).Order(model.ClosedAvailabilityOrder).Limit(limit).Find(&buckets).Error; err != nil {
 		log.Printf("SANTAIZI>> V2 观测桶读取失败: %v", err)
 		return v2Consensus{}
 	}
@@ -199,7 +199,7 @@ func v2ObserverLine(serverID uint64) string {
 	}
 	var bucket model.AvailabilityBucket
 	if err := DB.Where("node_uuid = ? AND host_state = ? AND window_end <= ?", rt.CurrentNodeUUID, model.HostStateOffline, time.Now().UnixNano()).
-		Order("bucket_start DESC").First(&bucket).Error; err != nil {
+		Order(model.ClosedAvailabilityOrder).First(&bucket).Error; err != nil {
 		return ""
 	}
 	names := observerDisplayNames(bucket.ObserverSummary)

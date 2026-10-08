@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -92,5 +93,43 @@ func TestServerConsensusOffline_LatestBucket(t *testing.T) {
 	offline, ok, err = ServerConsensusOffline(db, 4)
 	if err != nil || !ok || !offline {
 		t.Fatalf("最新桶 offline 应离线，得到 offline=%v ok=%v err=%v", offline, ok, err)
+	}
+}
+
+func TestLatestClosedAvailabilityBucketPrefersLaterWindowEnd(t *testing.T) {
+	db := consensusTestDB(t)
+	node := consensusNode(5)
+	now := time.Unix(1_800_000_000, 0)
+	spanStart := now.Add(-2 * time.Hour).UnixNano()
+	spanEnd := now.Add(-time.Minute).UnixNano()
+	rawStart := now.Add(-30 * time.Minute).UnixNano()
+	rawEnd := rawStart + int64(30*time.Second)
+	openStart := now.Add(-20 * time.Second).UnixNano()
+	if err := db.Create(&AvailabilityBucket{
+		NodeUUID: node, BucketStart: spanStart, WindowEnd: spanEnd,
+		HostState: HostStateOnline, ConnectivityState: ConnectivityFull,
+		ExpectedObservers: 3, HealthyObservers: 3, SeenObservers: 3,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&AvailabilityBucket{
+		NodeUUID: node, BucketStart: rawStart, WindowEnd: rawEnd,
+		HostState: HostStateUnknown, ConnectivityState: ConnectivityUnknown,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&AvailabilityBucket{
+		NodeUUID: node, BucketStart: openStart, WindowEnd: now.Add(10 * time.Second).UnixNano(),
+		HostState: HostStateOffline, ConnectivityState: ConnectivityUnavailable,
+		ExpectedObservers: 3,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	bucket, found, err := LatestClosedAvailabilityBucket(db, node, now)
+	if err != nil || !found {
+		t.Fatalf("应读到已结束的桶 found=%v err=%v", found, err)
+	}
+	if bucket.BucketStart != spanStart || bucket.HostState != HostStateOnline || bucket.SeenObservers != 3 {
+		t.Fatalf("应选终点更晚的完整 span，得到 start=%d host=%s seen=%d", bucket.BucketStart, bucket.HostState, bucket.SeenObservers)
 	}
 }

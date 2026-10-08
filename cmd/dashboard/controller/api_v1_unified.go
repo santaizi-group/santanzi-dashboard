@@ -174,13 +174,13 @@ func toUnifiedServerListItem(s *model.Server, withToken bool) *unifiedServerList
 	var binding model.ServerNodeBinding
 	if singleton.DB.First(&binding, "server_id = ? AND current = ?", s.ID, true).Error == nil {
 		var runtime model.ServerRuntime
-		if singleton.DB.First(&runtime, "server_id = ?", s.ID).Error == nil && runtime.Status == model.ServerRuntimeStatusRecovering {
+		recovering := singleton.DB.First(&runtime, "server_id = ?", s.ID).Error == nil && runtime.Status == model.ServerRuntimeStatusRecovering
+		bucket, found, err := model.LatestClosedAvailabilityBucket(singleton.DB, binding.NodeUUID, time.Now())
+		switch {
+		case err == nil && found:
+			online = bucket.ConnectivityState == model.ConnectivityFull || bucket.ConnectivityState == model.ConnectivityPartial
+		case recovering:
 			online = false
-		} else {
-			var bucket model.AvailabilityBucket
-			if singleton.DB.Where("node_uuid = ? AND window_end <= ?", binding.NodeUUID, time.Now().UnixNano()).Order("bucket_start DESC").First(&bucket).Error == nil {
-				online = bucket.ConnectivityState == model.ConnectivityFull || bucket.ConnectivityState == model.ConnectivityPartial
-			}
 		}
 	}
 	return &unifiedServerListItem{

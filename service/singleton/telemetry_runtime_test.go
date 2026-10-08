@@ -126,6 +126,72 @@ func TestHistoricalReplayDoesNotOverwriteFreshRuntime(t *testing.T) {
 	}
 }
 
+func TestApplyTrustedTelemetryEventsClearsRecovering(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(
+		&model.Server{}, &model.ServerNodeBinding{}, &model.ServerRuntime{},
+		&model.ObserverAssignment{}, &model.Collector{}, &model.CollectorScope{},
+	); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.Server{Common: model.Common{ID: 21}, Name: "node-21", Secret: "secret-21"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	previousDB, previousConf, previousServers := DB, Conf, ServerList
+	DB = db
+	Conf = &model.Config{Telemetry: model.TelemetryConfig{OfflineThresholdSeconds: 30}}
+	ServerList = map[uint64]*model.Server{21: {Common: model.Common{ID: 21}, State: &model.HostState{}, Host: &model.Host{}}}
+	t.Cleanup(func() {
+		DB, Conf, ServerList = previousDB, previousConf, previousServers
+		_ = CloseDB(db)
+	})
+
+	node := bytes.Repeat([]byte{0x51}, 16)
+	session := bytes.Repeat([]byte{0x52}, 16)
+	now := time.Now()
+	if _, err := BindServerNode(21, node, now.Add(-time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.ServerRuntime{
+		ServerID: 21, Status: model.ServerRuntimeStatusRecovering, Protocol: "v2",
+		CurrentNodeUUID: node, HostState: model.HostStateUnknown, ConnectivityState: model.ConnectivityUnknown,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	stale := &pb.TelemetryEvent{
+		EventId: bytes.Repeat([]byte{1}, 16), NodeUuid: node, SessionId: session, Sequence: 1,
+		CollectedAtUnixNano: now.Add(-6 * time.Minute).UnixNano(),
+		Payload:             &pb.TelemetryEvent_Heartbeat{Heartbeat: &pb.HeartbeatPayload{}},
+	}
+	if err := ApplyTrustedTelemetryEvents([]*pb.TelemetryEvent{stale}, now); err != nil {
+		t.Fatal(err)
+	}
+	var runtime model.ServerRuntime
+	if err := db.First(&runtime, "server_id = ?", 21).Error; err != nil {
+		t.Fatal(err)
+	}
+	if runtime.Status != model.ServerRuntimeStatusRecovering || runtime.HostState != model.HostStateUnknown {
+		t.Fatalf("超出可信窗的事件不应结束 recovering，得到 status=%s host=%s", runtime.Status, runtime.HostState)
+	}
+	fresh := &pb.TelemetryEvent{
+		EventId: bytes.Repeat([]byte{2}, 16), NodeUuid: node, SessionId: session, Sequence: 2,
+		CollectedAtUnixNano: now.Add(-90 * time.Second).UnixNano(),
+		Payload:             &pb.TelemetryEvent_State{State: &pb.State{Cpu: 12}},
+	}
+	if err := ApplyTrustedTelemetryEvents([]*pb.TelemetryEvent{fresh}, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.First(&runtime, "server_id = ?", 21).Error; err != nil {
+		t.Fatal(err)
+	}
+	if runtime.Status != model.ServerRuntimeStatusOnline || runtime.HostState != model.HostStateOnline {
+		t.Fatalf("可信复制事件应结束 recovering，得到 status=%s host=%s", runtime.Status, runtime.HostState)
+	}
+}
+
 func TestBindingAndTagChangeRefreshCollectorAssignments(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {

@@ -290,6 +290,22 @@ func TestClockRollbackUsesReceiveTimeAndCannotBecomeFreshRuntime(t *testing.T) {
 	}
 }
 
+func TestClockSkewWithinTrustWindowStaysFresh(t *testing.T) {
+	store, _ := newTelemetryStore(t)
+	received := time.Now()
+	collected := received.Add(-90 * time.Second)
+	node, session := bytes.Repeat([]byte{0x63}, 16), bytes.Repeat([]byte{0x64}, 16)
+	result, err := store.Ingest(context.Background(), &pb.TelemetryBatch{Records: []*pb.TelemetryRecord{{
+		Record: &pb.TelemetryRecord_Event{Event: event(t, node, session, 1, collected)},
+	}}}, "primary", received)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.FreshEvents) != 1 {
+		t.Fatalf("90 秒钟差仍在可信窗内，应刷新运行态，得到 %d", len(result.FreshEvents))
+	}
+}
+
 func TestReplicateSkipsObservationWhenEventGone(t *testing.T) {
 	store, db := newTelemetryStore(t)
 	now := time.Now()

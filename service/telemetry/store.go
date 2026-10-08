@@ -279,7 +279,8 @@ func (s *Store) Ingest(ctx context.Context, batch *pb.TelemetryBatch, observerID
 				sessionIDs[key] = append([]byte(nil), event.GetSessionId()...)
 				nodeBySession[key] = append([]byte(nil), event.GetNodeUuid()...)
 				batchSeq[key] = append(batchSeq[key], event.GetSequence())
-				if !meta.clockUntrusted && receivedAt.Sub(time.Unix(0, event.GetCollectedAtUnixNano())) <= 30*time.Second {
+				// 可信窗就是 5 分钟。再卡 30 秒会让钟差稍大的直连只写证据、清不掉 recovering。
+				if !meta.clockUntrusted {
 					result.FreshEvents = append(result.FreshEvents, event)
 				}
 			case *pb.TelemetryRecord_Gap:

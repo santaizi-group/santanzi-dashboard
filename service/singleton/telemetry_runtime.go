@@ -406,6 +406,30 @@ func IsServerBoundToOtherNode(err error) bool {
 	return errors.Is(err, errServerBoundToOtherNode)
 }
 
+// trustedRuntimeSkew 与 service/telemetry 的时钟可信窗一致。超出的事件只留证据，不改运行态。
+const trustedRuntimeSkew = 5 * time.Minute
+
+// ApplyTrustedTelemetryEvents 用从端复制来的事件结束 recovering 并刷新主机快照。
+// 时钟不可信的事件跳过。已处理过的序号由 touchV2Runtime 丢掉，重复批次可以再调。
+func ApplyTrustedTelemetryEvents(events []*pb.TelemetryEvent, receivedAt time.Time) error {
+	for _, event := range events {
+		if event == nil || len(event.GetNodeUuid()) != 16 {
+			continue
+		}
+		delta := receivedAt.Sub(time.Unix(0, event.GetCollectedAtUnixNano()))
+		if delta < 0 {
+			delta = -delta
+		}
+		if delta > trustedRuntimeSkew {
+			continue
+		}
+		if err := ApplyV2Event(event, receivedAt); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func ApplyV2Event(event *pb.TelemetryEvent, receivedAt time.Time) error {
 	if event == nil {
 		return nil

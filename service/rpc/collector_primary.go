@@ -210,9 +210,14 @@ func (h *PrimaryCollectorHandler) Replicate(stream grpc.BidiStreamingServer[pb.R
 		if batch.GetCollectorUuid() != collector.CollectorUUID {
 			return status.Error(codes.PermissionDenied, "replication collector identity mismatch")
 		}
-		committed, err := h.store.Replicate(stream.Context(), batch, time.Now())
+		now := time.Now()
+		committed, err := h.store.Replicate(stream.Context(), batch, now)
 		if err != nil {
 			return status.Error(codes.InvalidArgument, err.Error())
+		}
+		// 重复投递也刷新：touch 按序号去重，不会把运行态倒退。失败不回执，从端会重试。
+		if err := singleton.ApplyTrustedTelemetryEvents(batch.GetEvents(), now); err != nil {
+			return status.Error(codes.Internal, err.Error())
 		}
 		if err := stream.Send(&pb.ReplicationAck{
 			CollectorUuid: collector.CollectorUUID, ReplicationSession: batch.GetReplicationSession(),

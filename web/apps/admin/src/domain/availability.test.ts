@@ -108,7 +108,7 @@ describe('availability segments', () => {
     expect(summary.degradedCount).toBe(0)
   })
 
-  it('does not treat partial connectivity as full availability', () => {
+  it('counts partial connectivity as uptime and one degradation', () => {
     const segments = buildAvailabilitySegments([
       bucket('2026-08-13T06:00:00Z'),
       bucket('2026-08-13T06:00:30Z', { connectivity: 'partial', seen_observers: 1, observer_evidence: [{ observer_id: 'primary', seen: true, healthy: true }] }),
@@ -116,7 +116,32 @@ describe('availability segments', () => {
     const summary = summarizeAvailability(segments)
     expect(summary.availableMs).toBe(30_000)
     expect(summary.partialMs).toBe(30_000)
-    expect(summary.availablePercent).toBe(50)
+    expect(summary.availablePercent).toBe(100)
+    expect(summary.outageCount).toBe(0)
+    expect(summary.degradedCount).toBe(1)
+  })
+
+  it('keeps a continuously seen host at full availability when coverage is partial', () => {
+    const fullMs = 47_910_000
+    const partialMs = 26_220_000
+    const start = Date.parse('2026-10-07T01:54:00.000Z')
+    const segments = buildAvailabilitySegments([
+      bucket(new Date(start).toISOString(), {
+        window_end: new Date(start + partialMs).toISOString(),
+        connectivity: 'partial',
+        seen_observers: 2,
+        expected_observers: 3,
+        healthy_observers: 3,
+      }),
+      bucket(new Date(start + partialMs).toISOString(), {
+        window_end: new Date(start + partialMs + fullMs).toISOString(),
+      }),
+    ])
+    const summary = summarizeAvailability(segments)
+    expect(summary.availableMs).toBe(fullMs)
+    expect(summary.partialMs).toBe(partialMs)
+    expect(summary.unavailableMs).toBe(0)
+    expect(summary.availablePercent).toBeCloseTo(100)
     expect(summary.outageCount).toBe(0)
     expect(summary.degradedCount).toBe(1)
   })

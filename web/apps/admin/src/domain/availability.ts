@@ -222,8 +222,9 @@ export function summarizeAvailability(segments: AvailabilitySegment[]): Availabi
       inDegraded = false
     }
   }
-  const known = summary.availableMs + summary.partialMs + summary.unavailableMs
-  if (known > 0) summary.availablePercent = (summary.availableMs / known) * 100
+  const up = summary.availableMs + summary.partialMs
+  const known = up + summary.unavailableMs
+  if (known > 0) summary.availablePercent = (up / known) * 100
   return summary
 }
 
