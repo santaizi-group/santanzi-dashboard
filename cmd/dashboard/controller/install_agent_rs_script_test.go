@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -104,7 +105,8 @@ func TestInstallAgentRSParseOnlyCloudPhysicalAndDialCache(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm() != 0o600 {
+	// Windows 不保留 Unix 权限位，os.Stat 读到 0666。chmod 0600 只在 Linux 安装目标上有意义。
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
 		t.Fatalf("yaml mode=%o", info.Mode().Perm())
 	}
 
