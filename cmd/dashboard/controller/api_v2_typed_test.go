@@ -118,19 +118,16 @@ func TestBuildInstallCommandAppendsServerIPHints(t *testing.T) {
 	}
 }
 
-func TestBuildInstallCommandRustOmitsGoFlags(t *testing.T) {
-	options := monitoringOptionsDTO{CPU: true, Memory: true, Disk: true, Network: true, HostInfo: true, IPReport: true, HTTPProbe: true, ICMPProbe: true, TCPProbe: true, NAT: false}
+func TestBuildInstallCommandRustMatchesLinuxFlags(t *testing.T) {
+	options := monitoringOptionsDTO{CPU: true, Memory: true, Disk: true, Network: true, HostInfo: true, IPReport: true, HTTPProbe: true, ICMPProbe: true, TCPProbe: true, NAT: false, Temperature: true, GPU: true}
 	ipCfg := ipReportConfigDTO{Interface: "eth0", CountryCode: "CN", PreferIPv6: true}
 	posix, err := buildInstallCommandWithImpl("linux", "https://example.invalid/install_agent_rs.sh", "grpc.example.invalid", 5555, "secret", true, true, options, ipCfg, []string{"192.0.2.10"}, "rust")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "curl -fsSL 'https://example.invalid/install_agent_rs.sh' | bash -s -- 'grpc.example.invalid' 5555 'secret' --clean-install --confirm-clean-install --tls"
+	want := "curl -fsSL 'https://example.invalid/install_agent_rs.sh' | bash -s -- 'grpc.example.invalid' 5555 'secret' --clean-install --confirm-clean-install --tls --server-ip '192.0.2.10' --disable-connections --disable-processes --temperature --gpu --disable-nat --ip-report-interface 'eth0' --country-code 'CN' --use-ipv6-countrycode"
 	if posix != want {
 		t.Fatalf("posix=%s", posix)
-	}
-	if strings.Contains(posix, "--disable-") || strings.Contains(posix, "--server-ip") || strings.Contains(posix, "--temperature") {
-		t.Fatalf("rust command must not include go agent flags: %s", posix)
 	}
 	if _, err := buildInstallCommandWithImpl("macos", "https://example.invalid/install_agent_rs.sh", "h", 5555, "s", false, false, options, ipReportConfigDTO{}, nil, "rust"); err == nil {
 		t.Fatal("expected rust macos to fail")

@@ -231,7 +231,7 @@ test('install dialog can preview rust linux command', async ({ page }) => {
       preview = route.request().postDataJSON() as Record<string, unknown>
       const impl = preview.implementation === 'rust' ? 'rust' : 'go'
       const command = impl === 'rust'
-        ? "curl -fsSL 'https://example.invalid/install_agent_rs.sh' | bash -s -- 'h' 5555 's' --clean-install --confirm-clean-install"
+        ? "curl -fsSL 'https://example.invalid/install_agent_rs.sh' | bash -s -- 'h' 5555 's' --clean-install --confirm-clean-install --disable-nat"
         : 'install santaizi-agent --clean-install --disable-nat'
       return fulfillJSON(route, item({ platform: 'linux', command, clean_install: true, options: preview.options || {}, implementation: impl }))
     }
@@ -243,10 +243,15 @@ test('install dialog can preview rust linux command', async ({ page }) => {
   const dialog = page.getByRole('dialog', { name: /安装探针/ })
   await expect(dialog.getByText('标准·云', { exact: true })).toBeVisible()
   await chooseSegmentedItem(dialog.locator('.install-impl'), 'Rust')
-  await expect.poll(() => preview).toMatchObject({ implementation: 'rust', platform: 'linux' })
+  await expect.poll(() => preview).toMatchObject({
+    implementation: 'rust',
+    platform: 'linux',
+    options: probeMetadata.presets.standard_cloud,
+  })
   await expect(dialog.locator('textarea')).toHaveValue(/install_agent_rs\.sh/)
-  await expect(dialog.locator('textarea')).not.toHaveValue(/--disable-nat/)
-  await expect(dialog.getByText('标准·云', { exact: true })).toHaveCount(0)
+  await expect(dialog.locator('textarea')).toHaveValue(/--disable-nat/)
+  await expect(dialog.getByText('标准·云', { exact: true })).toBeVisible()
+  await expect(dialog.getByText('内网穿透', { exact: true })).toBeVisible()
   await expect(dialog.getByRole('tab', { name: 'macOS' })).toHaveCount(0)
 })
 

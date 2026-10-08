@@ -139,7 +139,6 @@ watch([platform, snapshotValue], () => {
         <el-form-item>
           <el-segmented class="install-impl" :model-value="implementation" :options="implOptions" @change="selectImplementation" />
         </el-form-item>
-        <template v-if="implementation === 'go'">
         <el-form-item :label="t('monitoringPreset')">
           <el-segmented :model-value="profile" :options="profileOptions" @change="selectProfile" />
         </el-form-item>
@@ -162,7 +161,6 @@ watch([platform, snapshotValue], () => {
             <el-segmented :model-value="ipReportConfig.prefer_ipv6 ? 'ipv6' : 'ipv4'" :options="[{ label: 'IPv4', value: 'ipv4' }, { label: 'IPv6', value: 'ipv6' }]" @change="selectIPFamily" />
           </el-form-item>
         </div>
-        </template>
         <div class="clean-install-box">
           <el-checkbox v-model="cleanInstall">{{ t('cleanInstall') }}</el-checkbox>
           <el-checkbox v-if="cleanInstall" v-model="cleanConfirmed">{{ t('confirmCleanInstall') }}</el-checkbox>

@@ -121,10 +121,10 @@ curl -fSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/ma
 可选实现，仅 **amd64 / arm64**。需 [`santaizi-agent-rs`](https://github.com/santaizi-group/santaizi-agent-rs) 已发布 `v*` Release。安装会停掉同机 Go 探针，避免同一密钥双连。
 
 ```bash
-curl -fSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_agent_rs.sh | bash -s -- install_agent <面板地址> <端口> <密钥> --clean-install --confirm-clean-install [--tls]
+curl -fSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/install_agent_rs.sh | bash -s -- install_agent <面板地址> <端口> <密钥> --clean-install --confirm-clean-install [--tls] [--server-ip <主端IP>]
 ```
 
-安装路径：`/opt/santaizi/agent-rs`；配置仍是 `/etc/santaizi/agent.yaml`；数据目录 `/var/lib/santaizi-agent/`。可用 `SANTAIZI_AGENT_RS_REPO` 覆盖仓库。
+安装路径：`/opt/santaizi/agent-rs`；配置仍是 `/etc/santaizi/agent.yaml`；数据目录 `/var/lib/santaizi-agent/`。可用 `SANTAIZI_AGENT_RS_REPO` 覆盖仓库。能力开关、IP 上报和 `--server-ip` 与上面 Go 探针的参数表相同，写入配置文件和拨号缓存；服务进程只带 `--config`。卸载命令同样是 `santaizi-agent-uninstall`。
 
 ### Windows
 
@@ -301,4 +301,4 @@ Windows：
 C:\santaizi\santaizi-agent-uninstall.cmd
 ```
 
-该命令会停止并删除服务，以及 `/opt/santaizi/agent`（Windows 为 `C:\santaizi`）、配置文件和数据目录。已用旧方式安装、服务启动参数里仍带密钥的实例，重新执行一次安装命令即可改为只读配置文件。
+该命令会停止并删除服务，以及程序目录（Go 为 `/opt/santaizi/agent`，Rust 为 `/opt/santaizi/agent-rs`；Windows 为 `C:\santaizi`）、配置文件和数据目录。已用旧方式安装、服务启动参数里仍带密钥的实例，重新执行一次安装命令即可改为只读配置文件。

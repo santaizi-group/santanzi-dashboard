@@ -1290,6 +1290,8 @@ func buildInstallCommandWithImpl(platform, script, host string, port uint, secre
 		if useTLS {
 			parts = append(parts, "--tls")
 		}
+		parts = appendServerIPFlags(parts, hintIPs, false)
+		parts = append(parts, installFlags(options, false, ipCfg)...)
 		return strings.Join(parts, " "), nil
 	}
 	flags := installFlags(options, platform == "windows", ipCfg)
