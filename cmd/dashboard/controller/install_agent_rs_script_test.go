@@ -19,7 +19,20 @@ func installAgentRSScript(t *testing.T) string {
 
 func runInstallAgentRSParse(t *testing.T, dir string, args ...string) (yamlText, cacheText string, err error) {
 	t.Helper()
-	cmd := exec.Command("sh", append([]string{installAgentRSScript(t)}, args...)...)
+	// Windows 的 sh（Git Bash）会按 POSIX 规则重读 CreateProcess 命令行。
+	// 密钥里的单引号会把后续参数粘进同一个参数。参数写进脚本文件后由 sh 按脚本解析。
+	var script strings.Builder
+	script.WriteString("#!/bin/sh\nexec")
+	script.WriteString(" " + shellSingleQuote(filepath.ToSlash(installAgentRSScript(t))))
+	for _, arg := range args {
+		script.WriteString(" " + shellSingleQuote(arg))
+	}
+	script.WriteString("\n")
+	wrapper := filepath.Join(dir, "invoke.sh")
+	if err := os.WriteFile(wrapper, []byte(script.String()), 0o700); err != nil {
+		t.Fatalf("write invoke script: %v", err)
+	}
+	cmd := exec.Command("sh", filepath.ToSlash(wrapper))
 	cmd.Env = append(os.Environ(),
 		"SANTAIZI_AGENT_RS_PARSE_ONLY=1",
 		"SANTAIZI_AGENT_YAML="+filepath.Join(dir, "agent.yaml"),
@@ -41,6 +54,10 @@ type parseError struct {
 
 func (e *parseError) Error() string {
 	return e.err.Error() + ": " + e.output
+}
+
+func shellSingleQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", `'"'"'`) + "'"
 }
 
 func TestInstallAgentRSParseOnlyCloudPhysicalAndDialCache(t *testing.T) {

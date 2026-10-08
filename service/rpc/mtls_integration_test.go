@@ -48,6 +48,7 @@ func setupPrimaryGRPC(t *testing.T, requireMTLS bool) *primaryFixture {
 	if err := db.AutoMigrate(
 		&model.Server{}, &model.ServerNodeBinding{}, &model.ObserverAssignment{},
 		&model.Collector{}, &model.CollectorScope{}, &model.ServerRuntime{},
+		&model.AvailabilityIncident{},
 		&model.TelemetryEvent{}, &model.TelemetryObservation{}, &model.TelemetryGap{},
 		&model.TelemetryIngestCursor{}, &model.AgentTelemetryRuntime{},
 		&model.CollectorReplicationReceipt{}, &model.CollectorRuntime{},
