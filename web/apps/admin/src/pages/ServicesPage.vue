@@ -8,7 +8,7 @@ import MonitorEditorDialog from '@/components/editors/MonitorEditorDialog.vue'
 import { deleteMonitor, listMonitorHistory, listMonitors, type ResourceRecord } from '@/api/adminApi'
 import {formatAdminValue} from '@/composables/format'
 import { notifyAPIError } from '@/composables/notify'
-import { readStoredPageSize, writeStoredPageSize } from '@/composables/pageSize'
+import { PAGE_SIZES, readStoredPageSize, writeStoredPageSize } from '@/composables/pageSize'
 import { isRowSelected, toggleRowSelection } from '@/composables/selection'
 import type { MonitorRecord } from '@/types/admin'
 
@@ -64,7 +64,7 @@ onMounted(load)
         </article>
       </div>
     </div>
-    <div class="pagination"><el-pagination v-model:current-page="query.page" v-model:page-size="query.page_size" layout="total, sizes, prev, pager, next" :total="total" @change="load"/></div>
+    <div class="pagination"><el-pagination v-model:current-page="query.page" v-model:page-size="query.page_size" :page-sizes="PAGE_SIZES" layout="total, sizes, prev, pager, next" :total="total" @change="load"/></div>
   </section>
   <MonitorEditorDialog v-model="editor" :value="editing" @saved="load"/>
   <AppDrawer v-model="historyDrawer" :title="`${t('monitorHistory')} · ${historyTitle}`" mode="view" size="min(840px,96vw)"><el-table v-loading="historyLoading" :data="history"><el-table-column prop="created_at" :label="t('createdAt')" min-width="190"><template #default="{row}">{{ display(row.created_at,'created_at') }}</template></el-table-column><el-table-column prop="server_id" :label="t('server')" width="100"/><el-table-column prop="avg_delay" :label="t('averageLatency')" width="150"/><el-table-column prop="up" :label="t('upCount')" width="110"/><el-table-column prop="down" :label="t('downCount')" width="110"/></el-table></AppDrawer>

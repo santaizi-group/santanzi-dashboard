@@ -16,7 +16,7 @@ import CopyableText from '@/components/CopyableText.vue'
 import { batchDeleteServers, batchUpdateServerGroup, deleteOfflineHistory, deleteServer, exportServers, getServerInstallPreview, getServerTrafficHistory, listConnectionPaths, listOfflineHistory, listProbePaths, listServerAvailability, listServers, previewServerImport, resetServerAvailability, resetServerSecret, updateServerDisplayIndex, type ResourceRecord, type ServerRecord } from '@/api/adminApi'
 import { formatAdminValue, formatBytes } from '@/composables/format'
 import { notifyAPIError } from '@/composables/notify'
-import { readStoredPageSize, writeStoredPageSize } from '@/composables/pageSize'
+import { PAGE_SIZES, readStoredPageSize, writeStoredPageSize } from '@/composables/pageSize'
 import { isRowSelected, toggleRowSelection } from '@/composables/selection'
 import { shortId } from '@/composables/shortId'
 import {
@@ -554,7 +554,7 @@ onUnmounted(() => { hoverMedia?.removeEventListener('change', onHoverMediaChange
         </article>
       </div>
     </div>
-    <div class="pagination"><el-pagination v-model:current-page="query.page" v-model:page-size="query.page_size" layout="total, sizes, prev, pager, next" :total="total" @change="load"/></div>
+    <div class="pagination"><el-pagination v-model:current-page="query.page" v-model:page-size="query.page_size" :page-sizes="PAGE_SIZES" layout="total, sizes, prev, pager, next" :total="total" @change="load"/></div>
   </section>
   <ServerEditorDialog v-model="editor" :value="editing" @saved="saved"/>
   <ServerGroupManagerDialog v-model="groupManager" @changed="load"/>

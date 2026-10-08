@@ -15,7 +15,7 @@ import {
 import type { BotSettingsWrite } from '@santaizi/api'
 import { notifyAPIError } from '@/composables/notify'
 import { formatDateTime } from '@/composables/format'
-import { readStoredPageSize, writeStoredPageSize } from '@/composables/pageSize'
+import { PAGE_SIZES, readStoredPageSize, writeStoredPageSize } from '@/composables/pageSize'
 import { isRowSelected, toggleRowSelection } from '@/composables/selection'
 import type { BotBindCodeRecord, BotChatRecord, BotReportRecord, BotRole, BotSettings } from '@/types/admin'
 
@@ -334,7 +334,7 @@ onMounted(() => { void loadSettings(); void loadChats(); void loadCodes(); void 
           </article>
         </div>
       </div>
-      <div class="pagination"><el-pagination v-model:current-page="chatQuery.page" v-model:page-size="chatQuery.page_size" layout="total, sizes, prev, pager, next" :total="chatsTotal" @change="loadChats"/></div>
+      <div class="pagination"><el-pagination v-model:current-page="chatQuery.page" v-model:page-size="chatQuery.page_size" :page-sizes="PAGE_SIZES" layout="total, sizes, prev, pager, next" :total="chatsTotal" @change="loadChats"/></div>
     </section>
 
     <section class="surface table-card">
@@ -384,7 +384,7 @@ onMounted(() => { void loadSettings(); void loadChats(); void loadCodes(); void 
           </article>
         </div>
       </div>
-      <div class="pagination"><el-pagination v-model:current-page="codeQuery.page" v-model:page-size="codeQuery.page_size" layout="total, sizes, prev, pager, next" :total="codesTotal" @change="loadCodes"/></div>
+      <div class="pagination"><el-pagination v-model:current-page="codeQuery.page" v-model:page-size="codeQuery.page_size" :page-sizes="PAGE_SIZES" layout="total, sizes, prev, pager, next" :total="codesTotal" @change="loadCodes"/></div>
     </section>
 
     <section class="surface table-card">
@@ -452,7 +452,7 @@ onMounted(() => { void loadSettings(); void loadChats(); void loadCodes(); void 
           </article>
         </div>
       </div>
-      <div class="pagination"><el-pagination v-model:current-page="reportQuery.page" v-model:page-size="reportQuery.page_size" layout="total, sizes, prev, pager, next" :total="reportsTotal" @change="loadReports"/></div>
+      <div class="pagination"><el-pagination v-model:current-page="reportQuery.page" v-model:page-size="reportQuery.page_size" :page-sizes="PAGE_SIZES" layout="total, sizes, prev, pager, next" :total="reportsTotal" @change="loadReports"/></div>
     </section>
   </div>
   <BotChatEditorDialog v-model="chatEditor" :value="editingChat" @saved="loadChats"/>

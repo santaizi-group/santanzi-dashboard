@@ -7,7 +7,7 @@ import { AppEmpty } from '@santaizi/ui'
 import NotificationEditorDialog from '@/components/editors/NotificationEditorDialog.vue'
 import { deleteNotification, listNotifications, testNotification } from '@/api/adminApi'
 import { notifyAPIError } from '@/composables/notify'
-import { readStoredPageSize, writeStoredPageSize } from '@/composables/pageSize'
+import { PAGE_SIZES, readStoredPageSize, writeStoredPageSize } from '@/composables/pageSize'
 import { isRowSelected, toggleRowSelection } from '@/composables/selection'
 import type { NotificationChannelRecord } from '@/types/admin'
 
@@ -56,6 +56,6 @@ onMounted(load)
         </article>
       </div>
     </div>
-    <div class="pagination"><el-pagination v-model:current-page="query.page" v-model:page-size="query.page_size" layout="total, sizes, prev, pager, next" :total="total" @change="load"/></div></section>
+    <div class="pagination"><el-pagination v-model:current-page="query.page" v-model:page-size="query.page_size" :page-sizes="PAGE_SIZES" layout="total, sizes, prev, pager, next" :total="total" @change="load"/></div></section>
   <NotificationEditorDialog v-model="editor" :value="editing" @saved="load"/>
 </template>

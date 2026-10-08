@@ -11,7 +11,7 @@ import { deleteCollector, getCollectorToken, listCollectors, revokeCollector, ro
 import { AppDialog, AppDrawer, AppEmpty } from '@santaizi/ui'
 import { formatAdminValue, formatProductVersion } from '@/composables/format'
 import { notifyAPIError } from '@/composables/notify'
-import { readStoredPageSize, writeStoredPageSize } from '@/composables/pageSize'
+import { PAGE_SIZES, readStoredPageSize, writeStoredPageSize } from '@/composables/pageSize'
 import CollectorEditorDialog from '@/components/editors/CollectorEditorDialog.vue'
 import InstallCollectorDialog from '@/components/InstallCollectorDialog.vue'
 import CopyableId from '@/components/CopyableId.vue'
@@ -491,7 +491,7 @@ onMounted(async () => {
           </article>
         </div>
       </div>
-      <div class="pagination"><el-pagination v-model:current-page="query.page" v-model:page-size="query.page_size" layout="total, sizes, prev, pager, next" :total="total" @change="load"/></div>
+      <div class="pagination"><el-pagination v-model:current-page="query.page" v-model:page-size="query.page_size" :page-sizes="PAGE_SIZES" layout="total, sizes, prev, pager, next" :total="total" @change="load"/></div>
     </template>
   </section>
   <CollectorEditorDialog v-model="editor" :value="editing" @saved="editorSaved" />

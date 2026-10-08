@@ -8,7 +8,7 @@ import AlertRuleEditorDialog from '@/components/editors/AlertRuleEditorDialog.vu
 import { deleteAlertRule, listAlertRules } from '@/api/adminApi'
 import { cleanupOfflineHistory, getSettings, updateSettings } from '@santaizi/api'
 import { notifyAPIError } from '@/composables/notify'
-import { readStoredPageSize, writeStoredPageSize } from '@/composables/pageSize'
+import { PAGE_SIZES, readStoredPageSize, writeStoredPageSize } from '@/composables/pageSize'
 import { isRowSelected, toggleRowSelection } from '@/composables/selection'
 import type { AlertRuleRecord } from '@/types/admin'
 
@@ -122,7 +122,7 @@ onMounted(load)
         </article>
       </div>
     </div>
-    <div class="pagination"><el-pagination v-model:current-page="query.page" v-model:page-size="query.page_size" layout="total, sizes, prev, pager, next" :total="total" @change="load"/></div></section>
+    <div class="pagination"><el-pagination v-model:current-page="query.page" v-model:page-size="query.page_size" :page-sizes="PAGE_SIZES" layout="total, sizes, prev, pager, next" :total="total" @change="load"/></div></section>
   </div>
   <AlertRuleEditorDialog v-model="editor" :value="editing" @saved="load"/>
 </template>
