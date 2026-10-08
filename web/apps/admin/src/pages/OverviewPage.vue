@@ -3,13 +3,14 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { getAdminSummary, getSettings, isHostOnline } from '@santaizi/api'
-import type { CollectorRecord, ConnectionPath, ServerRecord } from '@santaizi/api'
-import { AppEmpty } from '@santaizi/ui'
-import { listAllServersPaged, listCollectors, listConnectionPaths } from '@/api/adminApi'
+import type { CollectorRecord, ConnectionPath, IncidentRecord, ServerRecord } from '@santaizi/api'
+import { AppDrawer, AppEmpty } from '@santaizi/ui'
+import { listAllServersPaged, listCollectors, listConnectionPaths, telemetryList } from '@/api/adminApi'
 import TopologyGlobe from '@/components/TopologyGlobe.vue'
 import logoUrl from '@/assets/logo.svg?url'
-import { formatLatencyMs } from '@/composables/format'
+import { formatAdminValue, formatLatencyMs } from '@/composables/format'
 import { notifyAPIError } from '@/composables/notify'
+import { missedObserverText, type ObserverSight } from '@/domain/incidents'
 import { buildTopology, primaryLatencyRows, type NodeLatencyRow, type TopologyGraph, type TopologyMarker } from '@/domain/topology'
 
 const { t, te, locale } = useI18n()
@@ -22,6 +23,9 @@ const paths = ref<ConnectionPath[]>([])
 const primaryLocation = ref('')
 const siteTitle = ref('')
 const highlightId = ref('')
+const incidentsOpen = ref(false)
+const incidentsLoading = ref(false)
+const incidentRows = ref<IncidentRecord[]>([])
 
 const cards = computed(() => [
   ['ri-server-line', 'totalServers', Number(summary.value.total_servers || 0), 'blue'],
@@ -44,6 +48,34 @@ const unlocatedLabel = computed(() => graph.value.unlocated.slice(0, 8).map(item
 
 function latencyText(ms?: number) {
   return formatLatencyMs(ms, locale.value)
+}
+
+function incidentText(value: unknown, key: string) {
+  return formatAdminValue(value, key, locale.value, t as never, te)
+}
+
+function observerName(item: ObserverSight) {
+  if (item.observer_kind === 'primary') return t('observerKindPrimary')
+  return item.observer_name || item.observer_id || ''
+}
+
+function missedText(row: IncidentRecord) {
+  return missedObserverText(row.observer_evidence, observerName) || '—'
+}
+
+async function openIncidents() {
+  incidentsOpen.value = true
+  incidentsLoading.value = true
+  incidentRows.value = []
+  try {
+    const result = await telemetryList('incidents', { page: 1, page_size: 100, open: 1 })
+    incidentRows.value = result.data as IncidentRecord[]
+  } catch (error) {
+    incidentRows.value = []
+    notifyAPIError(error, t as never, te)
+  } finally {
+    incidentsLoading.value = false
+  }
 }
 
 function selectMarker(marker: TopologyMarker) {
@@ -100,10 +132,18 @@ onMounted(load)
     <div v-loading="loading" class="overview-body">
       <div class="overview-top">
         <div class="surface metric-strip">
-          <article v-for="card in cards" :key="String(card[1])" class="metric-card">
+          <component
+            :is="card[1] === 'activeIncidents' ? 'button' : 'article'"
+            v-for="card in cards"
+            :key="String(card[1])"
+            class="metric-card"
+            :class="{ 'metric-card--button': card[1] === 'activeIncidents' }"
+            :type="card[1] === 'activeIncidents' ? 'button' : undefined"
+            @click="card[1] === 'activeIncidents' ? openIncidents() : undefined"
+          >
             <span class="metric-icon" :class="String(card[3])"><i :class="String(card[0])"></i></span>
             <div><p>{{ t(String(card[1])) }}</p><strong>{{ card[2] }}</strong></div>
-          </article>
+          </component>
         </div>
         <div class="surface quick-panel">
           <div class="quick-grid">
@@ -172,5 +212,22 @@ onMounted(load)
         </aside>
       </div>
     </div>
+    <AppDrawer v-model="incidentsOpen" :title="t('activeIncidents')" mode="view" size="min(760px,96vw)">
+      <AppEmpty v-if="!incidentsLoading && !incidentRows.length" icon="ri-alarm-warning-line" :description="t('noActiveIncidents')" />
+      <el-table v-else v-loading="incidentsLoading" :data="incidentRows">
+        <el-table-column :label="t('host')" min-width="160">
+          <template #default="{ row }">{{ row.server_name || '—' }}</template>
+        </el-table-column>
+        <el-table-column :label="t('currentClassification')" min-width="120">
+          <template #default="{ row }">{{ incidentText(row.current_classification, 'current_classification') }}</template>
+        </el-table-column>
+        <el-table-column :label="t('startedAt')" min-width="180">
+          <template #default="{ row }">{{ incidentText(row.started_at, 'started_at') }}</template>
+        </el-table-column>
+        <el-table-column :label="t('missedObservers')" min-width="160">
+          <template #default="{ row }">{{ missedText(row) }}</template>
+        </el-table-column>
+      </el-table>
+    </AppDrawer>
   </div>
 </template>

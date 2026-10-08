@@ -208,9 +208,13 @@ func ListAgentReliability(db *gorm.DB, offset, limit int) ([]AgentReliabilityRec
 	return out, total, nil
 }
 
-func ListIncidents(db *gorm.DB, offset, limit int) ([]IncidentRecord, int64, error) {
+func ListIncidents(db *gorm.DB, offset, limit int, openOnly bool) ([]IncidentRecord, int64, error) {
 	out := []IncidentRecord{}
-	rows, total, err := listPage[model.AvailabilityIncident](db.Model(&model.AvailabilityIncident{}), "started_at DESC", offset, limit)
+	query := db.Model(&model.AvailabilityIncident{})
+	if openOnly {
+		query = query.Where("ended_at = 0")
+	}
+	rows, total, err := listPage[model.AvailabilityIncident](query, "started_at DESC", offset, limit)
 	if err != nil {
 		return nil, 0, err
 	}

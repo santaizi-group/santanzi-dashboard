@@ -42,7 +42,7 @@ func CollectorRuntimeFromProto(collectorUUID string, runtime *pb.CollectorRuntim
 		ReplicationCursor: runtime.GetReplicationCursor(), ConnectedAgents: runtime.GetConnectedAgents(),
 		ProtocolVersion: runtime.GetProtocolVersion(), SoftwareVersion: runtime.GetSoftwareVersion(),
 		LastPrimarySeen: runtime.GetLastPrimarySeenUnixNano(),
-		HeartbeatRttMs: runtime.GetHeartbeatRttMs(), HeartbeatRttSampledAt: runtime.GetHeartbeatRttSampledAtUnixNano(),
+		HeartbeatRttMs:  runtime.GetHeartbeatRttMs(), HeartbeatRttSampledAt: runtime.GetHeartbeatRttSampledAtUnixNano(),
 		ReplicationRttMs: runtime.GetReplicationRttMs(), ReplicationRttSampledAt: runtime.GetReplicationRttSampledAtUnixNano(),
 	}
 	if includeLastSync {
@@ -245,7 +245,7 @@ func loadConnectionPaths(db *gorm.DB, filter PathFilter, now time.Time) ([]Conne
 		}
 		paths = append(paths, ConnectionPath{
 			ServerID: server.ID, ServerName: server.Name, DisplayIndex: server.DisplayIndex, Tag: server.Tag,
-			NodeUUID: hex.EncodeToString(assignment.NodeUUID),
+			NodeUUID:   hex.EncodeToString(assignment.NodeUUID),
 			ObserverID: assignment.ObserverID, ObserverKind: kind, ObserverName: name, Assigned: true,
 			LastSeen: lastSeen[pathKey(assignment.NodeUUID, assignment.ObserverID)],
 			Sink:     sink,
@@ -416,6 +416,26 @@ func loadHostIndex(db *gorm.DB, nodeIDs [][]byte, observerIDs []string) (hostInd
 		for _, binding := range bindings {
 			idx.serverByNode[string(binding.NodeUUID)] = binding.ServerID
 			serverIDs = append(serverIDs, binding.ServerID)
+		}
+		missing := make([][]byte, 0)
+		for _, nodeID := range nodeIDs {
+			if _, ok := idx.serverByNode[string(nodeID)]; !ok {
+				missing = append(missing, nodeID)
+			}
+		}
+		if len(missing) > 0 {
+			var historical []model.ServerNodeBinding
+			if err := db.Where("node_uuid IN ?", missing).Order("valid_to DESC, valid_from DESC").Find(&historical).Error; err != nil {
+				return idx, err
+			}
+			for _, binding := range historical {
+				key := string(binding.NodeUUID)
+				if _, ok := idx.serverByNode[key]; ok {
+					continue
+				}
+				idx.serverByNode[key] = binding.ServerID
+				serverIDs = append(serverIDs, binding.ServerID)
+			}
 		}
 		if len(serverIDs) > 0 {
 			var rows []model.Server

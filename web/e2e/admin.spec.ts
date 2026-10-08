@@ -701,6 +701,40 @@ test('overview counts live collectors and links to connection observation', asyn
   await expect(page).toHaveURL(/\/admin\/connections$/)
 })
 
+test('overview connectivity card lists the open incidents', async ({ page }) => {
+  await page.route('**/api/v2/admin/summary', route => fulfillJSON(route, item({
+    total_servers: 2, online_servers: 2, active_collectors: 1, active_incidents: 1,
+  })))
+  let incidentLoads = 0
+  await page.route('**/api/v2/admin/telemetry/incidents**', route => {
+    const url = new URL(route.request().url())
+    expect(url.searchParams.get('open')).toBe('1')
+    incidentLoads += 1
+    if (incidentLoads > 1) return fulfillJSON(route, list([]))
+    return fulfillJSON(route, list([{
+      id: 9, server_id: 4, server_name: 'fra-nosla', node_uuid: 'abc',
+      current_classification: 'host_offline', started_at: '2026-10-08T12:00:00Z', ended_at: null,
+      observer_evidence: [
+        { observer_id: 'primary', observer_kind: 'primary', observer_name: '', healthy: true, seen: false },
+        { observer_id: 'edge', observer_kind: 'collector', observer_name: '法兰克福', healthy: true, seen: true },
+      ],
+    }]))
+  })
+  await page.goto('/admin/')
+  await expect(page.locator('.metric-card').filter({ hasText: '连通异常' }).locator('strong')).toHaveText('1')
+  await page.locator('.metric-card--button').click()
+  const drawer = page.locator('.el-drawer').filter({ visible: true })
+  await expect(drawer.getByText('fra-nosla')).toBeVisible()
+  await expect(drawer.getByText('主机离线')).toBeVisible()
+  await expect(drawer.getByText('主面板')).toBeVisible()
+  await expect(drawer.getByText('法兰克福')).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(drawer).toHaveCount(0)
+
+  await page.locator('.metric-card--button').click()
+  await expect(page.locator('.el-drawer').filter({ visible: true }).getByText('当前无连通异常')).toBeVisible()
+})
+
 test('overview latency list scrolls inside the panel on desktop', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'admin-mobile', 'viewport lock is desktop-only')
   const servers = Array.from({ length: 40 }, (_, index) => ({

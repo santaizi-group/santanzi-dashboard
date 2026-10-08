@@ -99,7 +99,7 @@ func TestListIncidentsDecodesEvidenceAndClassification(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rows, _, err := ListIncidents(db, 0, 20)
+	rows, _, err := ListIncidents(db, 0, 20, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,6 +116,45 @@ func TestListIncidentsDecodesEvidenceAndClassification(t *testing.T) {
 	encoded, _ := json.Marshal(row)
 	if bytes.Contains(encoded, []byte(`"observer_evidence":"`)) {
 		t.Fatalf("raw evidence blob leaked: %s", encoded)
+	}
+}
+
+func TestListIncidentsOpenFilterAndHistoricalName(t *testing.T) {
+	db := newConnectionDB(t)
+	if err := db.AutoMigrate(&model.AvailabilityIncident{}); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Unix(1_700_000_000, 0).UTC()
+	node := bytes.Repeat([]byte{0xcd}, 16)
+	other := bytes.Repeat([]byte{0xef}, 16)
+	server := model.Server{Name: "edge-old", Secret: "secret"}
+	if err := db.Create(&server).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.ServerNodeBinding{
+		ServerID: server.ID, NodeUUID: node, Current: false, Reason: "test",
+		ValidFrom: now.Add(-time.Hour).UnixNano(), ValidTo: now.UnixNano(),
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.AvailabilityIncident{
+		NodeUUID: node, InitialClassification: "HOST_OFFLINE", CurrentClassification: "HOST_OFFLINE",
+		Revision: 1, StartedAt: now.UnixNano(), EndedAt: 0, Reason: "availability evidence",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.AvailabilityIncident{
+		NodeUUID: other, InitialClassification: "HOST_OFFLINE", CurrentClassification: "HOST_OFFLINE",
+		Revision: 1, StartedAt: now.Add(-time.Minute).UnixNano(), EndedAt: now.UnixNano(), Reason: "availability evidence",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	rows, total, err := ListIncidents(db, 0, 20, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 1 || len(rows) != 1 || rows[0].ServerName != "edge-old" || rows[0].EndedAt != nil {
+		t.Fatalf("open rows=%#v total=%d", rows, total)
 	}
 }
 

@@ -20,7 +20,7 @@ func TestV2NodeReplacementCreatesIdentityLifecycleFact(t *testing.T) {
 	}
 	if err := db.AutoMigrate(
 		&model.Server{}, &model.ServerNodeBinding{}, &model.ObserverAssignment{}, &model.Collector{}, &model.CollectorScope{},
-		&model.TelemetryEvent{}, &model.TelemetryObservation{},
+		&model.TelemetryEvent{}, &model.TelemetryObservation{}, &model.AvailabilityIncident{},
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -67,6 +67,52 @@ func TestV2NodeReplacementCreatesIdentityLifecycleFact(t *testing.T) {
 	}
 	if oldBinding.Current || oldBinding.ValidTo == 0 {
 		t.Fatalf("old binding not closed: %#v", oldBinding)
+	}
+}
+
+func TestRebindClosesOpenIncidentOnPreviousNode(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(
+		&model.Server{}, &model.ServerNodeBinding{}, &model.ObserverAssignment{}, &model.Collector{}, &model.CollectorScope{},
+		&model.TelemetryEvent{}, &model.TelemetryObservation{}, &model.AvailabilityIncident{},
+	); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.Server{Common: model.Common{ID: 8}, Name: "node-8", Secret: "secret-8"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	previousDB := DB
+	DB = db
+	t.Cleanup(func() {
+		DB = previousDB
+		_ = CloseDB(db)
+	})
+
+	oldNode := bytes.Repeat([]byte{0x41}, 16)
+	newNode := bytes.Repeat([]byte{0x42}, 16)
+	now := time.Unix(1_800_000_000, 0)
+	if _, err := BindServerNodeForProtocol(8, oldNode, now, pb.SourceProtocol_SOURCE_PROTOCOL_SANTAIZI_V2); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.AvailabilityIncident{
+		NodeUUID: oldNode, InitialClassification: "HOST_OFFLINE", CurrentClassification: "HOST_OFFLINE",
+		Revision: 1, StartedAt: now.UnixNano(), EndedAt: 0, Reason: "availability evidence",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	rebound := now.Add(time.Minute)
+	if _, err := BindServerNodeForProtocol(8, newNode, rebound, pb.SourceProtocol_SOURCE_PROTOCOL_SANTAIZI_V2); err != nil {
+		t.Fatal(err)
+	}
+	var incident model.AvailabilityIncident
+	if err := db.First(&incident, "node_uuid = ?", oldNode).Error; err != nil {
+		t.Fatal(err)
+	}
+	if incident.EndedAt != rebound.UnixNano() {
+		t.Fatalf("rebind left incident open: %#v", incident)
 	}
 }
 

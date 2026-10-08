@@ -2715,6 +2715,15 @@ func hopItems(hops []telemetry.ProbeHopView) []gin.H {
 	return items
 }
 
+func incidentListOpenOnly(c *gin.Context) bool {
+	switch strings.ToLower(strings.TrimSpace(c.Query("open"))) {
+	case "1", "true":
+		return true
+	default:
+		return false
+	}
+}
+
 func v2TelemetryDataset(c *gin.Context) {
 	page, size := parsePage(c)
 	offset := (page - 1) * size
@@ -2729,7 +2738,7 @@ func v2TelemetryDataset(c *gin.Context) {
 	case "agents":
 		rows, total, err = telemetry.ListAgentReliability(singleton.DB, offset, size)
 	case "incidents":
-		rows, total, err = telemetry.ListIncidents(singleton.DB, offset, size)
+		rows, total, err = telemetry.ListIncidents(singleton.DB, offset, size, incidentListOpenOnly(c))
 	case "incident-revisions":
 		rows, total, err = telemetry.ListIncidentRevisions(singleton.DB, offset, size)
 	case "data-loss":

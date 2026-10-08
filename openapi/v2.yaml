@@ -1913,6 +1913,11 @@ paths:
       parameters:
       - $ref: '#/components/parameters/Page'
       - $ref: '#/components/parameters/PageSize'
+      - name: open
+        in: query
+        description: 为 true 时只返回尚未结束的连通异常
+        schema:
+          type: boolean
       responses:
         '200':
           $ref: '#/components/responses/IncidentListResponse'

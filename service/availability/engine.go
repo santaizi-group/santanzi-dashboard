@@ -35,12 +35,14 @@ func (e *Engine) Run(ctx context.Context) {
 	defer processTicker.Stop()
 	defer healthTicker.Stop()
 	_ = e.RecordPrimaryHealth(ctx, time.Now())
+	_ = e.CloseStaleIncidents(ctx, time.Now())
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-processTicker.C:
 			_ = e.ProcessQueue(ctx, 200)
+			_ = e.CloseStaleIncidents(ctx, time.Now())
 		case sampledAt := <-healthTicker.C:
 			_ = e.RecordPrimaryHealth(ctx, sampledAt)
 		}
@@ -168,13 +170,13 @@ func (e *Engine) Recompute(ctx context.Context, nodeUUID []byte, bucketStart int
 			return err
 		}
 		if err == nil && existing.Resolution == model.AvailabilityResolutionSpan {
-			return nil
+			return closeRecoveredIncident(tx, existing, recalculatedAt)
 		}
 		var covering model.AvailabilityBucket
 		coverErr := tx.Where("node_uuid = ? AND resolution = ? AND bucket_start <= ? AND window_end > ?",
 			nodeUUID, model.AvailabilityResolutionSpan, bucketStart, bucketStart).First(&covering).Error
 		if coverErr == nil {
-			return nil
+			return closeRecoveredIncident(tx, covering, recalculatedAt)
 		}
 		if coverErr != nil && !errors.Is(coverErr, gorm.ErrRecordNotFound) {
 			return coverErr
@@ -204,6 +206,99 @@ func (e *Engine) Recompute(ctx context.Context, nodeUUID []byte, bucketStart int
 			return reviseIncident(tx, row, e.bucketSize, recalculatedAt)
 		}
 		return nil
+	})
+}
+
+// CloseOpenIncidents ends every still-open incident for a node.
+// The end is clamped so it is never earlier than the incident start.
+func CloseOpenIncidents(tx *gorm.DB, nodeUUID []byte, endedAt time.Time) error {
+	if tx == nil || len(nodeUUID) != 16 || endedAt.IsZero() {
+		return nil
+	}
+	var incidents []model.AvailabilityIncident
+	if err := tx.Where("node_uuid = ? AND ended_at = 0", nodeUUID).Find(&incidents).Error; err != nil {
+		return err
+	}
+	proposed := endedAt.UnixNano()
+	for i := range incidents {
+		incident := incidents[i]
+		closed := proposed
+		if closed < incident.StartedAt {
+			closed = incident.StartedAt
+		}
+		if closed == 0 {
+			closed = 1
+		}
+		incident.EndedAt = closed
+		incident.RecalculatedAt = proposed
+		if incident.RecalculatedAt <= 0 {
+			incident.RecalculatedAt = closed
+		}
+		if err := tx.Save(&incident).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func closeRecoveredIncident(tx *gorm.DB, bucket model.AvailabilityBucket, recalculatedAt time.Time) error {
+	switch incidentClassification(bucket) {
+	case "HEALTHY", "EVIDENCE_UNKNOWN":
+		return CloseOpenIncidents(tx, bucket.NodeUUID, time.Unix(0, bucket.BucketStart))
+	default:
+		return nil
+	}
+}
+
+// CloseStaleIncidents drops open incidents that no longer describe the current host.
+// A recovered or unknown latest bucket closes at that bucket's start.
+// A node that is no longer anyone's current identity closes at the binding end.
+func (e *Engine) CloseStaleIncidents(ctx context.Context, now time.Time) error {
+	var open []model.AvailabilityIncident
+	if err := e.db.WithContext(ctx).Where("ended_at = 0").Find(&open).Error; err != nil {
+		return err
+	}
+	seen := map[string]bool{}
+	for _, incident := range open {
+		key := string(incident.NodeUUID)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		if err := e.closeStaleNode(ctx, incident.NodeUUID, now); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (e *Engine) closeStaleNode(ctx context.Context, nodeUUID []byte, now time.Time) error {
+	var current int64
+	if err := e.db.WithContext(ctx).Model(&model.ServerNodeBinding{}).
+		Where("node_uuid = ? AND current = ?", nodeUUID, true).Count(&current).Error; err != nil {
+		return err
+	}
+	if current == 0 {
+		ended := now
+		var binding model.ServerNodeBinding
+		err := e.db.WithContext(ctx).Where("node_uuid = ?", nodeUUID).
+			Order("valid_to DESC, valid_from DESC").First(&binding).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		if err == nil && binding.ValidTo > 0 {
+			ended = time.Unix(0, binding.ValidTo)
+		}
+		return e.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			return CloseOpenIncidents(tx, nodeUUID, ended)
+		})
+	}
+	bucket, found, err := model.LatestClosedAvailabilityBucket(e.db.WithContext(ctx), nodeUUID, now)
+	if err != nil || !found {
+		return err
+	}
+	return e.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return closeRecoveredIncident(tx, bucket, now)
 	})
 }
 

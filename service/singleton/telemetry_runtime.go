@@ -13,6 +13,7 @@ import (
 	"github.com/hi2shark/santaizi-dashboard/model"
 	"github.com/hi2shark/santaizi-dashboard/pkg/geoip"
 	pb "github.com/hi2shark/santaizi-dashboard/proto"
+	"github.com/hi2shark/santaizi-dashboard/service/availability"
 	"google.golang.org/protobuf/proto"
 	"gorm.io/gorm"
 )
@@ -54,6 +55,9 @@ func BindServerNodeForProtocol(serverID uint64, nodeUUID []byte, now time.Time, 
 				return err
 			}
 			if err := closeObserverAssignments(tx, current.NodeUUID, now); err != nil {
+				return err
+			}
+			if err := availability.CloseOpenIncidents(tx, previousNodeUUID, now); err != nil {
 				return err
 			}
 			if current.Reason == "authenticated_v2_control_binding" && source == pb.SourceProtocol_SOURCE_PROTOCOL_SANTAIZI_V2 {
@@ -114,6 +118,9 @@ func EndServerNodeBinding(serverID uint64, now time.Time) error {
 				return err
 			}
 			if err := closeObserverAssignments(tx, binding.NodeUUID, now); err != nil {
+				return err
+			}
+			if err := availability.CloseOpenIncidents(tx, binding.NodeUUID, now); err != nil {
 				return err
 			}
 		}

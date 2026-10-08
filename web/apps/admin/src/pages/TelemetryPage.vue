@@ -16,6 +16,7 @@ import CollectorEditorDialog from '@/components/editors/CollectorEditorDialog.vu
 import InstallCollectorDialog from '@/components/InstallCollectorDialog.vue'
 import CopyableId from '@/components/CopyableId.vue'
 import { collectorAccessHost, collectorAccessPort, collectorListenPort } from '@/domain/collectorAddress'
+import { missedObserverText, type ObserverSight } from '@/domain/incidents'
 import { isProbeCollector } from '@/domain/collectorKind'
 
 type DatasetKey = 'assignments' | 'agents' | 'incidents' | 'revisions' | 'loss' | 'alerts'
@@ -150,10 +151,8 @@ function hostName(row: unknown) {
   return typeof name === 'string' ? name : ''
 }
 
-function seenBy(items?: ObserverEvidenceItem[]) {
-  if (!items?.length) return '—'
-  const names = items.filter(item => item.seen).map(item => observerLabel(item))
-  return names.length ? names.join(', ') : '—'
+function missedBy(items?: ObserverEvidenceItem[]) {
+  return missedObserverText(items as ObserverSight[] | undefined, item => observerLabel(item)) || '—'
 }
 
 function openRow(row: DatasetRow) {
@@ -369,8 +368,8 @@ onMounted(async () => {
               <CopyableId v-else :value="(row as IncidentRecord).node_uuid" />
             </template>
           </el-table-column>
-          <el-table-column :label="t('seenBy')" min-width="140">
-            <template #default="{row}"><span class="cell-ellipsis">{{ seenBy((row as IncidentRecord).observer_evidence) }}</span></template>
+          <el-table-column :label="t('missedObservers')" min-width="140">
+            <template #default="{row}"><span class="cell-ellipsis">{{ missedBy((row as IncidentRecord).observer_evidence) }}</span></template>
           </el-table-column>
           <el-table-column :label="t('revision')" width="100">
             <template #default="{row}">{{ pretty(row.revision, 'revision') }}</template>
@@ -464,7 +463,7 @@ onMounted(async () => {
               <div><dt>{{ t('endedAt') }}</dt><dd>{{ formatEnd((row as IncidentRecord).ended_at, 'ended_at') }}</dd></div>
               <div><dt>{{ t('currentClassification') }}</dt><dd class="cell-ellipsis">{{ pretty((row as IncidentRecord).current_classification, 'current_classification') }}</dd></div>
               <div><dt>{{ t('host') }}</dt><dd><span v-if="hostName(row)" class="cell-ellipsis">{{ hostName(row) }}</span><CopyableId v-else :value="(row as IncidentRecord).node_uuid" /></dd></div>
-              <div><dt>{{ t('seenBy') }}</dt><dd class="cell-ellipsis">{{ seenBy((row as IncidentRecord).observer_evidence) }}</dd></div>
+              <div><dt>{{ t('missedObservers') }}</dt><dd class="cell-ellipsis">{{ missedBy((row as IncidentRecord).observer_evidence) }}</dd></div>
               <div><dt>{{ t('revision') }}</dt><dd>{{ pretty((row as IncidentRecord).revision, 'revision') }}</dd></div>
             </dl>
             <dl v-else-if="active==='revisions'" class="mobile-card-meta">

@@ -20,7 +20,7 @@ func newEngineTestDB(t *testing.T) *gorm.DB {
 	if err := db.AutoMigrate(
 		&model.ObserverAssignment{}, &model.ObserverHealthBucket{}, &model.ObserverPathBucket{},
 		&model.AvailabilityBucket{}, &model.AvailabilityIncident{}, &model.IncidentRevision{},
-		&model.AvailabilityRecomputeQueue{},
+		&model.AvailabilityRecomputeQueue{}, &model.ServerNodeBinding{},
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -29,10 +29,10 @@ func newEngineTestDB(t *testing.T) *gorm.DB {
 
 func TestClassifyPartialStillOnlineAndAvailable(t *testing.T) {
 	tests := []struct {
-		name                              string
-		healthy, seen, minObservers       uint32
-		windowClosed                      bool
-		host, connectivity                string
+		name                        string
+		healthy, seen, minObservers uint32
+		windowClosed                bool
+		host, connectivity          string
 	}{
 		{name: "scenario A partial", healthy: 2, seen: 1, minObservers: 1, windowClosed: true, host: model.HostStateOnline, connectivity: model.ConnectivityPartial},
 		{name: "scenario B full", healthy: 3, seen: 3, minObservers: 1, windowClosed: false, host: model.HostStateOnline, connectivity: model.ConnectivityFull},
@@ -263,6 +263,152 @@ func TestRecordPrimaryHealthEnqueuesCurrentAndPreviousBucket(t *testing.T) {
 	}
 	if !health.Healthy {
 		t.Fatalf("primary health=%#v", health)
+	}
+}
+
+func TestCoveringSpanClosesOpenIncident(t *testing.T) {
+	db := newEngineTestDB(t)
+	engine := NewEngine(db, 30*time.Second, 1)
+	node := bytes.Repeat([]byte{21}, 16)
+	now := time.Now()
+	bucketSize := int64(30 * time.Second)
+	started := now.Add(-2*time.Hour).UnixNano() / bucketSize * bucketSize
+	spanStart := started + bucketSize
+	if err := db.Create(&model.AvailabilityIncident{
+		NodeUUID: node, InitialClassification: "HOST_OFFLINE", CurrentClassification: "HOST_OFFLINE",
+		Revision: 1, StartedAt: started, EndedAt: 0, Reason: "availability evidence",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.AvailabilityBucket{
+		NodeUUID: node, BucketStart: spanStart, WindowEnd: spanStart + int64(time.Hour),
+		Resolution: model.AvailabilityResolutionSpan, HostState: model.HostStateOnline, ConnectivityState: model.ConnectivityFull,
+		ExpectedObservers: 3, HealthyObservers: 3, SeenObservers: 3, Revision: 1, Finalized: true,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := engine.Recompute(context.Background(), node, spanStart+bucketSize, now); err != nil {
+		t.Fatal(err)
+	}
+	var incident model.AvailabilityIncident
+	if err := db.First(&incident, "node_uuid = ?", node).Error; err != nil {
+		t.Fatal(err)
+	}
+	if incident.EndedAt != spanStart {
+		t.Fatalf("span left incident open: %#v", incident)
+	}
+}
+
+func TestCloseStaleIncidentsUsesLatestHealthyBucket(t *testing.T) {
+	db := newEngineTestDB(t)
+	engine := NewEngine(db, 30*time.Second, 1)
+	node := bytes.Repeat([]byte{23}, 16)
+	now := time.Now()
+	bucketSize := int64(30 * time.Second)
+	started := now.Add(-time.Hour).UnixNano() / bucketSize * bucketSize
+	healthy := started + bucketSize
+	if err := db.Create(&model.ServerNodeBinding{
+		ServerID: 1, NodeUUID: node, Current: true, Reason: "test", ValidFrom: started,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.AvailabilityIncident{
+		NodeUUID: node, InitialClassification: "CONNECTIVITY_DEGRADED", CurrentClassification: "CONNECTIVITY_DEGRADED",
+		Revision: 1, StartedAt: started, EndedAt: 0, Reason: "availability evidence",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.AvailabilityBucket{
+		NodeUUID: node, BucketStart: healthy, WindowEnd: healthy + bucketSize,
+		Resolution: model.AvailabilityResolutionRaw, HostState: model.HostStateOnline, ConnectivityState: model.ConnectivityFull,
+		ExpectedObservers: 3, HealthyObservers: 3, SeenObservers: 3, Revision: 1, Finalized: true,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := engine.CloseStaleIncidents(context.Background(), now); err != nil {
+		t.Fatal(err)
+	}
+	var incident model.AvailabilityIncident
+	if err := db.First(&incident, "node_uuid = ?", node).Error; err != nil {
+		t.Fatal(err)
+	}
+	if incident.EndedAt != healthy {
+		t.Fatalf("recovered incident still open: %#v", incident)
+	}
+}
+
+func TestCloseStaleIncidentsKeepsCurrentOffline(t *testing.T) {
+	db := newEngineTestDB(t)
+	engine := NewEngine(db, 30*time.Second, 1)
+	node := bytes.Repeat([]byte{29}, 16)
+	now := time.Now()
+	bucketSize := int64(30 * time.Second)
+	started := now.Add(-time.Hour).UnixNano() / bucketSize * bucketSize
+	if err := db.Create(&model.ServerNodeBinding{
+		ServerID: 1, NodeUUID: node, Current: true, Reason: "test", ValidFrom: started,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.AvailabilityIncident{
+		NodeUUID: node, InitialClassification: "HOST_OFFLINE", CurrentClassification: "HOST_OFFLINE",
+		Revision: 1, StartedAt: started, EndedAt: 0, Reason: "availability evidence",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.AvailabilityBucket{
+		NodeUUID: node, BucketStart: started, WindowEnd: started + bucketSize,
+		Resolution: model.AvailabilityResolutionRaw, HostState: model.HostStateOffline, ConnectivityState: model.ConnectivityUnavailable,
+		ExpectedObservers: 3, HealthyObservers: 3, SeenObservers: 0, Revision: 1, Finalized: true,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := engine.CloseStaleIncidents(context.Background(), now); err != nil {
+		t.Fatal(err)
+	}
+	var incident model.AvailabilityIncident
+	if err := db.First(&incident, "node_uuid = ?", node).Error; err != nil {
+		t.Fatal(err)
+	}
+	if incident.EndedAt != 0 {
+		t.Fatalf("current offline incident was closed: %#v", incident)
+	}
+}
+
+func TestCloseStaleIncidentsClosesFormerIdentity(t *testing.T) {
+	db := newEngineTestDB(t)
+	engine := NewEngine(db, 30*time.Second, 1)
+	node := bytes.Repeat([]byte{31}, 16)
+	now := time.Now()
+	bucketSize := int64(30 * time.Second)
+	started := now.Add(-2*time.Hour).UnixNano() / bucketSize * bucketSize
+	ended := now.Add(-time.Hour)
+	if err := db.Create(&model.ServerNodeBinding{
+		ServerID: 1, NodeUUID: node, Current: false, Reason: "test", ValidFrom: started, ValidTo: ended.UnixNano(),
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.AvailabilityIncident{
+		NodeUUID: node, InitialClassification: "HOST_OFFLINE", CurrentClassification: "HOST_OFFLINE",
+		Revision: 1, StartedAt: started, EndedAt: 0, Reason: "availability evidence",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.AvailabilityBucket{
+		NodeUUID: node, BucketStart: started, WindowEnd: started + bucketSize,
+		Resolution: model.AvailabilityResolutionRaw, HostState: model.HostStateOffline, ConnectivityState: model.ConnectivityUnavailable,
+		ExpectedObservers: 1, HealthyObservers: 1, SeenObservers: 0, Revision: 1, Finalized: true,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := engine.CloseStaleIncidents(context.Background(), now); err != nil {
+		t.Fatal(err)
+	}
+	var incident model.AvailabilityIncident
+	if err := db.First(&incident, "node_uuid = ?", node).Error; err != nil {
+		t.Fatal(err)
+	}
+	if incident.EndedAt != ended.UnixNano() {
+		t.Fatalf("former identity incident=%#v want end %d", incident, ended.UnixNano())
 	}
 }
 

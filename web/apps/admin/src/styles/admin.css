@@ -201,6 +201,17 @@
   border-right: 1px solid var(--sz-border-subtle);
 }
 .metric-strip .metric-card:last-child { border-right: 0; }
+.metric-strip .metric-card--button {
+  appearance: none;
+  width: 100%;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.metric-strip .metric-card--button:hover { background: color-mix(in srgb, var(--sz-primary) 8%, transparent); }
+.metric-strip .metric-card--button:focus-visible { outline: 2px solid var(--sz-primary); outline-offset: -2px; }
 .metric-card p { margin: 0 0 2px; color: var(--sz-text-muted); font-size: 12px; }
 .metric-card strong { font-size: 20px; letter-spacing: -.035em; }
 .metric-icon.blue { color:#2563eb;background:#eff6ff}.metric-icon.green{color:#059669;background:#ecfdf5}.metric-icon.amber{color:#d97706;background:#fffbeb}.metric-icon.violet{color:#7c3aed;background:#f5f3ff}
