@@ -4524,6 +4524,9 @@ type ListIncidentRevisionsParams struct {
 type ListIncidentsParams struct {
 	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
 	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
+
+	// Open 为 true 时只返回尚未结束的连通异常
+	Open *bool `form:"open,omitempty" json:"open,omitempty"`
 }
 
 // LogoutParams defines parameters for Logout.
@@ -10048,6 +10051,14 @@ func (siw *ServerInterfaceWrapper) ListIncidents(c *gin.Context) {
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "open" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "open", c.Request.URL.Query(), &params.Open, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter open: %w", err), http.StatusBadRequest)
 		return
 	}
 

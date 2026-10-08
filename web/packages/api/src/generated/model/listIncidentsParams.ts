@@ -20,4 +20,8 @@ page?: PageParameter;
  * @maximum 100
  */
 page_size?: PageSizeParameter;
+/**
+ * 为 true 时只返回尚未结束的连通异常
+ */
+open?: boolean;
 };
