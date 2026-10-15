@@ -14,9 +14,9 @@ import (
 
 	"github.com/hi2shark/santaizi-dashboard/model"
 	pb "github.com/hi2shark/santaizi-dashboard/proto"
+	"github.com/hi2shark/santaizi-dashboard/service/sqliteutil"
 	"github.com/hi2shark/santaizi-dashboard/service/telemetry"
 	"google.golang.org/protobuf/proto"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -41,7 +41,7 @@ func OpenStore(path string, debug bool) (*Store, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return nil, err
 	}
-	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{CreateBatchSize: 200})
+	db, err := sqliteutil.Open(path, debug)
 	if err != nil {
 		return nil, err
 	}
@@ -51,18 +51,6 @@ func OpenStore(path string, debug bool) (*Store, error) {
 			_ = closeGormDB(db)
 		}
 	}()
-	if debug {
-		db = db.Debug()
-	}
-	sqlDB, err := db.DB()
-	if err != nil {
-		return nil, err
-	}
-	for _, pragma := range []string{"PRAGMA journal_mode=WAL", "PRAGMA foreign_keys=ON", "PRAGMA busy_timeout=5000", "PRAGMA synchronous=NORMAL"} {
-		if _, err := sqlDB.Exec(pragma); err != nil {
-			return nil, fmt.Errorf("apply %s: %w", pragma, err)
-		}
-	}
 	if err := migrate(db); err != nil {
 		return nil, err
 	}

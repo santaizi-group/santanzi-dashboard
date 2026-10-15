@@ -18,6 +18,7 @@ require (
 	github.com/knadh/koanf/v2 v2.1.2
 	github.com/libdns/cloudflare v0.1.1
 	github.com/libdns/libdns v0.2.2
+	github.com/mattn/go-sqlite3 v1.14.17
 	github.com/miekg/dns v1.1.62
 	github.com/nezhahq/libdns-tencentcloud v0.0.0-20241029120103-889957240fff
 	github.com/nicksnyder/go-i18n/v2 v2.4.0
@@ -74,7 +75,6 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-sqlite3 v1.14.17 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect

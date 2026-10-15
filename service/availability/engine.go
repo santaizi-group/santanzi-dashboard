@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hi2shark/santaizi-dashboard/model"
+	"github.com/hi2shark/santaizi-dashboard/service/sqliteutil"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -93,9 +94,16 @@ func (e *Engine) ProcessQueue(ctx context.Context, limit int) error {
 	}
 	for _, item := range queued {
 		if err := e.Recompute(ctx, item.NodeUUID, item.BucketStart, time.Now()); err != nil {
+			if sqliteutil.Busy(err) {
+				// The driver already waited. Leave the row and stop this tick so a held lock is not multiplied by the queue length.
+				return nil
+			}
 			return err
 		}
 		if err := e.db.WithContext(ctx).Delete(&model.AvailabilityRecomputeQueue{}, "node_uuid = ? AND bucket_start = ?", item.NodeUUID, item.BucketStart).Error; err != nil {
+			if sqliteutil.Busy(err) {
+				return nil
+			}
 			return err
 		}
 	}

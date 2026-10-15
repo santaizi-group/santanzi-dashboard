@@ -3,12 +3,14 @@ package availability
 import (
 	"bytes"
 	"context"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/hi2shark/santaizi-dashboard/model"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 func newEngineTestDB(t *testing.T) *gorm.DB {
@@ -409,6 +411,59 @@ func TestCloseStaleIncidentsClosesFormerIdentity(t *testing.T) {
 	}
 	if incident.EndedAt != ended.UnixNano() {
 		t.Fatalf("former identity incident=%#v want end %d", incident, ended.UnixNano())
+	}
+}
+
+func TestProcessQueueKeepsRowsWhenDatabaseLocked(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "availability.db")
+	db, err := gorm.Open(sqlite.Open(path+"?_busy_timeout=50&_txlock=immediate&_journal_mode=WAL"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	sqlDB.SetMaxOpenConns(2)
+	if err := db.AutoMigrate(
+		&model.ObserverAssignment{}, &model.ObserverHealthBucket{}, &model.ObserverPathBucket{},
+		&model.AvailabilityBucket{}, &model.AvailabilityIncident{}, &model.IncidentRevision{},
+		&model.AvailabilityRecomputeQueue{}, &model.ServerNodeBinding{},
+	); err != nil {
+		t.Fatal(err)
+	}
+	bucket := int64(30 * time.Second)
+	for _, node := range [][]byte{bytes.Repeat([]byte{1}, 16), bytes.Repeat([]byte{2}, 16)} {
+		if err := db.Create(&model.AvailabilityRecomputeQueue{NodeUUID: node, BucketStart: bucket, Reason: "lock"}).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	ctx := context.Background()
+	hold, err := sqlDB.Conn(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = hold.ExecContext(context.Background(), "ROLLBACK")
+		_ = hold.Close()
+	})
+	if _, err := hold.ExecContext(ctx, "BEGIN IMMEDIATE"); err != nil {
+		t.Fatal(err)
+	}
+
+	engine := NewEngine(db, 30*time.Second, 1)
+	if err := engine.ProcessQueue(ctx, 10); err != nil {
+		t.Fatal(err)
+	}
+	var count int64
+	if err := db.Model(&model.AvailabilityRecomputeQueue{}).Count(&count).Error; err != nil {
+		t.Fatal(err)
+	}
+	if count != 2 {
+		t.Fatalf("queue rows = %d, want both rows kept", count)
 	}
 }
 

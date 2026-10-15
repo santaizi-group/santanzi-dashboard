@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/patrickmn/go-cache"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	"github.com/hi2shark/santaizi-dashboard/model"
 	"github.com/hi2shark/santaizi-dashboard/pkg/utils"
+	"github.com/hi2shark/santaizi-dashboard/service/sqliteutil"
 )
 
 var Version = "debug"
@@ -84,9 +84,7 @@ func OpenDBFromPath(path string, debug bool) (*gorm.DB, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return nil, fmt.Errorf("create database directory: %w", err)
 	}
-	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{
-		CreateBatchSize: 200,
-	})
+	db, err := sqliteutil.Open(path, debug)
 	if err != nil {
 		return nil, err
 	}
@@ -96,9 +94,6 @@ func OpenDBFromPath(path string, debug bool) (*gorm.DB, error) {
 			_ = CloseDB(db)
 		}
 	}()
-	if debug {
-		db = db.Debug()
-	}
 	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, err
@@ -107,19 +102,10 @@ func OpenDBFromPath(path string, debug bool) (*gorm.DB, error) {
 	if err := db.Raw("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").Scan(&userTableCount).Error; err != nil {
 		return nil, err
 	}
+	// auto_vacuum is stored in the database header and can only be chosen while the file has no tables.
 	if userTableCount == 0 {
 		if _, err := sqlDB.Exec("PRAGMA auto_vacuum=INCREMENTAL"); err != nil {
 			return nil, fmt.Errorf("apply PRAGMA auto_vacuum=INCREMENTAL: %w", err)
-		}
-	}
-	for _, pragma := range []string{
-		"PRAGMA journal_mode=WAL",
-		"PRAGMA foreign_keys=ON",
-		"PRAGMA busy_timeout=5000",
-		"PRAGMA synchronous=NORMAL",
-	} {
-		if _, err := sqlDB.Exec(pragma); err != nil {
-			return nil, fmt.Errorf("apply %s: %w", pragma, err)
 		}
 	}
 	if err := migrateDatabase(db); err != nil {
