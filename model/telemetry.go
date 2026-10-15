@@ -313,9 +313,9 @@ type ObserverPathBucket struct {
 }
 
 type AvailabilityBucket struct {
-	NodeUUID          []byte `gorm:"type:BLOB;size:16;primaryKey"`
-	BucketStart       int64  `gorm:"primaryKey"`
-	WindowEnd         int64  `gorm:"not null;default:0"`
+	NodeUUID          []byte `gorm:"type:BLOB;size:16;primaryKey;index:idx_availability_node_window,priority:1"`
+	BucketStart       int64  `gorm:"primaryKey;index:idx_availability_node_window,priority:3"`
+	WindowEnd         int64  `gorm:"not null;default:0;index:idx_availability_node_window,priority:2"`
 	Resolution        string `gorm:"size:8;not null;default:'30s';index"`
 	HostState         string `gorm:"size:16;not null;index"`
 	ConnectivityState string `gorm:"size:16;not null;index"`

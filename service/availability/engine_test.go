@@ -301,6 +301,106 @@ func TestCoveringSpanClosesOpenIncident(t *testing.T) {
 	}
 }
 
+func TestSpanEndingAtBucketDoesNotCover(t *testing.T) {
+	db := newEngineTestDB(t)
+	engine := NewEngine(db, 30*time.Second, 1)
+	node := bytes.Repeat([]byte{22}, 16)
+	now := time.Now()
+	bucketSize := int64(30 * time.Second)
+	started := now.Add(-2*time.Hour).UnixNano() / bucketSize * bucketSize
+	spanStart := started
+	target := spanStart + int64(time.Hour)
+	if err := db.Create(&model.AvailabilityIncident{
+		NodeUUID: node, InitialClassification: "HOST_OFFLINE", CurrentClassification: "HOST_OFFLINE",
+		Revision: 1, StartedAt: started, EndedAt: 0, Reason: "availability evidence",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.AvailabilityBucket{
+		NodeUUID: node, BucketStart: spanStart, WindowEnd: target,
+		Resolution: model.AvailabilityResolutionSpan, HostState: model.HostStateOnline, ConnectivityState: model.ConnectivityFull,
+		ExpectedObservers: 3, HealthyObservers: 3, SeenObservers: 3, Revision: 1, Finalized: true,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := engine.Recompute(context.Background(), node, target, now); err != nil {
+		t.Fatal(err)
+	}
+	var written model.AvailabilityBucket
+	if err := db.Where("node_uuid = ? AND bucket_start = ?", node, target).Take(&written).Error; err != nil {
+		t.Fatal(err)
+	}
+	if written.Resolution != model.AvailabilityResolutionRaw {
+		t.Fatalf("exact end was treated as a cover: %#v", written)
+	}
+}
+
+func TestRawWindowDoesNotCover(t *testing.T) {
+	db := newEngineTestDB(t)
+	engine := NewEngine(db, 30*time.Second, 1)
+	node := bytes.Repeat([]byte{24}, 16)
+	now := time.Now()
+	bucketSize := int64(30 * time.Second)
+	started := now.Add(-2*time.Hour).UnixNano() / bucketSize * bucketSize
+	target := started + bucketSize
+	if err := db.Create(&model.AvailabilityIncident{
+		NodeUUID: node, InitialClassification: "HOST_OFFLINE", CurrentClassification: "HOST_OFFLINE",
+		Revision: 1, StartedAt: started, EndedAt: 0, Reason: "availability evidence",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.AvailabilityBucket{
+		NodeUUID: node, BucketStart: started, WindowEnd: started + int64(time.Hour),
+		Resolution: model.AvailabilityResolutionRaw, HostState: model.HostStateOnline, ConnectivityState: model.ConnectivityFull,
+		ExpectedObservers: 3, HealthyObservers: 3, SeenObservers: 3, Revision: 1, Finalized: true,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := engine.Recompute(context.Background(), node, target, now); err != nil {
+		t.Fatal(err)
+	}
+	var written model.AvailabilityBucket
+	if err := db.Where("node_uuid = ? AND bucket_start = ?", node, target).Take(&written).Error; err != nil {
+		t.Fatal(err)
+	}
+	if written.Resolution != model.AvailabilityResolutionRaw {
+		t.Fatalf("30s row was treated as a cover: %#v", written)
+	}
+}
+
+func TestLaterSpanDoesNotCover(t *testing.T) {
+	db := newEngineTestDB(t)
+	engine := NewEngine(db, 30*time.Second, 1)
+	node := bytes.Repeat([]byte{25}, 16)
+	now := time.Now()
+	bucketSize := int64(30 * time.Second)
+	started := now.Add(-2*time.Hour).UnixNano() / bucketSize * bucketSize
+	target := started + bucketSize
+	if err := db.Create(&model.AvailabilityIncident{
+		NodeUUID: node, InitialClassification: "HOST_OFFLINE", CurrentClassification: "HOST_OFFLINE",
+		Revision: 1, StartedAt: started, EndedAt: 0, Reason: "availability evidence",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.AvailabilityBucket{
+		NodeUUID: node, BucketStart: target + bucketSize, WindowEnd: target + int64(time.Hour),
+		Resolution: model.AvailabilityResolutionSpan, HostState: model.HostStateOnline, ConnectivityState: model.ConnectivityFull,
+		ExpectedObservers: 3, HealthyObservers: 3, SeenObservers: 3, Revision: 1, Finalized: true,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := engine.Recompute(context.Background(), node, target, now); err != nil {
+		t.Fatal(err)
+	}
+	var written model.AvailabilityBucket
+	if err := db.Where("node_uuid = ? AND bucket_start = ?", node, target).Take(&written).Error; err != nil {
+		t.Fatal(err)
+	}
+	if written.Resolution != model.AvailabilityResolutionRaw {
+		t.Fatalf("later span was treated as a cover: %#v", written)
+	}
+}
+
 func TestCloseStaleIncidentsUsesLatestHealthyBucket(t *testing.T) {
 	db := newEngineTestDB(t)
 	engine := NewEngine(db, 30*time.Second, 1)

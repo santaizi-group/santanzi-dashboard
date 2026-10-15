@@ -181,9 +181,12 @@ func (e *Engine) Recompute(ctx context.Context, nodeUUID []byte, bucketStart int
 			return closeRecoveredIncident(tx, existing, recalculatedAt)
 		}
 		var covering model.AvailabilityBucket
-		coverErr := tx.Where("node_uuid = ? AND resolution = ? AND bucket_start <= ? AND window_end > ?",
-			nodeUUID, model.AvailabilityResolutionSpan, bucketStart, bucketStart).First(&covering).Error
-		if coverErr == nil {
+		// 长记录按小时合并且互不重叠。结束时间晚于该时刻的第一条，是唯一可能覆盖它的记录。
+		// 开始时间放在 Go 里判断，避免主键上的范围条件把查询计划带离窗口索引。
+		coverErr := tx.Where("node_uuid = ? AND resolution = ? AND window_end > ?",
+			nodeUUID, model.AvailabilityResolutionSpan, bucketStart).
+			Order("window_end ASC").Take(&covering).Error
+		if coverErr == nil && covering.BucketStart <= bucketStart {
 			return closeRecoveredIncident(tx, covering, recalculatedAt)
 		}
 		if coverErr != nil && !errors.Is(coverErr, gorm.ErrRecordNotFound) {
@@ -305,9 +308,14 @@ func (e *Engine) closeStaleNode(ctx context.Context, nodeUUID []byte, now time.T
 	if err != nil || !found {
 		return err
 	}
-	return e.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return closeRecoveredIncident(tx, bucket, now)
-	})
+	switch incidentClassification(bucket) {
+	case "HEALTHY", "EVIDENCE_UNKNOWN":
+		return e.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			return closeRecoveredIncident(tx, bucket, now)
+		})
+	default:
+		return nil
+	}
 }
 
 func classify(healthy, seen, minimum uint32, windowClosed bool) (string, string) {

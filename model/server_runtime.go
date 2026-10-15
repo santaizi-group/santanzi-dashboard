@@ -62,8 +62,9 @@ func LatestClosedAvailabilityBucket(db *gorm.DB, nodeUUID []byte, now time.Time)
 	if db == nil || len(nodeUUID) != 16 {
 		return bucket, false, nil
 	}
+	// Take 不再追加主键排序，否则会打乱 window_end 索引的顺序扫描。
 	err := db.Where("node_uuid = ? AND window_end <= ?", nodeUUID, now.UnixNano()).
-		Order(ClosedAvailabilityOrder).Limit(1).First(&bucket).Error
+		Order(ClosedAvailabilityOrder).Take(&bucket).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return AvailabilityBucket{}, false, nil
 	}

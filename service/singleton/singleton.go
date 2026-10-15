@@ -360,12 +360,28 @@ func migrateDatabase(db *gorm.DB) error {
 		current = 18
 	}
 	if current < 19 {
-		return db.Transaction(func(tx *gorm.DB) error {
+		if err := db.Transaction(func(tx *gorm.DB) error {
 			if err := tx.AutoMigrate(&model.BotChat{}, &model.BotBindCode{}, &model.BotReport{}, &model.BotAuditLog{}); err != nil {
 				return err
 			}
 			return tx.Create(&model.SchemaMigration{Version: 19, AppliedAt: time.Now().UTC()}).Error
-		})
+		}); err != nil {
+			return err
+		}
+		current = 19
+	}
+	if current < 20 {
+		if err := db.Transaction(func(tx *gorm.DB) error {
+			// 新库在 v1 AutoMigrate 时已经带上该索引；旧库只补索引，不改列和数据。
+			if tx.Migrator().HasTable(&model.AvailabilityBucket{}) && !tx.Migrator().HasIndex(&model.AvailabilityBucket{}, "idx_availability_node_window") {
+				if err := tx.Migrator().CreateIndex(&model.AvailabilityBucket{}, "idx_availability_node_window"); err != nil {
+					return err
+				}
+			}
+			return tx.Create(&model.SchemaMigration{Version: 20, AppliedAt: time.Now().UTC()}).Error
+		}); err != nil {
+			return err
+		}
 	}
 	return nil
 }

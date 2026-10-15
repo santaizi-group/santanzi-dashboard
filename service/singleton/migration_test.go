@@ -71,6 +71,9 @@ func TestOpenDBFromPathCreatesVersionedSchema(t *testing.T) {
 	if !db.Migrator().HasTable(&model.BotChat{}) || !db.Migrator().HasTable(&model.BotBindCode{}) || !db.Migrator().HasTable(&model.BotReport{}) || !db.Migrator().HasTable(&model.BotAuditLog{}) {
 		t.Fatal("bot tables were not created")
 	}
+	if !db.Migrator().HasIndex(&model.AvailabilityBucket{}, "idx_availability_node_window") {
+		t.Fatal("availability window index was not created")
+	}
 	var autoVacuum int
 	if err := db.Raw("PRAGMA auto_vacuum").Scan(&autoVacuum).Error; err != nil {
 		t.Fatal(err)
@@ -143,7 +146,7 @@ func TestMigrateV12AddsCollectorRuntimeSoftwareVersion(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
 		t.Fatal(err)
 	}
-	if current != 19 {
+	if current != 20 {
 		t.Fatalf("version = %d", current)
 	}
 	if err := db.Create(&model.CollectorRuntime{CollectorUUID: "c1", Status: "online", SoftwareVersion: "1.2.3"}).Error; err != nil {
@@ -197,7 +200,7 @@ func TestMigrateV13AddsServerProbeOverrides(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
 		t.Fatal(err)
 	}
-	if current != 19 {
+	if current != 20 {
 		t.Fatalf("version = %d", current)
 	}
 }
@@ -241,7 +244,7 @@ func TestMigrateV14AddsAvailabilityWindow(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
 		t.Fatal(err)
 	}
-	if current != 19 {
+	if current != 20 {
 		t.Fatalf("version = %d", current)
 	}
 }
@@ -287,7 +290,7 @@ func TestMigrateV15AddsProbeTraceTCP(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
 		t.Fatal(err)
 	}
-	if current != 19 {
+	if current != 20 {
 		t.Fatalf("version = %d", current)
 	}
 }
@@ -325,7 +328,7 @@ func TestMigrateV16AddsProbeRoutes(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&version).Error; err != nil {
 		t.Fatal(err)
 	}
-	if version != 19 {
+	if version != 20 {
 		t.Fatalf("version = %d", version)
 	}
 }
@@ -396,7 +399,7 @@ func TestMigrateV17AddsMTRProbes(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&version).Error; err != nil {
 		t.Fatal(err)
 	}
-	if version != 19 {
+	if version != 20 {
 		t.Fatalf("version = %d", version)
 	}
 }
@@ -460,7 +463,7 @@ func TestMigrateV18AddsCursorHoleAndAgentVersion(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
 		t.Fatal(err)
 	}
-	if current != 19 {
+	if current != 20 {
 		t.Fatalf("version = %d", current)
 	}
 }
@@ -495,7 +498,62 @@ func TestMigrateV19AddsBotTables(t *testing.T) {
 	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
 		t.Fatal(err)
 	}
-	if current != 19 {
+	if current != 20 {
+		t.Fatalf("version = %d", current)
+	}
+}
+
+func TestMigrateV20AddsAvailabilityWindowIndex(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v19.db")
+	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := CloseDB(db); err != nil {
+			t.Errorf("close db: %v", err)
+		}
+	})
+	if err := db.AutoMigrate(&model.SchemaMigration{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE TABLE availability_buckets (
+		node_uuid BLOB NOT NULL,
+		bucket_start INTEGER NOT NULL,
+		window_end INTEGER NOT NULL DEFAULT 0,
+		resolution TEXT NOT NULL DEFAULT '30s',
+		host_state TEXT NOT NULL,
+		connectivity_state TEXT NOT NULL,
+		expected_observers INTEGER NOT NULL,
+		healthy_observers INTEGER NOT NULL,
+		seen_observers INTEGER NOT NULL,
+		observer_summary BLOB,
+		revision INTEGER NOT NULL DEFAULT 1,
+		finalized NUMERIC NOT NULL,
+		recalculated_at INTEGER,
+		created_at DATETIME,
+		updated_at DATETIME,
+		PRIMARY KEY (node_uuid, bucket_start)
+	)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.SchemaMigration{Version: 19, AppliedAt: time.Now().UTC()}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if db.Migrator().HasIndex(&model.AvailabilityBucket{}, "idx_availability_node_window") {
+		t.Fatal("fixture should omit the window index")
+	}
+	if err := migrateDatabase(db); err != nil {
+		t.Fatal(err)
+	}
+	if !db.Migrator().HasIndex(&model.AvailabilityBucket{}, "idx_availability_node_window") {
+		t.Fatal("v20 should add idx_availability_node_window")
+	}
+	var current uint64
+	if err := db.Model(&model.SchemaMigration{}).Select("COALESCE(MAX(version), 0)").Scan(&current).Error; err != nil {
+		t.Fatal(err)
+	}
+	if current != 20 {
 		t.Fatalf("version = %d", current)
 	}
 }
