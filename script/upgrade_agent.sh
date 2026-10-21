@@ -268,6 +268,27 @@ stop_agent() {
     sudo systemctl stop "$AGENT_UNIT" >/dev/null 2>&1 || true
 }
 
+# 新二进制先自证能跑再交给 systemd：下载残缺、架构不匹配、有人手工换过 gnu
+# 产物都会让服务起不来，日志里只剩 status=1/FAILURE。跑不动就回滚旧二进制，
+# 别把一台机器留在「服务停了且二进制是坏的」状态。Go 探针 --version 要带
+# --config，这里只验 Rust（本来就是静态 musl，不会有 loader 问题）。
+verify_replaced_binary() {
+    if [ "$AGENT_IMPL" != "rust" ]; then
+        sudo rm -f "${AGENT_BIN}.bak"
+        return 0
+    fi
+    output=$(sudo "$AGENT_BIN" --version 2>&1)
+    if [ $? -eq 0 ]; then
+        sudo rm -f "${AGENT_BIN}.bak"
+        return 0
+    fi
+    err "新二进制无法执行：${output:-无输出}"
+    sudo mv "${AGENT_BIN}.bak" "$AGENT_BIN"
+    start_agent
+    err "已回滚到原版本并重新拉起服务；请检查下载与架构（Rust 仅 linux amd64 / arm64）。"
+    exit 1
+}
+
 start_agent() {
     if [ "$AGENT_IMPL" = "rust" ]; then
         if sudo systemctl restart "$AGENT_UNIT" >/dev/null 2>&1; then
@@ -318,10 +339,12 @@ replace_binary() {
 
     info "正在替换 ${AGENT_BIN} ..."
     sudo mkdir -p "$AGENT_PATH"
+    sudo cp -p "$AGENT_BIN" "${AGENT_BIN}.bak"
     sudo mv "${tmpdir}/${AGENT_ASSET}" "${AGENT_BIN}.new"
     sudo chmod +x "${AGENT_BIN}.new"
     sudo mv "${AGENT_BIN}.new" "$AGENT_BIN"
     rm -rf "$tmpdir"
+    verify_replaced_binary
 }
 
 if [ "${SANTAIZI_AGENT_DETECT_ONLY:-}" = "1" ]; then

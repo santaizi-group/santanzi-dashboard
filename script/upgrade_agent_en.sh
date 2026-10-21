@@ -268,6 +268,28 @@ stop_agent() {
     sudo systemctl stop "$AGENT_UNIT" >/dev/null 2>&1 || true
 }
 
+# Prove the new binary runs before handing it to systemd: a truncated download,
+# a mismatched architecture, or a hand-swapped gnu build would otherwise leave the
+# service down with nothing but status=1/FAILURE in the journal. Roll back instead
+# of leaving a machine with a stopped service and a broken binary. The Go agent
+# needs --config for --version, so only Rust is verified here.
+verify_replaced_binary() {
+    if [ "$AGENT_IMPL" != "rust" ]; then
+        sudo rm -f "${AGENT_BIN}.bak"
+        return 0
+    fi
+    output=$(sudo "$AGENT_BIN" --version 2>&1)
+    if [ $? -eq 0 ]; then
+        sudo rm -f "${AGENT_BIN}.bak"
+        return 0
+    fi
+    err "New binary cannot run: ${output:-no output}"
+    sudo mv "${AGENT_BIN}.bak" "$AGENT_BIN"
+    start_agent
+    err "Rolled back to the previous build and restarted the service. Check the download and architecture (Rust: Linux amd64 / arm64 only)."
+    exit 1
+}
+
 start_agent() {
     if [ "$AGENT_IMPL" = "rust" ]; then
         if sudo systemctl restart "$AGENT_UNIT" >/dev/null 2>&1; then
@@ -318,10 +340,12 @@ replace_binary() {
 
     info "Replacing ${AGENT_BIN} ..."
     sudo mkdir -p "$AGENT_PATH"
+    sudo cp -p "$AGENT_BIN" "${AGENT_BIN}.bak"
     sudo mv "${tmpdir}/${AGENT_ASSET}" "${AGENT_BIN}.new"
     sudo chmod +x "${AGENT_BIN}.new"
     sudo mv "${AGENT_BIN}.new" "$AGENT_BIN"
     rm -rf "$tmpdir"
+    verify_replaced_binary
 }
 
 if [ "${SANTAIZI_AGENT_DETECT_ONLY:-}" = "1" ]; then

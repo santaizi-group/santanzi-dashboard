@@ -126,6 +126,8 @@ curl -fSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/ma
 
 安装路径：`/opt/santaizi/agent-rs`；配置仍是 `/etc/santaizi/agent.yaml`；数据目录 `/var/lib/santaizi-agent/`。可用 `SANTAIZI_AGENT_RS_REPO` 覆盖仓库。能力开关、IP 上报和 `--server-ip` 与上面 Go 探针的参数表相同，写入配置文件和拨号缓存；服务进程只带 `--config`。卸载命令同样是 `santaizi-agent-uninstall`。
 
+发布产物是静态 musl 二进制，不依赖 glibc，老系统（CentOS 7 / Debian 11 起）和新系统都能直接跑。更早的 gnu 产物是在 glibc 2.38+ 的机器上编的，旧系统会报 `version 'GLIBC_2.38' not found` 起不来；遇到这个报错重新安装最新版即可。
+
 ### Windows
 
 ```powershell

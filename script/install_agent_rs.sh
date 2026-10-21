@@ -221,6 +221,28 @@ install_agent_rs() {
         exit 1
     fi
     sudo chmod +x "$SANTAIZI_AGENT_RS_BIN"
+    verify_agent_binary
+}
+
+# 发布产物是静态 musl，本来不该有 loader 报错；这一步是兜底：下载残缺、
+# 架构不匹配、分区 noexec 都会在这里现形，而不是等 systemd 里只剩
+# status=1/FAILURE。版本输出走 --version，不需要配置和密钥。
+verify_agent_binary() {
+    output=$("$SANTAIZI_AGENT_RS_BIN" --version 2>&1)
+    if [ $? -eq 0 ]; then
+        return 0
+    fi
+    case "$output" in
+        *GLIBC_*not\ found*)
+            err "Rust 探针二进制无法启动：$(printf '%s' "$output" | head -n 1)"
+            err "发布产物为静态 musl，不依赖 glibc；若手动替换过二进制，请改用 script/build-release.sh 的产物。"
+            ;;
+        *)
+            err "Rust 探针二进制无法执行：${output:-无输出}"
+            err "请检查下载是否完整、架构是否匹配（仅 linux amd64 / arm64）。"
+            ;;
+    esac
+    exit 1
 }
 
 write_owned_file() {
