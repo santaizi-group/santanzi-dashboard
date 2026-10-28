@@ -3,11 +3,19 @@
 #========================================================
 #   Santaizi 从端（Collector）升级脚本
 #   只拉取镜像并重建容器；保留配置、注册身份和数据目录
+#   自动识别本机 Rust / Go 从端（目录与镜像不同，可共存）
+#   覆盖：SANTAIZI_COLLECTOR_IMPL=go|rust 或 --impl go|rust
 #========================================================
 
-GHCR_IMAGE="ghcr.io/santaizi-group/santaizi-dashboard"
-WORK_DIR="${SANTAIZI_COLLECTOR_DIR:-/opt/santaizi/collector}"
+GO_DIR="${SANTAIZI_COLLECTOR_DIR:-/opt/santaizi/collector}"
+RS_DIR="${SANTAIZI_COLLECTOR_RS_DIR:-/opt/santaizi/collector-rs}"
+WORK_DIR=""
 REQUESTED_VERSION="${SANTAIZI_COLLECTOR_VERSION:-}"
+REQUESTED_IMPL=""
+COLLECTOR_IMPL=""
+CONTAINER_NAME=""
+DIR_EXPLICIT=0
+DETECT_ONLY=0
 
 red='\033[0;31m'
 green='\033[0;32m'
@@ -28,18 +36,26 @@ success() {
 
 usage() {
     cat <<EOF
-Usage: $0 [upgrade_collector] [版本] [--dir <path>]
+Usage: $0 [upgrade_collector] [版本] [--dir <path>] [--impl go|rust] [--detect-only]
 
 Options:
-  --dir                从端工作目录（默认 /opt/santaizi/collector，可用 SANTAIZI_COLLECTOR_DIR 覆盖）
-  --version            镜像标签（如 v1.0.1；不传则拉取 compose 中现有标签，安装默认 latest）
+  --dir                从端工作目录（指定后只根据该目录识别实现，不扫描默认双目录）
+  --version            镜像标签（如 v1.0.1；不传则拉取 compose 中现有标签）
+  --impl               强制 Rust 或 Go 实现（与 --dir 联用时须与目录内安装一致）
+  --detect-only        只输出 rust 或 go 后退出，不调用 Docker
   -h, --help           显示帮助
+
+环境变量:
+  SANTAIZI_COLLECTOR_DIR / SANTAIZI_COLLECTOR_RS_DIR   默认安装目录
+  SANTAIZI_COLLECTOR_IMPL=go|rust                      强制实现（两套并存时必填其一）
+  SANTAIZI_COLLECTOR_VERSION                           镜像标签
+  SANTAIZI_COLLECTOR_DETECT_ONLY=1                     同 --detect-only
 
 示例:
   $0
-  $0 v1.0.1
-  SANTAIZI_COLLECTOR_VERSION=v1.0.1 $0
-  $0 --dir /opt/santaizi/collector --version latest
+  $0 v0.2.2
+  $0 --impl rust
+  SANTAIZI_COLLECTOR_IMPL=go $0
 
 未指定版本时不改 compose 标签，只 pull 后按需重建。不修改配置与 data/。
 请先升级 Primary，再升级从端，最后升级探针。
@@ -120,6 +136,123 @@ compose_image() {
     grep -E '^[[:space:]]*image:' "$1" | head -n 1 | awk '{print $2}' | tr -d "\"'"
 }
 
+compose_container_name() {
+    grep -E '^[[:space:]]*container_name:' "$1" | head -n 1 | awk '{print $2}' | tr -d "\"'"
+}
+
+image_impl_from_string() {
+    case "$1" in
+        *santaizi-dashboard-rs*) printf "rust\n"; return 0 ;;
+        *santaizi-dashboard*) printf "go\n"; return 0 ;;
+    esac
+    return 1
+}
+
+collector_install_impl() {
+    dir=$1
+    compose=$(find_compose_file "$dir") || return 1
+    config="${dir}/config/dashboard.yaml"
+    if [ ! -f "$config" ]; then
+        return 1
+    fi
+    if ! is_collector_config "$config"; then
+        return 1
+    fi
+    image=$(compose_image "$compose")
+    impl=$(image_impl_from_string "$image" 2>/dev/null || true)
+    if [ -z "$impl" ]; then
+        cname=$(compose_container_name "$compose")
+        case "$cname" in
+            santaizi-collector-rs) impl=rust ;;
+            santaizi-collector) impl=go ;;
+        esac
+    fi
+    if [ -z "$impl" ]; then
+        return 1
+    fi
+    printf "%s\n" "$impl"
+    return 0
+}
+
+apply_impl() {
+    COLLECTOR_IMPL=$1
+    case "$COLLECTOR_IMPL" in
+        rust) CONTAINER_NAME="santaizi-collector-rs" ;;
+        go) CONTAINER_NAME="santaizi-collector" ;;
+        *)
+            err "内部错误：未知实现 ${COLLECTOR_IMPL}"
+            exit 1
+            ;;
+    esac
+    if [ "$DIR_EXPLICIT" -eq 0 ]; then
+        case "$COLLECTOR_IMPL" in
+            rust) WORK_DIR="$RS_DIR" ;;
+            go) WORK_DIR="$GO_DIR" ;;
+        esac
+    fi
+}
+
+detect_impl() {
+    requested=$(printf '%s' "${SANTAIZI_COLLECTOR_IMPL:-}${REQUESTED_IMPL}" | tr '[:upper:]' '[:lower:]')
+    case "$requested" in
+        go|rust) ;;
+        "")
+            ;;
+        *)
+            err "SANTAIZI_COLLECTOR_IMPL / --impl 只能是 go 或 rust，当前: ${requested}"
+            exit 1
+            ;;
+    esac
+
+    if [ "$DIR_EXPLICIT" -eq 1 ]; then
+        impl=$(collector_install_impl "$WORK_DIR") || {
+            err "未在指定目录识别到从端安装: ${WORK_DIR}"
+            err "需要 compose、config/dashboard.yaml（mode: collector）及可识别的镜像或容器名。"
+            exit 1
+        }
+        if [ -n "$requested" ] && [ "$requested" != "$impl" ]; then
+            err "--impl / SANTAIZI_COLLECTOR_IMPL=${requested} 与目录内安装 (${impl}) 不一致。"
+            exit 1
+        fi
+        apply_impl "$impl"
+        return
+    fi
+
+    if [ -n "$requested" ]; then
+        apply_impl "$requested"
+        return
+    fi
+
+    rust_ok=0
+    go_ok=0
+    if collector_install_impl "$RS_DIR" >/dev/null 2>&1; then
+        rust_ok=1
+    fi
+    if collector_install_impl "$GO_DIR" >/dev/null 2>&1; then
+        go_ok=1
+    fi
+
+    if [ "$rust_ok" -eq 1 ] && [ "$go_ok" -eq 1 ]; then
+        err "同时发现 Rust（${RS_DIR}）与 Go（${GO_DIR}）从端安装。"
+        err "请设置 SANTAIZI_COLLECTOR_IMPL=go|rust 或使用 --impl，分别升级。"
+        exit 1
+    fi
+    if [ "$rust_ok" -eq 1 ]; then
+        apply_impl rust
+        return
+    fi
+    if [ "$go_ok" -eq 1 ]; then
+        apply_impl go
+        return
+    fi
+
+    err "未找到已安装的从端。"
+    err "Rust 默认: ${RS_DIR}"
+    err "Go 默认: ${GO_DIR}"
+    err "请先执行安装脚本，而不是升级脚本。"
+    exit 1
+}
+
 set_compose_image_tag() {
     file=$1
     tag=$2
@@ -146,8 +279,8 @@ image_version_label() {
 }
 
 collector_container_ref() {
-    if sudo docker inspect santaizi-collector >/dev/null 2>&1; then
-        printf "santaizi-collector\n"
+    if [ -n "$CONTAINER_NAME" ] && sudo docker inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
+        printf "%s\n" "$CONTAINER_NAME"
         return 0
     fi
     cid=$(run_compose ps -q 2>/dev/null | head -n 1)
@@ -181,6 +314,26 @@ verify_collector_running() {
         exit 1
     fi
     success "容器状态: running"
+}
+
+verify_compose_matches_impl() {
+    image=$(compose_image "$COMPOSE_FILE")
+    case "$COLLECTOR_IMPL" in
+        rust)
+            case "$image" in
+                *santaizi-dashboard-rs*) return 0 ;;
+            esac
+            ;;
+        go)
+            case "$image" in
+                *santaizi-dashboard-rs*) ;;
+                *santaizi-dashboard*) return 0 ;;
+            esac
+            ;;
+    esac
+    err "compose 镜像与检测到的实现（${COLLECTOR_IMPL}）不一致: ${image}"
+    err "换实现请走对应安装脚本，不要用升级脚本切换。"
+    exit 1
 }
 
 pull_and_recreate() {
@@ -223,6 +376,9 @@ pull_and_recreate() {
 }
 
 parse_args() {
+    if [ "${SANTAIZI_COLLECTOR_DETECT_ONLY:-}" = "1" ]; then
+        DETECT_ONLY=1
+    fi
     while [ $# -gt 0 ]; do
         case "$1" in
             -h|--help)
@@ -231,11 +387,20 @@ parse_args() {
                 ;;
             --dir)
                 WORK_DIR=$2
+                DIR_EXPLICIT=1
                 shift 2
                 ;;
             --version)
                 REQUESTED_VERSION=$2
                 shift 2
+                ;;
+            --impl)
+                REQUESTED_IMPL=$2
+                shift 2
+                ;;
+            --detect-only)
+                DETECT_ONLY=1
+                shift
                 ;;
             upgrade_collector|upgrade)
                 shift
@@ -284,15 +449,28 @@ require_installed() {
 main() {
     parse_args "$@"
 
-    info "Santaizi 从端升级脚本"
-
     if [ "$(uname -s)" != "Linux" ]; then
         err "本脚本目前仅支持 Linux 系统。"
         exit 1
     fi
 
+    detect_impl
+
+    if [ "$DETECT_ONLY" -eq 1 ]; then
+        printf '%s\n' "$COLLECTOR_IMPL"
+        exit 0
+    fi
+
+    info "Santaizi 从端升级脚本"
+    if [ "$COLLECTOR_IMPL" = "rust" ]; then
+        info "检测到实现: Rust"
+    else
+        info "检测到实现: Go"
+    fi
+
     require_docker
     require_installed
+    verify_compose_matches_impl
 
     cd "$WORK_DIR" || {
         err "无法进入工作目录: $WORK_DIR"

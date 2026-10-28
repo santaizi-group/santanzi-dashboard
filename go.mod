@@ -1,6 +1,6 @@
 module github.com/hi2shark/santaizi-dashboard
 
-go 1.25.0
+go 1.26.10
 
 require (
 	code.gitea.io/sdk/gitea v0.18.0

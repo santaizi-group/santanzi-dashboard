@@ -243,7 +243,7 @@ curl -fsSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/m
 curl -fsSL https://raw.githubusercontent.com/santaizi-group/santanzi-dashboard/main/script/upgrade_collector.sh | bash -s -- v1.0.1
 ```
 
-工作目录默认 `/opt/santaizi/collector`，可用 `--dir` 或 `SANTAIZI_COLLECTOR_DIR` 覆盖。也可重跑 `install_collector.sh` 且不传 `--token`。
+脚本会先识别本机是 Rust 还是 Go 从端，只升级对应一套。两套都在时须设置 `SANTAIZI_COLLECTOR_IMPL=go|rust` 或使用 `--impl`。未指定实现且只装了一套时，升级那一套。工作目录默认 `/opt/santaizi/collector`（Rust 为 `/opt/santaizi/collector-rs`），可用 `--dir` 或 `SANTAIZI_COLLECTOR_DIR` / `SANTAIZI_COLLECTOR_RS_DIR` 覆盖。也可重跑 `install_collector.sh` 且不传 `--token`（只升级该脚本对应的 Go 目录）。
 
 ### Agent
 
